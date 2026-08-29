@@ -1,0 +1,48 @@
+name: Problema con el script
+description: Algo falló o no hizo lo esperado en un PC
+title: "[Problema] "
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Versión del script
+      description: Sale arriba al abrir el script, por ejemplo v3.2.0
+    validations:
+      required: true
+  - type: input
+    id: pc
+    attributes:
+      label: PC
+      placeholder: Blackjack 02 / KG-TBL-BJ-02
+    validations:
+      required: true
+  - type: dropdown
+    id: seccion
+    attributes:
+      label: Sección donde falló
+      options:
+        - Elegir PC
+        - Fecha y hora
+        - Renombrar
+        - Login
+        - Windows Update
+        - Red
+        - Autoarranque de apps
+        - Resumen / reinicio
+        - Otra
+    validations:
+      required: true
+  - type: textarea
+    id: que-paso
+    attributes:
+      label: Qué pasó
+      description: Qué esperabas y qué ocurrió. Una captura de pantalla ayuda mucho.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Pega el contenido del log más reciente de C:\KermaSetup\logs
+      render: text

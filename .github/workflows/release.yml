@@ -1,0 +1,57 @@
+name: Release
+
+# Pushing a tag like v3.2.1 builds the zip and publishes the GitHub release,
+# using the matching section of CHANGELOG.md as the release notes.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build zip
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ZIP="Kerma_PC_Setup-v${VERSION}.zip"
+          mkdir -p dist/Kerma_PC_Setup
+          cp src/* dist/Kerma_PC_Setup/
+          (cd dist && zip -r -X "$ZIP" Kerma_PC_Setup)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for [$VERSION]"
+            exit 1
+          fi
+          sed "s#__REPO__#${GITHUB_REPOSITORY}#g" .github/release-footer.md >> notes.md
+          TITLE=$(grep -m1 -F "## [$VERSION]" CHANGELOG.md | sed -E 's/^## \[[^]]+\] - [0-9-]+ - //')
+          echo "TITLE=$TITLE" >> "$GITHUB_ENV"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Only the highest version is marked "Latest" (tags may be pushed together)
+          HIGHEST=$(git tag -l 'v*' --sort=-v:refname | head -n1)
+          if [ "$HIGHEST" = "$GITHUB_REF_NAME" ]; then LATEST=true; else LATEST=false; fi
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME - $TITLE" --notes-file notes.md --latest=$LATEST
+            gh release upload "$GITHUB_REF_NAME" "dist/$ZIP" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "dist/$ZIP" --title "$GITHUB_REF_NAME - $TITLE" --notes-file notes.md --latest=$LATEST --verify-tag
+          fi

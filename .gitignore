@@ -1,0 +1,6 @@
+# Created by the script on each PC - never commit them
+app-paths.json
+*.log
+# Local build output
+dist/
+.DS_Store
