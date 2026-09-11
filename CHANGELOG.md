@@ -2,6 +2,23 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [3.0.0] - 2026-09-10 - Migración a PowerShell
+
+### Cambiado
+- El script se reescribe en PowerShell: `Kerma-PCSetup.ps1`, con el lanzador `Kerma-PCSetup.bat` para seguir usándolo con doble clic. Pide permisos de administrador por sí mismo.
+- Mismos menús, nombres de tareas y carpetas que la v2, así que las tareas ya creadas se reemplazan sin problema.
+
+### Añadido
+- Tabla de PCs en la cabecera del script con el nombre, el usuario, el tipo, las apps y la IP de cada equipo.
+- Tabla de apps con el retardo de arranque y si se abren maximizadas.
+- Valores de red por defecto: máscara 255.255.252.0, puerta de enlace 192.168.0.10, DNS 8.8.8.8 y 1.1.1.1. Solo hay que teclear la IP.
+- Registro de cada ejecución en `C:\KermaSetup\logs`.
+- Modo desatendido: `Kerma-PCSetup.bat -PC RL01 -Unattended`, con `-Restart` opcional.
+- Resumen final con todo lo que se ha cambiado.
+
+### Eliminado
+- `kerma-quitar-password.bat`. Su función está en la sección de login.
+
 ## [2.0.0] - 2026-09-10 - Auditoría y nuevas secciones
 
 ### Corregido
