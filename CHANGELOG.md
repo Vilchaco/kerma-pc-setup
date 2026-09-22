@@ -2,6 +2,22 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [3.1.0] - 2026-09-22 - Rutas de las apps al vuelo
+
+### Añadido
+- Ya no hay que editar el script para poner las rutas de las apps. Al activar una app, el script pide su programa: se puede pegar la ruta o pulsar **B** para buscarla con la ventana de Windows.
+- Comprobación de cada ruta: que existe, que es un programa `.exe`, `.bat` o `.cmd`, y que es una ruta completa. Muestra el nombre y el fabricante del programa para confirmar que es el correcto.
+- Si se elige un acceso directo, se usa el programa al que apunta.
+- Prueba opcional que abre la app una vez para ver que arranca.
+- Las rutas se recuerdan en `app-paths.json` junto al script. En las siguientes mesas basta con pulsar Enter, y el modo desatendido también las usa.
+- Si una ruta recordada está en el Escritorio de otra mesa, se busca en el mismo sitio del perfil de la mesa actual.
+
+### Cambiado
+- Cada app arranca desde su propia carpeta. Antes solo lo hacía OBS.
+
+### Corregido
+- Crear la tarea de autoarranque fallaba con *The parameter is incorrect*. Las tareas se asocian ahora al grupo Usuarios de Windows, que no depende del nombre de la cuenta ni del idioma. Si aun así falla, se intenta con `schtasks.exe`, y si fallan los dos se muestran ambos errores.
+
 ## [3.0.0] - 2026-09-10 - Migración a PowerShell
 
 ### Cambiado

@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v3.0.0 - PowerShell)
+  Kerma Games - PC Setup  (v3.1.0 - PowerShell)
 =====================================================================
   Double-click "Kerma-PCSetup.bat" next to this file. The script asks
   for administrator rights by itself.
@@ -24,8 +24,14 @@
   (supervisor PCs: leave as is); Windows Update = manual only
   (supervisor PCs: leave as is); network = static only if this PC
   has an IP filled in the table below, else untouched; apps = all
-  of this PC's apps, maximized as configured in the APPS table.
+  of this PC's apps whose path is known and valid (apps without a
+  valid path are skipped and reported), maximized as in the APPS table.
 
+  APP PATHS:   no need to edit anything. When you enable an app, the
+               script asks for its program file (paste a path or press
+               B to browse), checks it, and remembers it in
+               app-paths.json next to this script, so the next PC
+               already suggests it.
   TO ADD A PC: copy one line of the $PCs table below and edit it.
   TO SET IPs:  fill IP = '' in that PC's line. Mask, gateway and DNS
                come from $NetDefaults unless the PC line overrides them
@@ -40,21 +46,25 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '3.0.0'
+$ScriptVersion = '3.1.0'
 
 # =====================================================================
-#  CONFIG: APPS  (edit paths / delays / default maximize here)
+#  CONFIG: APPS  (delays / default maximize)
+#  Path is only a first suggestion - leave it '' if unknown. The real
+#  path is asked (and checked) while the script runs, then remembered
+#  in app-paths.json next to this script. Apps always start with their
+#  own folder as working directory (OBS needs this).
 # =====================================================================
 $Apps = [ordered]@{
-    Scanner    = @{ Name = 'Card Scanner'; Id = '01_scanner';    Path = 'C:\Path\To\CardScanner.bat';                  WorkDir = '';                                     Delay = 10; Maximize = $false }
-    StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Path\To\StreamDeckApp.exe';                WorkDir = '';                                     Delay = 15; Maximize = $false }
-    DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = 'C:\Path\To\DealerApp.exe';                    WorkDir = '';                                     Delay = 30; Maximize = $true  }
-    Mirror     = @{ Name = 'Mirror App';   Id = '04_mirror';     Path = 'C:\Path\To\MirrorApp.exe';                    WorkDir = '';                                     Delay = 45; Maximize = $false }
-    OBS        = @{ Name = 'OBS';          Id = '05_obs';        Path = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; WorkDir = 'C:\Program Files\obs-studio\bin\64bit'; Delay = 60; Maximize = $false }
+    Scanner    = @{ Name = 'Card Scanner'; Id = '01_scanner';    Path = '';                                                 Delay = 10; Maximize = $false }
+    StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = '';                                                 Delay = 15; Maximize = $false }
+    DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '';                                                 Delay = 30; Maximize = $true  }
+    Mirror     = @{ Name = 'Mirror App';   Id = '04_mirror';     Path = '';                                                 Delay = 45; Maximize = $false }
+    OBS        = @{ Name = 'OBS';          Id = '05_obs';        Path = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Delay = 60; Maximize = $false }
     # Office PC (Hector's office: cameras on the TV + Deskflow client controlled from his Mac)
-    Deskflow   = @{ Name = 'Deskflow';     Id = '01_deskflow';   Path = 'C:\Program Files\Deskflow\deskflow.exe';      WorkDir = '';                                     Delay = 10; Maximize = $false
+    Deskflow   = @{ Name = 'Deskflow';     Id = '01_deskflow';   Path = 'C:\Program Files\Deskflow\deskflow.exe';          Delay = 10; Maximize = $false
                     Note = 'If "start Deskflow on login" is already enabled inside Deskflow, answer N here so it is not launched twice.' }
-    Cameras    = @{ Name = 'Cameras';      Id = '02_cameras';    Path = 'C:\Path\To\CamerasApp.exe';                   WorkDir = '';                                     Delay = 25; Maximize = $true  }
+    Cameras    = @{ Name = 'Cameras';      Id = '02_cameras';    Path = '';                                                 Delay = 25; Maximize = $true  }
 }
 $TableApps  = @('Scanner', 'StreamDeck', 'DealerApp', 'Mirror', 'OBS')
 $OfficeApps = @('Deskflow', 'Cameras')
@@ -469,6 +479,127 @@ function Invoke-NetworkSetup($pc) {
     Add-Change "Network: $name static $ip / $mask, gw $gw, DNS $dns1 $dns2"
 }
 
+# ------------------------- app path helpers --------------------------
+# Remembered paths live next to the script (so they travel on the USB
+# stick to the next PC); if that folder is read-only, in C:\KermaSetup.
+$AppPathsFiles = @((Join-Path $PSScriptRoot 'app-paths.json'), 'C:\KermaSetup\app-paths.json')
+
+function Get-SavedAppPaths {
+    $h = @{}
+    foreach ($f in $AppPathsFiles) {
+        if (-not (Test-Path -LiteralPath $f)) { continue }
+        try {
+            $obj = Get-Content -LiteralPath $f -Raw | ConvertFrom-Json
+            foreach ($prop in $obj.PSObject.Properties) { $h[$prop.Name] = [string]$prop.Value }
+            return $h
+        } catch { Write-Warn "Could not read $f - ignoring it." }
+    }
+    return $h
+}
+
+function Save-AppPaths($h) {
+    $json = $h | ConvertTo-Json
+    foreach ($f in $AppPathsFiles) {
+        try {
+            New-Item -ItemType Directory -Path (Split-Path -Path $f -Parent) -Force | Out-Null
+            Set-Content -LiteralPath $f -Value $json -Encoding UTF8
+            return
+        } catch { }
+    }
+    Write-Warn 'Could not save the app paths (not critical - they will be asked again next time).'
+}
+
+# Checks a path typed / pasted / browsed by the user.
+# Returns @{ Ok; Path (full, resolved); Error; Info (product name etc.) }
+function Test-AppPath([string]$raw) {
+    $r = @{ Ok = $false; Path = ''; Error = ''; Info = '' }
+    if ([string]::IsNullOrWhiteSpace($raw)) { $r.Error = 'no path given'; return $r }
+    # accept Explorer's "Copy as path" (with quotes) and %VARIABLES%
+    $p = [Environment]::ExpandEnvironmentVariables($raw.Trim().Trim('"').Trim("'").Trim())
+    if (-not ($p -match '^[A-Za-z]:\\' -or $p -match '^\\\\')) {
+        $r.Error = 'not a full path - it must start with a drive letter, e.g. C:\...'; return $r
+    }
+    # a shortcut (.lnk): use the program it points to
+    if ([IO.Path]::GetExtension($p) -ieq '.lnk' -and (Test-Path -LiteralPath $p -PathType Leaf)) {
+        $target = ''
+        try { $target = (New-Object -ComObject WScript.Shell).CreateShortcut($p).TargetPath } catch { }
+        if ([string]::IsNullOrWhiteSpace($target)) {
+            $r.Error = 'this shortcut does not point to a normal program file - browse to the real .exe instead'; return $r
+        }
+        Write-Host "    (shortcut points to: $target)"
+        $p = $target
+    }
+    if (Test-Path -LiteralPath $p -PathType Container) { $r.Error = 'that is a folder, not a program - pick the .exe inside it'; return $r }
+    if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { $r.Error = 'file not found'; return $r }
+    $ext = [IO.Path]::GetExtension($p).ToLower()
+    if (@('.exe', '.bat', '.cmd') -notcontains $ext) { $r.Error = "'$ext' files are not programs - use a .exe, .bat or .cmd file"; return $r }
+
+    $r.Ok   = $true
+    $r.Path = (Resolve-Path -LiteralPath $p).ProviderPath
+    if ($ext -eq '.exe') {
+        $vi = (Get-Item -LiteralPath $r.Path).VersionInfo
+        $parts = @($vi.ProductName, $vi.CompanyName) | Where-Object { $_ -and $_.Trim() }
+        if ($vi.ProductVersion -and $vi.ProductVersion.Trim()) { $parts += "version $($vi.ProductVersion.Trim())" }
+        $r.Info = if ($parts) { $parts -join ' - ' } else { 'program found (it has no product name inside)' }
+    } else {
+        $r.Info = 'batch script found'
+    }
+    return $r
+}
+
+# Opens the standard Windows "Open file" window. Returns '' if cancelled.
+function Select-AppFile([string]$appName, [string]$near) {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $dlg = New-Object System.Windows.Forms.OpenFileDialog
+        $dlg.Title            = "Kerma setup - select the program for: $appName"
+        $dlg.Filter           = 'Programs and shortcuts (*.exe;*.bat;*.cmd;*.lnk)|*.exe;*.bat;*.cmd;*.lnk|All files (*.*)|*.*'
+        $dlg.DereferenceLinks = $true
+        $dlg.InitialDirectory = $env:ProgramFiles
+        if ($near) {
+            $d = Split-Path -Path $near -Parent -ErrorAction SilentlyContinue
+            if ($d -and (Test-Path -LiteralPath $d -PathType Container)) { $dlg.InitialDirectory = $d }
+        }
+        # invisible top-most owner so the window never opens behind the console
+        $owner = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true; ShowInTaskbar = $false }
+        try { $res = $dlg.ShowDialog($owner) } finally { $owner.Dispose() }
+        if ($res -eq [System.Windows.Forms.DialogResult]::OK) { return $dlg.FileName }
+    } catch {
+        Write-Warn "The file browser could not be opened ($($_.Exception.Message)). Paste the path instead."
+    }
+    return ''
+}
+
+# Asks until it gets a valid program path. Returns '' if the user skips.
+function Get-AppPathInteractive($app, [string]$suggested) {
+    $candidate = $suggested
+    while ($true) {
+        $chk = $null
+        if ($candidate) { $chk = Test-AppPath $candidate }
+        if ($chk -and $chk.Ok) {
+            Write-Host "    Path : $($chk.Path)"
+            Write-Host "    Check: OK - $($chk.Info)" -ForegroundColor Green
+            $v = Read-Host '    [Enter] use it   [B] browse for another   [S] skip this app   or paste another path'
+            if ([string]::IsNullOrWhiteSpace($v)) { return $chk.Path }
+        } else {
+            if ($candidate) { Write-Warn "$candidate  ->  $($chk.Error)" }
+            else            { Write-Host "    No path known yet for $($app.Name)." }
+            $v = Read-Host '    [Enter/B] browse for the file   [S] skip this app   or paste the full path'
+            if ([string]::IsNullOrWhiteSpace($v)) { $v = 'B' }
+        }
+        $v = $v.Trim()
+        if ($v -ieq 'S') { return '' }
+        if ($v -ieq 'B') {
+            Write-Host '    Opening the file browser...'
+            $near   = if ($chk -and $chk.Ok) { $chk.Path } else { $candidate }
+            $picked = Select-AppFile $app.Name $near
+            if ($picked) { $candidate = $picked } else { Write-Host '    Nothing selected.' }
+            continue
+        }
+        $candidate = $v
+    }
+}
+
 # ============================ 6) APP AUTOSTART =======================
 function Invoke-AppAutostart($pc) {
     Write-Section 'APP AUTOSTART'
@@ -484,12 +615,15 @@ function Invoke-AppAutostart($pc) {
     $dir       = "C:\KermaStartup\$tableName"
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
 
-    # The task runs in this user's interactive session at logon. We
-    # register it by SID so a later computer rename cannot break it.
-    $principalId = "$env:COMPUTERNAME\$user"
-    try { $principalId = (Get-LocalUser -Name $user).SID.Value } catch { }
+    # Tasks are tied to the built-in Users group by its fixed SID
+    # (S-1-5-32-545), not to one account: this works whatever the
+    # account is called, survives user / computer renames, and does not
+    # depend on the Windows language ("Users" vs "Usuarios").
+    # The apps start in the session of whoever logs on (table PCs have
+    # a single account), elevated if that account is an administrator.
 
     Write-Host "  Tasks will be named '$tableName - <App> Startup', scripts in $dir"
+    $saved = Get-SavedAppPaths
 
     foreach ($k in $pc.Apps) {
         $app      = $Apps[$k]
@@ -502,29 +636,92 @@ function Invoke-AppAutostart($pc) {
             Write-Skip "$($app.Name) (existing task removed, if there was one)."
             continue
         }
-        if (-not (Test-Path -LiteralPath $app.Path)) {
-            Write-Warn "Path not found: $($app.Path)"
-            Write-Note 'Creating the task anyway - if the path is wrong, fix it in the CONFIG: APPS table at the top of this script.'
+        # -- which program file? (remembered path first, then the table's suggestion)
+        $suggested = ''
+        $cands = @($saved[$k], $app.Path)
+        # A path remembered on another table may live in THAT PC's user
+        # folder (C:\Users\<other>\Desktop\...): try the same place here.
+        if ($saved[$k] -match '^[A-Za-z]:\\Users\\[^\\]+\\(.+)$') {
+            $cands = @($saved[$k], (Join-Path $env:USERPROFILE $Matches[1]), $app.Path)
         }
+        foreach ($cand in $cands) {
+            if ($cand -and (Test-AppPath $cand).Ok) { $suggested = $cand; break }
+        }
+        if (-not $suggested -and $saved[$k]) { $suggested = $saved[$k] }   # show why it broke
+
+        $path = ''
+        if ($Unattended) {
+            $chk = if ($suggested) { Test-AppPath $suggested } else { $null }
+            if (-not ($chk -and $chk.Ok)) {
+                Write-Warn "$($app.Name): no valid path known - SKIPPED (existing task left untouched). Run once interactively to set it."
+                continue
+            }
+            $path = $chk.Path
+            Write-Host "    Path -> $path (unattended)"
+        } else {
+            while ($true) {
+                $path = Get-AppPathInteractive $app $suggested
+                if (-not $path) { break }
+                if (Ask-YesNo '    -> Test it now? (opens the app once so you can see it starts)' $false) {
+                    try {
+                        Start-Process -FilePath $path -WorkingDirectory (Split-Path -Path $path -Parent)
+                        if (Ask-YesNo '    Did it open correctly? (close it again afterwards)' $true) { break }
+                        Write-Host '    OK - pick the right file then.'
+                        $suggested = $path
+                        continue
+                    } catch {
+                        Write-Fail "It did not start: $($_.Exception.Message)"
+                        $suggested = $path
+                        continue
+                    }
+                }
+                break
+            }
+            if (-not $path) {
+                Write-Skip "$($app.Name) (no path chosen - existing task left untouched)."
+                continue
+            }
+        }
+        if ($saved[$k] -ne $path) { $saved[$k] = $path; Save-AppPaths $saved }
+
         $max  = Ask-YesNo '    -> Open maximized?' ([bool]$app.Maximize)
         $flag = if ($max) { '/max' } else { '' }
 
         $lines = @('@echo off', "timeout /t $($app.Delay) /nobreak >nul")
-        if ($app.WorkDir) { $lines += "cd /d `"$($app.WorkDir)`"" }
-        $lines += "start $flag `"`" `"$($app.Path)`""
+        $lines += "cd /d `"$(Split-Path -Path $path -Parent)`""
+        $lines += "start $flag `"`" `"$path`""
         $bat = Join-Path $dir "$($app.Id).bat"
         Set-Content -LiteralPath $bat -Value $lines -Encoding Ascii
 
+        $err1 = ''
+        $err2 = ''
+        $created = $false
+        # Method 1: logon task for the Users group (see note above)
         try {
-            $taskAction    = New-ScheduledTaskAction -Execute $bat
+            $taskAction    = New-ScheduledTaskAction -Execute $bat -WorkingDirectory $dir
             $taskTrigger   = New-ScheduledTaskTrigger -AtLogOn
-            $taskPrincipal = New-ScheduledTaskPrincipal -UserId $principalId -LogonType Interactive -RunLevel Highest
-            $taskSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
-            Register-ScheduledTask -TaskName $taskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal -Settings $taskSettings -Force | Out-Null
+            $taskPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Highest
+            $taskSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero)
+            Register-ScheduledTask -TaskName $taskName -Action $taskAction -Trigger $taskTrigger -Principal $taskPrincipal -Settings $taskSettings -Force -ErrorAction Stop | Out-Null
+            $created = $true
+        } catch {
+            $err1 = ($_.Exception.Message -replace '\s+', ' ').Trim()
+        }
+        # Method 2 (fallback): schtasks.exe, same as the old .bat version
+        if (-not $created) {
+            $out = & schtasks.exe /create /tn $taskName /tr "`"$bat`"" /sc onlogon /rl highest /f 2>&1
+            if ($LASTEXITCODE -eq 0) { $created = $true }
+            else { $err2 = (($out | Out-String) -replace '\s+', ' ').Trim() }
+        }
+        if ($created) {
             Write-Ok "$($app.Name) task created (delay $($app.Delay)s$(if ($max) { ', maximized' }))."
             Add-Change "Autostart: $($app.Name)"
-        } catch {
-            Write-Fail "$($app.Name) task NOT created: $($_.Exception.Message)"
+        } else {
+            Write-Fail "$($app.Name) task NOT created."
+            Write-Note "  Method 1 (Task Scheduler): $err1"
+            Write-Note "  Method 2 (schtasks.exe)  : $err2"
+            Write-Note '  Send these two lines to IT. The launcher script is ready in:'
+            Write-Note "  $bat"
         }
     }
     Write-Host ''

@@ -1,8 +1,8 @@
-# Kerma PC Setup - v3.0.0
+# Kerma PC Setup - v3.1.0
 
-> Esta es la versión 3.0.0, publicada el 2026-09-10. Descarga siempre la **[última versión](https://github.com/Vilchaco/kerma-pc-setup/releases/latest)**.
+> Esta es la versión 3.1.0, publicada el 2026-09-22. Descarga siempre la **[última versión](https://github.com/Vilchaco/kerma-pc-setup/releases/latest)**.
 
-Migración a PowerShell.
+Rutas de las apps al vuelo.
 
 ## Archivos
 
@@ -17,19 +17,18 @@ Migración a PowerShell.
 
 ## Novedades de esta versión
 
-#### Cambiado
-- El script se reescribe en PowerShell: `Kerma-PCSetup.ps1`, con el lanzador `Kerma-PCSetup.bat` para seguir usándolo con doble clic. Pide permisos de administrador por sí mismo.
-- Mismos menús, nombres de tareas y carpetas que la v2, así que las tareas ya creadas se reemplazan sin problema.
-
 #### Añadido
-- Tabla de PCs en la cabecera del script con el nombre, el usuario, el tipo, las apps y la IP de cada equipo.
-- Tabla de apps con el retardo de arranque y si se abren maximizadas.
-- Valores de red por defecto: máscara 255.255.252.0, puerta de enlace 192.168.0.10, DNS 8.8.8.8 y 1.1.1.1. Solo hay que teclear la IP.
-- Registro de cada ejecución en `C:\KermaSetup\logs`.
-- Modo desatendido: `Kerma-PCSetup.bat -PC RL01 -Unattended`, con `-Restart` opcional.
-- Resumen final con todo lo que se ha cambiado.
+- Ya no hay que editar el script para poner las rutas de las apps. Al activar una app, el script pide su programa: se puede pegar la ruta o pulsar **B** para buscarla con la ventana de Windows.
+- Comprobación de cada ruta: que existe, que es un programa `.exe`, `.bat` o `.cmd`, y que es una ruta completa. Muestra el nombre y el fabricante del programa para confirmar que es el correcto.
+- Si se elige un acceso directo, se usa el programa al que apunta.
+- Prueba opcional que abre la app una vez para ver que arranca.
+- Las rutas se recuerdan en `app-paths.json` junto al script. En las siguientes mesas basta con pulsar Enter, y el modo desatendido también las usa.
+- Si una ruta recordada está en el Escritorio de otra mesa, se busca en el mismo sitio del perfil de la mesa actual.
 
-#### Eliminado
-- `kerma-quitar-password.bat`. Su función está en la sección de login.
+#### Cambiado
+- Cada app arranca desde su propia carpeta. Antes solo lo hacía OBS.
+
+#### Corregido
+- Crear la tarea de autoarranque fallaba con *The parameter is incorrect*. Las tareas se asocian ahora al grupo Usuarios de Windows, que no depende del nombre de la cuenta ni del idioma. Si aun así falla, se intenta con `schtasks.exe`, y si fallan los dos se muestran ambos errores.
 
 Historial completo en [CHANGELOG.md](CHANGELOG.md).
