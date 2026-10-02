@@ -1,26 +1,30 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v3.1.0 - PowerShell)
+  Kerma Games - PC Setup  (v3.2.0 - PowerShell)
 =====================================================================
   Double-click "Kerma-PCSetup.bat" next to this file. The script asks
   for administrator rights by itself.
 
   What it does, in order (every section can be skipped):
     1) Select which PC this is (table / supervisor / office)
-    2) Rename username + computer name + Full Name to the standard
-    3) Login: remove the password (boot straight to desktop) or
+    2) Date / time: Monterrey time zone + clock kept in sync with
+       internet time (every hour, at every startup and daily), so
+       the Dealer App countdowns are exact
+    3) Rename username + computer name + Full Name to the standard
+    4) Login: remove the password (boot straight to desktop) or
        store it for auto-login, or leave it
-    4) Windows Update: manual-only / disabled / restore defaults
-    5) Network: pick an adapter, set a static IP (or back to DHCP)
-    6) App autostart: one scheduled task per app at logon
-    7) Summary + optional restart
+    5) Windows Update: manual-only / disabled / restore defaults
+    6) Network: pick an adapter, set a static IP (or back to DHCP)
+    7) App autostart: one scheduled task per app at logon
+    8) Summary + optional restart
 
   Everything applied is logged to C:\KermaSetup\logs\setup-<date>.log
 
   Unattended mode (no questions, sensible defaults per PC type):
     Kerma-PCSetup.bat -PC RL01 -Unattended
     Kerma-PCSetup.bat -PC HECTOR -Unattended -Restart
-  Defaults used unattended: rename = yes; login = remove password
+  Defaults used unattended: date/time = fix + keep synced; rename =
+  yes; login = remove password
   (supervisor PCs: leave as is); Windows Update = manual only
   (supervisor PCs: leave as is); network = static only if this PC
   has an IP filled in the table below, else untouched; apps = all
@@ -46,7 +50,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '3.1.0'
+$ScriptVersion = '3.2.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -73,6 +77,14 @@ $OfficeApps = @('Deskflow', 'Cameras')
 #  CONFIG: NETWORK DEFAULTS  (used for every PC unless its line overrides)
 # =====================================================================
 $NetDefaults = @{ Mask = '255.255.252.0'; Gateway = '192.168.0.10'; DNS1 = '8.8.8.8'; DNS2 = '1.1.1.1' }
+
+# =====================================================================
+#  CONFIG: DATE / TIME
+# =====================================================================
+$TimeZoneId         = 'Central Standard Time (Mexico)'  # Monterrey: UTC-6, no daylight saving since 2022
+$TimeZoneFallbackId = 'Central America Standard Time'   # UTC-6, never daylight saving - used if this PC's time zone data is outdated
+$TimeServers        = @('time.cloudflare.com', 'time.windows.com')  # internet time servers, in order of preference
+$TimeSyncDailyAt    = '07:00'                           # daily safety-net sync (it also runs at every startup)
 
 # =====================================================================
 #  CONFIG: PCs  (one line per PC - Type is Table / Staff / Office)
@@ -110,6 +122,19 @@ function Write-Warn($m) { Write-Host "  [WARN] $m"    -ForegroundColor Yellow }
 function Write-Fail($m) { Write-Host "  [FAILED] $m"  -ForegroundColor Red }
 function Write-Note($m) { Write-Host "  $m"           -ForegroundColor Yellow }
 function Add-Change($m) { $State.Changes += $m }
+
+# Runs a Windows command-line tool and returns its output + exit code.
+# Needed because with ErrorActionPreference=Stop, Windows PowerShell 5.1
+# turns any line a tool writes to stderr into a script-stopping error.
+function Invoke-Native([string]$exe, [string[]]$arguments) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $out  = (& $exe @arguments 2>&1 | Out-String)
+        $code = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $prev }
+    return @{ Output = $out; ExitCode = $code; Text = (($out -replace '\s+', ' ').Trim()) }
+}
 
 # ---------------------------- input helpers --------------------------
 function Ask-YesNo($prompt, [bool]$default = $false) {
@@ -190,7 +215,248 @@ function Select-PC {
     }
 }
 
-# ============================== 2) RENAME ============================
+# ======================== 2) DATE / TIME =============================
+# Script run by the background task "Kerma - Time Sync" (as SYSTEM, at
+# every startup and once a day). It waits for the network after a power
+# cut and forces a sync. Written to C:\ProgramData\Kerma by the setup.
+$TimeSyncScript = @'
+# Kerma Games - Time Sync. Created by Kerma-PCSetup.ps1 - do not edit here.
+$log = Join-Path $PSScriptRoot 'timesync.log'
+function Log($m) { Add-Content -LiteralPath $log -Value ('{0}  {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $m) }
+$ok = $false
+$out = ''
+try {
+    if ((Get-Service -Name w32time).Status -ne 'Running') { Start-Service -Name w32time; Start-Sleep -Seconds 2 }
+    # up to 12 tries x 5 s: after a power cut the network may still be coming up
+    for ($i = 1; $i -le 12; $i++) {
+        $out = (& w32tm.exe /resync 2>&1 | Out-String)
+        if ($LASTEXITCODE -eq 0) { $ok = $true; Log "OK - clock synced (attempt $i)"; break }
+        Start-Sleep -Seconds 5
+    }
+    if (-not $ok) { Log ('FAILED after 12 attempts: ' + (($out -replace '\s+', ' ').Trim())) }
+} catch { Log ('ERROR: ' + $_.Exception.Message) }
+# keep the log small
+try {
+    $lines = @(Get-Content -LiteralPath $log -ErrorAction Stop)
+    if ($lines.Count -gt 500) { $lines | Select-Object -Last 300 | Set-Content -LiteralPath $log }
+} catch { }
+if ($ok) { exit 0 } else { exit 1 }
+'@
+
+function ConvertFrom-NtpTimestamp([byte[]]$b, [int]$o) {
+    [double]$sec = 0
+    [double]$frac = 0
+    for ($i = 0; $i -lt 4; $i++) {
+        $sec  = ($sec * 256)  + $b[$o + $i]
+        $frac = ($frac * 256) + $b[$o + 4 + $i]
+    }
+    $ms = ($sec * 1000) + (($frac * 1000) / 4294967296)
+    return (New-Object DateTime 1900, 1, 1, 0, 0, 0, ([DateTimeKind]::Utc)).AddMilliseconds($ms)
+}
+
+# Asks an internet time server directly (raw NTP over UDP port 123).
+# Returns how many seconds this PC's clock is BEHIND (+) or AHEAD (-),
+# or $null if the server did not answer. Independent of the Windows
+# language, and doubles as the firewall check.
+function Get-NtpOffset([string]$server) {
+    $udp = $null
+    try {
+        $req = New-Object byte[] 48
+        $req[0] = 0x1B                       # NTP version 3, client mode
+        $udp = New-Object System.Net.Sockets.UdpClient
+        $udp.Client.ReceiveTimeout = 3000
+        $udp.Connect($server, 123)
+        $t1 = [DateTime]::UtcNow
+        [void]$udp.Send($req, $req.Length)
+        $ep = New-Object System.Net.IPEndPoint ([System.Net.IPAddress]::Any), 0
+        $resp = $udp.Receive([ref]$ep)
+        $t4 = [DateTime]::UtcNow
+        if ($resp.Length -lt 48) { return $null }
+        $t2 = ConvertFrom-NtpTimestamp $resp 32   # server receive time
+        $t3 = ConvertFrom-NtpTimestamp $resp 40   # server transmit time
+        return ((($t2 - $t1).TotalSeconds + ($t3 - $t4).TotalSeconds) / 2)
+    } catch {
+        return $null
+    } finally {
+        if ($udp) { $udp.Close() }
+    }
+}
+
+# First server in $TimeServers that answers. Returns @{ Server; Offset } or $null.
+function Get-ClockOffset {
+    foreach ($srv in $TimeServers) {
+        $off = Get-NtpOffset $srv
+        if ($null -ne $off) { return @{ Server = $srv; Offset = $off } }
+    }
+    return $null
+}
+
+function Format-Offset([double]$sec) {
+    $txt = [Math]::Abs($sec).ToString('0.000', [Globalization.CultureInfo]::InvariantCulture) + ' s'
+    if ([Math]::Abs($sec) -lt 0.0005) { return '0.000 s (exact)' }
+    if ($sec -gt 0) { return "$txt BEHIND" } else { return "$txt AHEAD" }
+}
+
+function Invoke-TimeSetup($pc) {
+    Write-Section 'DATE / TIME  (Monterrey - UTC-6, no daylight saving)'
+    Write-Host '  The Dealer App countdowns use this PC''s clock. If it is a few seconds'
+    Write-Host '  off, a countdown ends early (40 -> 27 instead of 13 -> 0) or freezes at 1s.'
+    Write-Host ''
+
+    $before = Get-ClockOffset
+    if ($before) {
+        Write-Host "  Clock right now : $(Format-Offset $before.Offset)  (checked against $($before.Server))"
+    } else {
+        Write-Warn "No internet time server answered ($($TimeServers -join ', '))."
+        Write-Note 'The network may be blocking internet time (UDP port 123). The clock cannot stay in'
+        Write-Note 'sync until that is allowed on the router / firewall. Setting it up anyway.'
+    }
+    Write-Host "  Time zone now   : $((Get-TimeZone).DisplayName)"
+    Write-Host ''
+    if (-not (Ask-YesNo '  Fix the time zone and keep the clock in sync automatically?' $true)) {
+        Write-Skip 'Date / time left unchanged.'
+        return
+    }
+    Write-Host ''
+
+    # ---- 1. time zone
+    $tzOk = $false
+    try {
+        Set-TimeZone -Id $TimeZoneId -ErrorAction Stop
+        # Outdated data still applies the abolished summer time: next July would be UTC-5
+        $tz   = Get-TimeZone
+        $july = Get-Date -Year ((Get-Date).Year + 1) -Month 7 -Day 1 -Hour 12 -Minute 0 -Second 0
+        if ($tz.GetUtcOffset($july) -ne $tz.BaseUtcOffset) {
+            Write-Warn 'This PC''s time zone data is outdated: it still has the daylight saving time Mexico abolished in 2022.'
+            Write-Note 'Using "(UTC-06:00) Central America" instead - same time as Monterrey all year.'
+        } else { $tzOk = $true }
+    } catch {
+        Write-Warn "Time zone '$TimeZoneId' not found on this PC - using the fallback."
+    }
+    if (-not $tzOk) {
+        try { Set-TimeZone -Id $TimeZoneFallbackId -ErrorAction Stop; $tzOk = $true }
+        catch { Write-Fail "Could not set the time zone: $($_.Exception.Message)" }
+    }
+    if ($tzOk) {
+        Write-Ok "Time zone: $((Get-TimeZone).DisplayName)"
+        Add-Change "Time zone: $((Get-TimeZone).Id)"
+    }
+    # stop Windows from changing the time zone by itself based on location
+    try { Set-Service -Name tzautoupdate -StartupType Disabled -ErrorAction Stop } catch { }
+
+    # ---- 2. Windows Time service: always running, sync every hour
+    try {
+        $cfg = 'HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Config'
+        $ntp = 'HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient'
+        Set-Service -Name w32time -StartupType Automatic
+        Invoke-Native 'sc.exe' @('triggerinfo', 'w32time', 'delete') | Out-Null   # do not let it stop when "idle"
+        Start-Service -Name w32time -ErrorAction SilentlyContinue
+        $peers = ($TimeServers | ForEach-Object { "$_,0x9" }) -join ' '
+        $r = Invoke-Native 'w32tm.exe' @('/config', "/manualpeerlist:$peers", '/syncfromflags:manual', '/reliable:no', '/update')
+        if ($r.ExitCode -ne 0) { throw "w32tm /config failed: $($r.Text)" }
+        Set-ItemProperty -Path $ntp -Name SpecialPollInterval   -Value 3600 -Type DWord  # every hour (default: every 7 days)
+        Set-ItemProperty -Path $cfg -Name MaxAllowedPhaseOffset -Value 1    -Type DWord  # more than 1 s off: correct at once
+        Set-ItemProperty -Path $cfg -Name MaxPosPhaseCorrection -Value -1   -Type DWord  # -1 = 0xFFFFFFFF: correct any error,
+        Set-ItemProperty -Path $cfg -Name MaxNegPhaseCorrection -Value -1   -Type DWord  #   even a clock reset by a dead BIOS battery
+        Restart-Service -Name w32time -Force
+        Write-Ok "Windows Time service: always on, syncs every hour with $($TimeServers -join ', ')."
+        Add-Change 'Clock: Windows Time syncs every hour'
+    } catch {
+        Write-Fail "Windows Time service: $($_.Exception.Message)"
+    }
+
+    # ---- 3. sync now (retry: right after a service restart w32tm often says "no data yet")
+    $synced = $false
+    $r = $null
+    for ($i = 1; $i -le 5; $i++) {
+        Start-Sleep -Seconds 2
+        $r = Invoke-Native 'w32tm.exe' @('/resync')
+        if ($r.ExitCode -eq 0) { $synced = $true; break }
+    }
+    if (-not $synced) { Write-Warn "Windows could not sync yet: $($r.Text)" }
+    Start-Sleep -Seconds 1
+    $after = Get-ClockOffset
+    # Safety net: if the clock is still off by more than 1 s, correct it with the measured offset
+    if ($after -and [Math]::Abs($after.Offset) -gt 1) {
+        try {
+            Set-Date -Adjust ([TimeSpan]::FromSeconds($after.Offset)) | Out-Null
+            Start-Sleep -Seconds 1
+            $after = Get-ClockOffset
+        } catch { Write-Warn "Could not correct the clock directly: $($_.Exception.Message)" }
+    }
+    if ($after) {
+        $line = if ($before) { "before $(Format-Offset $before.Offset), now $(Format-Offset $after.Offset)" } else { "now $(Format-Offset $after.Offset)" }
+        if ([Math]::Abs($after.Offset) -le 1) {
+            Write-Ok "Clock in sync: $line"
+        } else {
+            Write-Fail "Clock still off: $line"
+        }
+        # first in the summary list: this is the number that matters for the countdowns
+        $State.Changes = @("Clock: $line") + $State.Changes
+    } else {
+        Write-Fail 'Could not check the clock: no internet time server answered (UDP port 123 blocked?).'
+    }
+
+    # ---- 4. background task: at every startup + daily
+    $dir = Join-Path $env:ProgramData 'Kerma'
+    $syncScript = Join-Path $dir 'Kerma-TimeSync.ps1'
+    try {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        # Runs as SYSTEM, so only SYSTEM / Administrators may change it (Users: read only)
+        $r = Invoke-Native 'icacls.exe' @($dir, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F', '*S-1-5-32-545:(OI)(CI)RX')
+        if ($r.ExitCode -ne 0) { Write-Warn "Could not lock down $dir permissions: $($r.Text)" }
+        Set-Content -LiteralPath $syncScript -Value $TimeSyncScript -Encoding Ascii
+    } catch {
+        Write-Fail "Could not write $syncScript : $($_.Exception.Message)"
+        return
+    }
+    $taskName = 'Kerma - Time Sync'
+    $psArgs   = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$syncScript`""
+    $created  = $false
+    $err1 = ''
+    $err2 = ''
+    try {
+        $a  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $psArgs
+        $tS = New-ScheduledTaskTrigger -AtStartup
+        $tD = New-ScheduledTaskTrigger -Daily -At $TimeSyncDailyAt
+        $p  = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+        $st = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
+        Register-ScheduledTask -TaskName $taskName -Action $a -Trigger @($tS, $tD) -Principal $p -Settings $st -Force -ErrorAction Stop | Out-Null
+        $created = $true
+    } catch { $err1 = ($_.Exception.Message -replace '\s+', ' ').Trim() }
+    if (-not $created) {
+        # fallback: schtasks.exe (one task per trigger)
+        $tr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $syncScript"
+        $r1 = Invoke-Native 'schtasks.exe' @('/create', '/tn', $taskName, '/tr', $tr, '/sc', 'onstart', '/ru', 'SYSTEM', '/rl', 'highest', '/f')
+        $r2 = Invoke-Native 'schtasks.exe' @('/create', '/tn', "$taskName (daily)", '/tr', $tr, '/sc', 'daily', '/st', $TimeSyncDailyAt, '/ru', 'SYSTEM', '/rl', 'highest', '/f')
+        if ($r1.ExitCode -eq 0 -and $r2.ExitCode -eq 0) { $created = $true }
+        else { $err2 = "$($r1.Text) $($r2.Text)".Trim() }
+    }
+    if (-not $created) {
+        Write-Fail 'Background time sync task NOT created.'
+        Write-Note "  Method 1 (Task Scheduler): $err1"
+        Write-Note "  Method 2 (schtasks.exe)  : $err2"
+        return
+    }
+
+    # test-run it once so we know it really works
+    try {
+        Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
+        $deadline = (Get-Date).AddSeconds(90)
+        do { Start-Sleep -Seconds 2 } while ((Get-ScheduledTask -TaskName $taskName).State -eq 'Running' -and (Get-Date) -lt $deadline)
+        $res = (Get-ScheduledTaskInfo -TaskName $taskName).LastTaskResult
+        if ($res -eq 0) {
+            Write-Ok "Background task '$taskName' created and tested: syncs at every startup and daily at $TimeSyncDailyAt."
+        } else {
+            Write-Warn "Task '$taskName' created, but its test run reported code $res. See $dir\timesync.log"
+        }
+    } catch {
+        Write-Ok "Background task '$taskName' created (startup + daily at $TimeSyncDailyAt). Test run not possible: $($_.Exception.Message)"
+    }
+    Add-Change "Clock: background sync at startup + daily $TimeSyncDailyAt (log: $dir\timesync.log)"
+}
+
+# ============================== 3) RENAME ============================
 function Invoke-Rename($pc) {
     Write-Section 'RENAME (username / computer name)'
     Write-Host "    Computer name : $env:COMPUTERNAME  ->  $($pc.Hostname)"
@@ -241,7 +507,7 @@ function Invoke-Rename($pc) {
     }
 }
 
-# =============================== 3) LOGIN ============================
+# =============================== 4) LOGIN ============================
 function Invoke-LoginSetup($pc) {
     Write-Section 'LOGIN (boot straight to the desktop)'
     # Use the new names only if the rename really happened (or already
@@ -302,7 +568,7 @@ function Invoke-LoginSetup($pc) {
     }
 }
 
-# =========================== 4) WINDOWS UPDATE =======================
+# =========================== 5) WINDOWS UPDATE =======================
 function Invoke-WindowsUpdateSetup($pc) {
     Write-Section 'WINDOWS UPDATE'
     $edition = 'unknown'
@@ -358,7 +624,7 @@ function Invoke-WindowsUpdateSetup($pc) {
     }
 }
 
-# ============================== 5) NETWORK ===========================
+# ============================== 6) NETWORK ===========================
 # Per-PC values win; anything blank falls back to $NetDefaults.
 function Get-NetPlan($pc) {
     $plan = @{ IP = ''; Mask = ''; Gateway = ''; DNS1 = ''; DNS2 = '' }
@@ -600,7 +866,7 @@ function Get-AppPathInteractive($app, [string]$suggested) {
     }
 }
 
-# ============================ 6) APP AUTOSTART =======================
+# ============================ 7) APP AUTOSTART =======================
 function Invoke-AppAutostart($pc) {
     Write-Section 'APP AUTOSTART'
     if ($pc.Type -eq 'Staff' -or $pc.Apps.Count -eq 0) { Write-Skip 'App autostart does not apply to this PC type.'; return }
@@ -709,9 +975,9 @@ function Invoke-AppAutostart($pc) {
         }
         # Method 2 (fallback): schtasks.exe, same as the old .bat version
         if (-not $created) {
-            $out = & schtasks.exe /create /tn $taskName /tr "`"$bat`"" /sc onlogon /rl highest /f 2>&1
-            if ($LASTEXITCODE -eq 0) { $created = $true }
-            else { $err2 = (($out | Out-String) -replace '\s+', ' ').Trim() }
+            $r = Invoke-Native 'schtasks.exe' @('/create', '/tn', $taskName, '/tr', "`"$bat`"", '/sc', 'onlogon', '/rl', 'highest', '/f')
+            if ($r.ExitCode -eq 0) { $created = $true }
+            else { $err2 = $r.Text }
         }
         if ($created) {
             Write-Ok "$($app.Name) task created (delay $($app.Delay)s$(if ($max) { ', maximized' }))."
@@ -728,7 +994,7 @@ function Invoke-AppAutostart($pc) {
     Write-Note 'To make an app open on the correct monitor, move its window there by hand once - most apps (OBS included) remember the position.'
 }
 
-# ============================== 7) FINISH ============================
+# ============================== 8) FINISH ============================
 function Invoke-Finish {
     Write-Section 'SUMMARY'
     if ($State.Changes.Count -eq 0) {
@@ -785,6 +1051,7 @@ try {
     Write-Host ''
     Write-Host "  Selected PC: $($selected.Label)  [$($selected.Type)]" -ForegroundColor Cyan
 
+    Invoke-TimeSetup          $selected
     Invoke-Rename             $selected
     Invoke-LoginSetup         $selected
     Invoke-WindowsUpdateSetup $selected

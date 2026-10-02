@@ -2,6 +2,24 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [3.2.0] - 2026-10-02 - Sincronización de la hora
+
+Las cuentas atrás de la Dealer App dependen del reloj de Windows. Con unos segundos de desfase terminan antes de tiempo, por ejemplo de 40 a 27 en vez de 13 a 0, o se quedan paradas en 1 s.
+
+### Añadido
+- Nueva sección **Fecha y hora**, la primera después de elegir el PC. Se aplica a todos los tipos de PC.
+- Zona horaria de Monterrey: UTC-6 todo el año, sin horario de verano. Si los datos de zona horaria de Windows son antiguos y todavía aplican el horario de verano abolido en 2022, usa una zona equivalente y lo avisa.
+- El servicio de hora de Windows queda siempre activo y sincroniza **cada hora**. Antes lo hacía cada 7 días, que era la causa del desfase.
+- Mide el desfase directamente contra un servidor de hora de internet antes y después de sincronizar. El resultado sale el primero en el resumen final.
+- Avisa si la red bloquea la hora de internet, que usa el puerto UDP 123.
+- Tarea en segundo plano **Kerma - Time Sync**. Se ejecuta al encender el PC, esperando a que haya red tras un apagón, y cada día a las 07:00. Deja un registro en `C:\ProgramData\Kerma\timesync.log`.
+
+### Corregido
+- Si una herramienta de Windows como `w32tm` o `schtasks` escribía un error, el script entero podía detenerse y saltarse todas las secciones siguientes.
+
+### A tener en cuenta
+- La primera sincronización corrige el reloj de golpe. Ejecútala con la mesa sin juego.
+
 ## [3.1.0] - 2026-09-22 - Rutas de las apps al vuelo
 
 ### Añadido
