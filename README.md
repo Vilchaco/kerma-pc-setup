@@ -59,9 +59,11 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 
 | Tipo | PCs | Comportamiento |
 |---|---|---|
-| Mesa | Ruleta, Blackjack, Blackjack Unlimited, Craps | Sin contraseña y actualizaciones manuales. Instala Chrome, RustDesk, Stream Deck, HDMI Mirror y OBS, con el perfil de Stream Deck de su juego. |
-| Supervisor | Supervisor 01 y 02 | Recomienda mantener la contraseña y las actualizaciones automáticas. Instala Chrome. Sin autoarranque de apps. |
-| Despacho | PC de Hector | Igual que una mesa, pero instala Chrome, RustDesk y Deskflow, y sus apps de inicio son Deskflow y el programa de cámaras. |
+| Mesa | Ruleta, Blackjack, Blackjack Unlimited, Craps | Sin contraseña y actualizaciones manuales. Instala Chrome, RustDesk, Stream Deck, HDMI Mirror, OBS y atkAudio, con el perfil de Stream Deck de su juego. |
+| Supervisor | Supervisor 01 y 02 | Recomienda mantener la contraseña y las actualizaciones automáticas. Instala Chrome y RustDesk. Sin autoarranque de apps. |
+| Oficina | PC de Hector | Igual que una mesa, pero instala Chrome y RustDesk, y su app de inicio es el programa de cámaras. |
+
+En cualquier PC con una Focusrite conectada se instala también Focusrite Control 2.
 
 ## Programas
 
@@ -72,8 +74,9 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Stream Deck | winget, `Elgato.StreamDeck` |
 | HDMI Mirror | Última release de [Vilchaco/kerma-hdmi-mirror](https://github.com/Vilchaco/kerma-hdmi-mirror) |
 | OBS Studio | winget, `OBSProject.OBSStudio` |
-| Deskflow | winget, `Deskflow.Deskflow` |
-| Focusrite Control | winget. Pendiente de confirmar la generación de las Scarlett. |
+| atkAudio, VST3 en OBS | Última release de [atkAudio/PluginForObsRelease](https://github.com/atkAudio/PluginForObsRelease), versión portátil |
+| Focusrite Control 2 | winget, `FocusriteAudioEngineeringLtd.FocusriteControl2`. Para las Scarlett Solo de tercera generación. |
+| Plugins VST3 | Carpeta [assets/vst3](assets/vst3/README.md) |
 
 Las listas por tipo de PC están en `$InstallByType`, en la cabecera del script.
 

@@ -2,6 +2,19 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.1.0] - 2026-10-06 - Audio de OBS y Scarlett
+
+### Añadido
+- **atkAudio** en las mesas: el plugin gratuito que permite usar plugins VST3 dentro de OBS. Se instala en la carpeta de OBS desde su última release en GitHub, y se actualiza solo cuando sale una versión nueva.
+- **Focusrite Control 2** para las Scarlett Solo de tercera generación. Se instala en cualquier PC que tenga una Focusrite conectada.
+- Los plugins VST3 que haya en `assets/vst3` se copian en `C:\Program Files\Common Files\VST3`.
+- Protección para el repositorio público: el script nunca copia el `service.json` de OBS, que guarda la clave de emisión, y la comprobación automática rechaza cualquier cambio que lo incluya.
+
+### Cambiado
+- Supervisores y PCs de oficina instalan Google Chrome y RustDesk.
+- Deskflow deja de instalarse y de arrancar en el PC del despacho. Era una prueba.
+- Card Scanner y Dealer App salen del autoarranque de las mesas. El scanner solo se usa en algunas mesas y se configura a mano, y la Dealer App la gestionan los desarrolladores.
+
 ## [4.0.0] - 2026-10-06 - Instalación completa con una línea
 
 El script pasa a ser el instalador maestro de los PCs de la empresa. En un PC recién instalado basta con pegar una línea en PowerShell: descarga la última versión, instala los programas, los configura y deja el PC listo tras reiniciar.

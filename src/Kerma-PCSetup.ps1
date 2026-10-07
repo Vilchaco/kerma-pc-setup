@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.0.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.1.0 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -22,7 +22,8 @@
        no notifications, no screen saver
     8) Install programs for this PC type (winget / GitHub releases)
     9) Program settings: HDMI Mirror config, OBS scenes/profile,
-       Stream Deck profile of the table's game (from assets\)
+       VST3 plugins, Stream Deck profile of the table's game
+       (all from assets\)
    10) App autostart: one scheduled task per app at logon
    11) Summary + optional restart
 
@@ -60,7 +61,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.0.0'
+$ScriptVersion = '4.1.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -78,13 +79,15 @@ $Apps = [ordered]@{
     DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '';                                                 Delay = 30; Maximize = $true  }
     HdmiMirror = @{ Name = 'HDMI Mirror';  Id = '04_hdmimirror'; Path = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';               Delay = 45; Maximize = $false; Replaces = 'Mirror App' }
     OBS        = @{ Name = 'OBS';          Id = '05_obs';        Path = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Delay = 60; Maximize = $false }
-    # Office PC (Hector's office: cameras on the TV + Deskflow client controlled from his Mac)
+    # Deskflow: no longer used (was a test on Hector's office PC); kept for reference
     Deskflow   = @{ Name = 'Deskflow';     Id = '01_deskflow';   Path = 'C:\Program Files\Deskflow\deskflow.exe';          Delay = 10; Maximize = $false
                     Note = 'If "start Deskflow on login" is already enabled inside Deskflow, answer N here so it is not launched twice.' }
     Cameras    = @{ Name = 'Cameras';      Id = '02_cameras';    Path = '';                                                 Delay = 25; Maximize = $true  }
 }
-$TableApps  = @('Scanner', 'StreamDeck', 'DealerApp', 'HdmiMirror', 'OBS')
-$OfficeApps = @('Deskflow', 'Cameras')
+# Card Scanner and Dealer App are not set up by the script for now
+# (scanner: only some tables, manual setup; Dealer App: managed by the devs).
+$TableApps  = @('StreamDeck', 'HdmiMirror', 'OBS')
+$OfficeApps = @('Cameras')
 
 # =====================================================================
 #  CONFIG: PROGRAMS TO INSTALL
@@ -103,20 +106,25 @@ $Packages = [ordered]@{
                     InstallTo = 'C:\Kerma'; Check = 'C:\Kerma\HdmiMirror\HdmiMirror.exe'; Process = 'HdmiMirror'
                     UserWritable = 'C:\Kerma\HdmiMirror' }   # it saves hdmimirror.config.json next to its exe
     OBS        = @{ Name = 'OBS Studio';    Source = 'winget'; Id = 'OBSProject.OBSStudio'; Check = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe' }
+    # atkAudio: adds VST3 support to OBS (free, AGPL). The release zip holds
+    # one zip per platform; the portable Windows one goes into the OBS folder.
+    AtkAudio   = @{ Name = 'atkAudio (VST3 in OBS)'; Source = 'github'; Repo = 'atkAudio/PluginForObsRelease'; Asset = '^atkAudio-PluginForObs\.zip$'
+                    Inner = '^portable-atkaudio-pluginforobs-[0-9.]+-Windows\.zip$'; InstallTo = 'C:\Program Files\obs-studio'
+                    Check = 'C:\Program Files\obs-studio\obs-plugins\64bit\atkaudio-pluginforobs.dll'; Process = 'obs64'; Requires = 'OBS' }
     Deskflow   = @{ Name = 'Deskflow';      Source = 'winget'; Id = 'Deskflow.Deskflow';    Check = 'C:\Program Files\Deskflow\deskflow.exe' }
-    Focusrite  = @{ Name = 'Focusrite Control (Scarlett)'; Source = 'winget'; Id = ''; Check = '' }   # Id comes from $ScarlettPackageId
+    Focusrite  = @{ Name = 'Focusrite Control 2 (Scarlett)'; Source = 'winget'; Id = ''; Check = '' }   # Id comes from $ScarlettPackageId
 }
 # Programs per PC type (keys of $Packages)
 $InstallByType = @{
-    Table  = @('Chrome', 'RustDesk', 'StreamDeck', 'HdmiMirror', 'OBS')
-    Office = @('Chrome', 'RustDesk', 'Deskflow')
-    Staff  = @('Chrome')
+    Table  = @('Chrome', 'RustDesk', 'StreamDeck', 'HdmiMirror', 'OBS', 'AtkAudio')
+    Office = @('Chrome', 'RustDesk')
+    Staff  = @('Chrome', 'RustDesk')
 }
-# Focusrite Scarlett software. Depends on the generation printed on the
-# device: 3rd Gen = 'FocusriteAudioEngineeringLtd.FocusriteControl',
-# 4th Gen = 'FocusriteAudioEngineeringLtd.FocusriteControl2'. Leave '' to
-# skip. $ScarlettPcTypes = PC types that have one, e.g. @('Table').
-$ScarlettPackageId = ''
+# Focusrite Scarlett software. Our Scarletts are Solo 3rd Gen, which
+# Focusrite now supports in Focusrite Control 2. It is installed on any
+# PC with a Focusrite device connected (USB vendor 1235), plus on the PC
+# types listed in $ScarlettPcTypes, e.g. @('Table'). '' = never install.
+$ScarlettPackageId = 'FocusriteAudioEngineeringLtd.FocusriteControl2'
 $ScarlettPcTypes   = @()
 
 # =====================================================================
@@ -147,7 +155,7 @@ $PCs = @(
     @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';                             Type = 'Table';  Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Apps = $TableApps;  Game = 'craps';  Net = @{ IP = '' } }
     @{ Key = 'SUP01';   Group = 'Supervisor PCs'; Label = 'Supervisor 01';                        Type = 'Staff';  Hostname = 'KG-SUP-01';       Username = 'kg-sup-01';       FullName = 'Supervisor 01';          Apps = @();         Net = @{ IP = '' } }
     @{ Key = 'SUP02';   Group = 'Supervisor PCs'; Label = 'Supervisor 02';                        Type = 'Staff';  Hostname = 'KG-SUP-02';       Username = 'kg-sup-02';       FullName = 'Supervisor 02';          Apps = @();         Net = @{ IP = '' } }
-    @{ Key = 'HECTOR';  Group = 'Office PCs';     Label = 'Hector office PC (cameras on TV + Deskflow)'; Type = 'Office'; Hostname = 'KG-OFC-HECTOR'; Username = 'kg-ofc-hector'; FullName = 'Hector Office PC';    Apps = $OfficeApps; Net = @{ IP = '' } }
+    @{ Key = 'HECTOR';  Group = 'Office PCs';     Label = 'Hector office PC (cameras on TV)'; Type = 'Office'; Hostname = 'KG-OFC-HECTOR'; Username = 'kg-ofc-hector'; FullName = 'Hector Office PC';    Apps = $OfficeApps; Net = @{ IP = '' } }
 )
 
 # =====================================================================
@@ -1009,7 +1017,11 @@ function Get-LatestReleaseAsset([string]$repo, [string]$pattern) {
 }
 
 function Install-KermaPackage($key, $p) {
-    $marker = if ($p.Check) { Join-Path (Split-Path -Path $p.Check -Parent) '.kerma-version' } else { '' }
+    $marker = if ($p.Check) { Join-Path (Split-Path -Path $p.Check -Parent) ".kerma-version-$key" } else { '' }
+    if ($p.Requires -and -not (Test-Path -LiteralPath $Packages[$p.Requires].Check)) {
+        Write-Skip "$($p.Name): needs $($Packages[$p.Requires].Name), which is not installed."
+        return
+    }
 
     if ($p.Source -eq 'winget') {
         if ($p.Check -and (Test-Path -LiteralPath $p.Check)) { Write-Ok "$($p.Name): already installed."; return }
@@ -1018,6 +1030,10 @@ function Install-KermaPackage($key, $p) {
             Write-Fail "$($p.Name): winget is not available on this PC, so it cannot be installed automatically."
             Write-Note '  On Windows LTSC / IoT editions winget is not included. Install it by hand.'
             return
+        }
+        if (-not $p.Check) {
+            $pre = Invoke-Native $script:Winget @('list', '--id', $p.Id, '--exact', '--accept-source-agreements', '--disable-interactivity')
+            if ($pre.ExitCode -eq 0) { Write-Ok "$($p.Name): already installed."; return }
         }
         $base = @('install', '--id', $p.Id, '--exact', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
         Write-Host "  Installing $($p.Name) (winget $($p.Id))..."
@@ -1059,7 +1075,16 @@ function Install-KermaPackage($key, $p) {
     } elseif ($rel.Name -match '\.zip$') {
         if ($p.Process) { Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1 }
         New-Item -ItemType Directory -Path $p.InstallTo -Force | Out-Null
-        Expand-Archive -LiteralPath $file -DestinationPath $p.InstallTo -Force   # its own config file is kept
+        if ($p.Inner) {
+            # the release zip contains one zip per platform: take the Windows one
+            $tmp = Join-Path $dl "$key-$($rel.Tag)"
+            Expand-Archive -LiteralPath $file -DestinationPath $tmp -Force
+            $inner = Get-ChildItem -LiteralPath $tmp -Recurse -File | Where-Object { $_.Name -match $p.Inner } | Select-Object -First 1
+            if (-not $inner) { Write-Fail "$($p.Name): no file matching '$($p.Inner)' inside $($rel.Name)."; return }
+            Expand-Archive -LiteralPath $inner.FullName -DestinationPath $p.InstallTo -Force
+        } else {
+            Expand-Archive -LiteralPath $file -DestinationPath $p.InstallTo -Force   # its own config file is kept
+        }
         if ($p.UserWritable) {
             $r = Invoke-Native 'icacls.exe' @($p.UserWritable, '/grant', '*S-1-5-32-545:(OI)(CI)M')
             if ($r.ExitCode -ne 0) { Write-Warn "Could not let users write in $($p.UserWritable): $($r.Text)" }
@@ -1074,28 +1099,27 @@ function Install-KermaPackage($key, $p) {
     Add-Change "Installed: $($p.Name) $($rel.Tag)"
 }
 
+# Lists connected Focusrite devices (USB vendor 1235). Returns how many.
 function Show-FocusriteDevices {
     $dev = @(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.InstanceId -like 'USB\VID_1235*' })
     foreach ($d in $dev) { Write-Host "  Focusrite device connected: $($d.FriendlyName)  [$($d.InstanceId)]" }
-    if ($dev.Count -and -not $ScarlettPackageId) {
-        Write-Note '  The Scarlett software is not configured yet ($ScarlettPackageId). Send the line above to IT.'
-    }
+    return $dev.Count
 }
 
 function Invoke-InstallPrograms($pc) {
     Write-Section 'INSTALL PROGRAMS'
     $list = @($InstallByType[$pc.Type])
-    if ($ScarlettPackageId -and ($ScarlettPcTypes -contains $pc.Type)) {
+    $focusrite = Show-FocusriteDevices
+    if ($ScarlettPackageId -and ($focusrite -gt 0 -or ($ScarlettPcTypes -contains $pc.Type))) {
         $Packages['Focusrite'].Id = $ScarlettPackageId
         $list += 'Focusrite'
     }
-    Show-FocusriteDevices
     if ($list.Count -eq 0) { Write-Skip 'No programs defined for this PC type.'; return }
 
     Write-Host '  Programs for this PC:'
     foreach ($k in $list) {
         $p = $Packages[$k]
-        $st = if ($p.Check -and (Test-Path -LiteralPath $p.Check)) { 'installed' } else { 'to install' }
+        $st = if (-not $p.Check) { 'install / check' } elseif (Test-Path -LiteralPath $p.Check) { 'installed' } else { 'to install' }
         Write-Host ("    - {0,-30} {1}" -f $p.Name, $st)
     }
     Write-Host ''
@@ -1157,7 +1181,8 @@ function Invoke-ProgramSettings($pc) {
     # ---- OBS: assets\obs\ is copied into %APPDATA%\obs-studio\ (scenes, profiles, global.ini, plugin settings)
     Write-Host ''
     $obsSrc = Join-Path $assets 'obs'
-    $obsFiles = @(Get-ChildItem -LiteralPath $obsSrc -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'README.md' })
+    # service.json holds the stream key: it is never taken from the (public) repo
+    $obsFiles = @(Get-ChildItem -LiteralPath $obsSrc -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'README.md' -and $_.Name -ne 'service.json' })
     if (-not (Test-Path -LiteralPath $Packages['OBS'].Check)) {
         Write-Skip 'OBS: not installed on this PC.'
     } elseif ($obsFiles.Count -eq 0) {
@@ -1183,6 +1208,21 @@ function Invoke-ProgramSettings($pc) {
             Write-Ok "OBS: $($obsFiles.Count) settings files copied to $obsDst (backup: obs-studio.bak-$stamp)."
             Add-Change 'Settings: OBS scenes / profile'
         }
+    }
+
+    # ---- VST3 plugins: assets\vst3\* -> C:\Program Files\Common Files\VST3
+    Write-Host ''
+    $vstSrc = Join-Path $assets 'vst3'
+    $vstItems = @(Get-ChildItem -LiteralPath $vstSrc -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*.vst3' })
+    if ($vstItems.Count -eq 0) {
+        Write-Skip 'VST3: no plugins in assets\vst3.'
+    } else {
+        $vstDst = Join-Path $env:CommonProgramFiles 'VST3'
+        New-Item -ItemType Directory -Path $vstDst -Force | Out-Null
+        if (Get-Process -Name 'obs64' -ErrorAction SilentlyContinue) { Write-Note '  OBS is open: restart it to load new VST3 plugins.' }
+        foreach ($v in $vstItems) { Copy-Item -LiteralPath $v.FullName -Destination $vstDst -Recurse -Force }
+        Write-Ok "VST3: $(@($vstItems | ForEach-Object { $_.Name }) -join ', ') copied to $vstDst."
+        Add-Change "Settings: VST3 $(@($vstItems | ForEach-Object { $_.Name }) -join ', ')"
     }
 
     # ---- Stream Deck: assets\streamdeck\<Game>.streamDeckProfile

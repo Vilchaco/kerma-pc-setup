@@ -26,6 +26,14 @@ jobs:
           if ($bad.Count) { exit 1 }
           'OK: all scripts are ASCII'
 
+      - name: No secrets in assets
+        shell: powershell
+        run: |
+          $bad = @(Get-ChildItem assets -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'service.json' })
+          foreach ($f in $bad) { "::error file=$($f.FullName.Substring((Get-Location).Path.Length + 1))::service.json holds the OBS stream key. Never commit it to this public repo." }
+          if ($bad.Count) { exit 1 }
+          'OK: no OBS service.json in assets'
+
       - name: Syntax check (PowerShell 5.1 parser)
         shell: powershell
         run: |

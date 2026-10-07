@@ -12,4 +12,6 @@ Cópialo desde una mesa ya configurada, con OBS cerrado:
 
 Con `global.ini` incluido, OBS no muestra el asistente de primera configuración y abre directamente con esas escenas y ese perfil.
 
-Si la cancelación de ruido es el filtro que trae OBS de serie, *Supresión de ruido*, se guarda dentro del archivo de escenas y no hace falta nada más. Si es un plugin aparte, hay que añadirlo a la instalación.
+Los filtros de audio de cada fuente, incluido el de atkAudio con el VST3 de cancelación de ruido, se guardan dentro del archivo de escenas. El plugin atkAudio lo instala el script y el VST3 va en la carpeta `vst3`.
+
+No copies `service.json`: guarda la clave de emisión y el repositorio es público. El script lo ignora y la comprobación automática lo rechaza.
