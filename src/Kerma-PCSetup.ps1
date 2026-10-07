@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.1.1 - PowerShell)
+  Kerma Games - PC Setup  (v4.2.0 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -20,6 +20,8 @@
     6) Network: pick an adapter, set a static IP (or back to DHCP)
     7) PC tuning: screen never off, no sleep, USB never suspended,
        no notifications, no screen saver
+    7b) Remove preinstalled junk: Solitaire, Xbox, Teams, Bing apps,
+       Candy Crush & co., Microsoft 365 trial, OneDrive
     8) Install programs for this PC type (winget / GitHub releases)
     9) Program settings: HDMI Mirror config, OBS scenes/profile,
        VST3 plugins, Stream Deck profile of the table's game
@@ -37,7 +39,8 @@
   (supervisor PCs: leave as is); Windows Update = manual only
   (supervisor PCs: leave as is); network = static only if this PC
   has an IP filled in the table below, else untouched; tuning = yes
-  (supervisor PCs: no); install = yes; program settings = yes (an
+  (supervisor PCs: no); remove junk apps = yes (Microsoft 365 and
+  OneDrive: yes, supervisor PCs: kept); install = yes; program settings = yes (an
   existing HDMI Mirror config is kept); apps = all
   of this PC's apps whose path is known and valid (apps without a
   valid path are skipped and reported), maximized as in the APPS table.
@@ -61,7 +64,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.1.1'
+$ScriptVersion = '4.2.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -129,6 +132,36 @@ $InstallByType = @{
 # types listed in $ScarlettPcTypes, e.g. @('Table'). '' = never install.
 $ScarlettPackageId = 'FocusriteAudioEngineeringLtd.FocusriteControl2'
 $ScarlettPcTypes   = @()
+
+# =====================================================================
+#  CONFIG: PREINSTALLED APPS TO REMOVE  (Store apps; * = wildcard)
+#  $NeverRemove always wins, so a careless pattern cannot hit them.
+#  App Installer (= winget) must never be removed: the install section
+#  needs it.
+# =====================================================================
+$RemoveApps = @(
+    # Microsoft 365 / Office promos, mail, Teams
+    'Microsoft.MicrosoftOfficeHub', 'Microsoft.Office.OneNote', 'Microsoft.OutlookForWindows',
+    'microsoft.windowscommunicationsapps', 'MicrosoftTeams', 'MSTeams', 'Microsoft.SkypeApp', 'Microsoft.People',
+    # games and Xbox
+    'Microsoft.MicrosoftSolitaireCollection', 'Microsoft.GamingApp', 'Microsoft.XboxApp', 'Microsoft.Edge.GameAssist',
+    # news, tips, help, misc
+    'Microsoft.BingNews', 'Microsoft.BingWeather', 'Microsoft.BingSearch', 'Microsoft.GetHelp', 'Microsoft.Getstarted',
+    'Microsoft.WindowsFeedbackHub', 'Microsoft.WindowsMaps', 'Microsoft.ZuneVideo', 'Microsoft.ZuneMusic',
+    'Microsoft.YourPhone', 'Microsoft.Todos', 'Microsoft.PowerAutomateDesktop', 'MicrosoftCorporationII.MicrosoftFamily',
+    'MicrosoftCorporationII.QuickAssist', 'Microsoft.549981C3F5F10', 'Clipchamp.Clipchamp', 'Microsoft.Windows.DevHome',
+    'Microsoft.Copilot', 'Microsoft.Microsoft3DViewer', 'Microsoft.MixedReality.Portal', 'Microsoft.Wallet',
+    # third-party promos
+    'king.com.*', 'SpotifyAB.*', 'Disney.*', '*TikTok*', 'Facebook.*', '*Instagram*', 'AmazonVideo.*', '*LinkedIn*', '*Netflix*'
+)
+$NeverRemove = @(
+    'Microsoft.DesktopAppInstaller', 'Microsoft.WindowsStore', 'Microsoft.StorePurchaseApp', 'Microsoft.WindowsCalculator',
+    'Microsoft.Windows.Photos', 'Microsoft.WindowsNotepad', 'Microsoft.Paint', 'Microsoft.ScreenSketch', 'Microsoft.WindowsTerminal',
+    'Microsoft.VCLibs.*', 'Microsoft.UI.Xaml.*', 'Microsoft.NET.Native.*', 'Microsoft.WindowsAppRuntime.*', 'Microsoft.SecHealthUI',
+    'Microsoft.Windows.ShellExperienceHost', 'Microsoft.Windows.StartMenuExperienceHost', 'Microsoft.XboxGamingOverlay',
+    'Microsoft.XboxIdentityProvider', 'Microsoft.Xbox.TCUI', 'Microsoft.MicrosoftStickyNotes', 'Microsoft.WindowsAlarms',
+    'Microsoft.WindowsSoundRecorder', 'Microsoft.WindowsCamera'
+)
 
 # =====================================================================
 #  CONFIG: NETWORK DEFAULTS  (used for every PC unless its line overrides)
@@ -932,6 +965,7 @@ function Invoke-PcTuning($pc) {
     Write-Host '  - Screen never turns off, the PC never sleeps or hibernates'
     Write-Host '  - USB devices are never suspended (avoids Stream Deck / Scarlett dropouts)'
     Write-Host '  - Windows notifications and the screen saver are turned off'
+    Write-Host '  - Taskbar: no search box, no Task view, no Widgets, no Resume'
     Write-Host ''
     $isStaff = ($pc.Type -eq 'Staff')
     if ($isStaff) { Write-Note '>> Supervisor PC: these settings are meant for table / office PCs. Default here is N.'; Write-Host '' }
@@ -966,12 +1000,165 @@ function Invoke-PcTuning($pc) {
         Write-Ok "Notifications and screen saver off for user '$env:USERNAME'."
         Add-Change "Tuning: notifications + screen saver off ($env:USERNAME)"
     } catch { Write-Warn "Notifications / screen saver: $($_.Exception.Message)" }
+
+    # Taskbar: Search = Hide, Task view / Widgets / Resume = Off
+    $tb = @()
+    try {
+        $sr = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search'
+        New-Item -Path $sr -Force | Out-Null
+        Set-ItemProperty -Path $sr -Name SearchboxTaskbarMode -Value 0 -Type DWord
+        $tb += 'search hidden'
+    } catch { Write-Warn "Taskbar search: $($_.Exception.Message)" }
+    $adv = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    try { Set-ItemProperty -Path $adv -Name ShowTaskViewButton -Value 0 -Type DWord; $tb += 'Task view off' }
+    catch { Write-Warn "Task view: $($_.Exception.Message)" }
+    # Recent Windows 11 blocks writing TaskbarDa directly, so Widgets is also turned off by policy
+    try { Set-ItemProperty -Path $adv -Name TaskbarDa -Value 0 -Type DWord -ErrorAction Stop } catch { }
+    try {
+        $dsh = 'HKLM:\SOFTWARE\Policies\Microsoft\Dsh'
+        New-Item -Path $dsh -Force | Out-Null
+        Set-ItemProperty -Path $dsh -Name AllowNewsAndInterests -Value 0 -Type DWord
+        $tb += 'Widgets off'
+    } catch { Write-Warn "Widgets: $($_.Exception.Message)" }
+    try {
+        $res = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\CrossDeviceResume\Configuration'
+        New-Item -Path $res -Force | Out-Null
+        Set-ItemProperty -Path $res -Name IsResumeAllowed -Value 0 -Type DWord
+        $tb += 'Resume off'
+    } catch { Write-Warn "Resume: $($_.Exception.Message)" }
+    if ($tb.Count) {
+        Write-Ok "Taskbar: $($tb -join ', ')."
+        Add-Change "Tuning: taskbar $($tb -join ', ')"
+        # restart Explorer so the taskbar shows the change now (it comes back by itself)
+        $console0 = ''
+        try { $console0 = [string](Get-CimInstance Win32_ComputerSystem).UserName } catch { }
+        if (-not $console0 -or ($console0 -split '\\')[-1] -ieq $env:USERNAME) {
+            Get-Process -Name 'explorer' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        }
+    }
     $console = ''
     try { $console = [string](Get-CimInstance Win32_ComputerSystem).UserName } catch { }
     if ($console -and ($console -split '\\')[-1] -ine $env:USERNAME) {
         Write-Warn "The PC is logged on as '$console' but this window runs as '$env:USERNAME' (another admin"
         Write-Note '  account was used at the permission prompt). Notifications / screen saver were changed for'
         Write-Note "  '$env:USERNAME' only. Run the script from the table account itself to apply them there."
+    }
+}
+
+# ====================== 7b) REMOVE PREINSTALLED APPS ==================
+function Test-AppNameMatch([string]$name, [string[]]$patterns) {
+    foreach ($pat in $patterns) { if ($name -like $pat) { return $true } }
+    return $false
+}
+
+# Microsoft 365 / Office installed with Click-to-Run (not a Store app)
+function Get-ClickToRunOffice {
+    $keys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+              'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')
+    return @(Get-ItemProperty -Path $keys -ErrorAction SilentlyContinue |
+        Where-Object { $_.UninstallString -and $_.UninstallString -match 'OfficeClickToRun\.exe' -and $_.DisplayName })
+}
+
+function Invoke-RemoveJunk($pc) {
+    Write-Section 'REMOVE PREINSTALLED APPS  (Solitaire, Xbox, Teams, Office trial...)'
+    $isStaff = ($pc.Type -eq 'Staff')
+
+    # ---- 1. Store apps (installed for any user, or provisioned for new users)
+    $installed   = @(Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue)
+    $provisioned = @(Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue)
+    $names = @(@($installed | ForEach-Object { $_.Name }) + @($provisioned | ForEach-Object { $_.DisplayName }) | Sort-Object -Unique |
+        Where-Object { (Test-AppNameMatch $_ $RemoveApps) -and -not (Test-AppNameMatch $_ $NeverRemove) })
+    if ($names.Count -eq 0) {
+        Write-Ok 'No junk Store apps found.'
+    } else {
+        Write-Host "  Found $($names.Count) preinstalled apps to remove:"
+        Write-Host ('    ' + ($names -join ', '))
+        Write-Host ''
+        if (Ask-YesNo '  Remove them (and stop Windows from installing suggested apps)?' $true) {
+            $removed = 0
+            $failed = @()
+            foreach ($n in $names) {
+                $ok = $true
+                foreach ($pkg in @($installed | Where-Object { $_.Name -eq $n })) {
+                    try { Remove-AppxPackage -Package $pkg.PackageFullName -AllUsers -ErrorAction Stop } catch { $ok = $false }
+                }
+                foreach ($pp in @($provisioned | Where-Object { $_.DisplayName -eq $n })) {
+                    try { Remove-AppxProvisionedPackage -Online -PackageName $pp.PackageName -ErrorAction Stop | Out-Null } catch { $ok = $false }
+                }
+                if ($ok) { $removed++ } else { $failed += $n }
+            }
+            Write-Ok "$removed apps removed."
+            if ($failed.Count) { Write-Warn "Windows did not let these be removed (harmless): $($failed -join ', ')" }
+            Add-Change "Removed $removed preinstalled apps"
+
+            # stop suggested apps (Candy Crush & co.) from coming back
+            try {
+                $cc = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
+                New-Item -Path $cc -Force | Out-Null
+                Set-ItemProperty -Path $cc -Name DisableWindowsConsumerFeatures -Value 1 -Type DWord
+                $cdm = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'
+                New-Item -Path $cdm -Force | Out-Null
+                foreach ($v in @('SilentInstalledAppsEnabled', 'PreInstalledAppsEnabled', 'OemPreInstalledAppsEnabled',
+                                 'SystemPaneSuggestionsEnabled', 'SubscribedContent-338388Enabled')) {
+                    Set-ItemProperty -Path $cdm -Name $v -Value 0 -Type DWord
+                }
+                Write-Ok 'Windows will no longer install suggested apps by itself.'
+            } catch { Write-Warn "Could not turn off suggested apps: $($_.Exception.Message)" }
+        } else { Write-Skip 'Store apps kept.' }
+    }
+
+    # ---- 2. Microsoft 365 / Office trial (Click-to-Run)
+    Write-Host ''
+    $office = Get-ClickToRunOffice
+    if ($office.Count -eq 0) {
+        Write-Ok 'No Microsoft 365 / Office installed.'
+    } else {
+        foreach ($o in $office) { Write-Host "  Installed: $($o.DisplayName)" }
+        if ($isStaff) { Write-Note '>> Supervisor PC: kept by default, in case Excel / Word are used here.' }
+        if (Ask-YesNo '  Uninstall Microsoft 365 / Office? (takes a few minutes)' (-not $isStaff)) {
+            Get-Process -Name 'WINWORD', 'EXCEL', 'POWERPNT', 'OUTLOOK', 'ONENOTE', 'MSACCESS', 'MSPUB' -ErrorAction SilentlyContinue |
+                Stop-Process -Force -ErrorAction SilentlyContinue
+            foreach ($o in $office) {
+                Write-Host "  Uninstalling $($o.DisplayName)..."
+                $cmd = "$($o.UninstallString) DisplayLevel=False"
+                Start-Process -FilePath 'cmd.exe' -ArgumentList "/c `"$cmd`"" -Wait -WindowStyle Hidden
+            }
+            $left = Get-ClickToRunOffice
+            if ($left.Count -eq 0) {
+                Write-Ok 'Microsoft 365 / Office uninstalled.'
+                Add-Change 'Removed Microsoft 365 / Office'
+                $State.NeedsRestart = $true
+            } else {
+                Write-Warn "Still installed: $(@($left | ForEach-Object { $_.DisplayName }) -join ', '). Remove it from Settings > Apps."
+            }
+        } else { Write-Skip 'Microsoft 365 / Office kept.' }
+    }
+
+    # ---- 3. OneDrive (per user on Windows 11: removed for the account running this window)
+    Write-Host ''
+    $odPaths = @("$env:LOCALAPPDATA\Microsoft\OneDrive\OneDrive.exe", "$env:ProgramFiles\Microsoft OneDrive\OneDrive.exe",
+                 "${env:ProgramFiles(x86)}\Microsoft OneDrive\OneDrive.exe")
+    $odSetup = @("$env:SystemRoot\System32\OneDriveSetup.exe", "$env:SystemRoot\SysWOW64\OneDriveSetup.exe") |
+        Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    $odPresent = [bool](@($odPaths | Where-Object { Test-Path -LiteralPath $_ }).Count)
+    if (-not $odPresent) {
+        Write-Ok 'OneDrive is not installed.'
+    } else {
+        if ($isStaff) { Write-Note '>> Supervisor PC: kept by default, in case OneDrive is used here.' }
+        if (Ask-YesNo '  Uninstall OneDrive?' (-not $isStaff)) {
+            Get-Process -Name 'OneDrive' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            $w = Get-WingetPath
+            if ($w) { Invoke-Native $w @('uninstall', '--id', 'Microsoft.OneDrive', '--exact', '--silent', '--accept-source-agreements', '--disable-interactivity') | Out-Null }
+            if (@($odPaths | Where-Object { Test-Path -LiteralPath $_ }).Count -and $odSetup) {
+                Start-Process -FilePath $odSetup -ArgumentList '/uninstall' -Wait -WindowStyle Hidden
+            }
+            if (@($odPaths | Where-Object { Test-Path -LiteralPath $_ }).Count) {
+                Write-Warn 'OneDrive is still there. Remove it from Settings > Apps.'
+            } else {
+                Write-Ok "OneDrive uninstalled (for user '$env:USERNAME')."
+                Add-Change 'Removed OneDrive'
+            }
+        } else { Write-Skip 'OneDrive kept.' }
     }
 }
 
@@ -1454,6 +1641,7 @@ try {
     Invoke-WindowsUpdateSetup $selected
     Invoke-NetworkSetup       $selected
     Invoke-PcTuning           $selected
+    Invoke-RemoveJunk         $selected
     Invoke-InstallPrograms    $selected
     Invoke-ProgramSettings    $selected
     Invoke-AppAutostart       $selected

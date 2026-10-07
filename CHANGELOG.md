@@ -2,6 +2,17 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.2.0] - 2026-10-07 - Fuera la basura preinstalada y barra de tareas limpia
+
+### Añadido
+- Nueva sección **Quitar apps preinstaladas**, con tres preguntas independientes:
+  - **Apps de la Tienda:** Solitario, Xbox, Teams, Outlook nuevo, Correo y Calendario, OneNote, el acceso a Office, noticias y tiempo de Bing, Consejos, Mapas, Phone Link, Clipchamp, Cortana, Copilot, Dev Home y similares. También Candy Crush, Spotify, TikTok, Netflix y demás apps de promoción. Se quitan para todos los usuarios y para los que se creen después, y Windows deja de instalar apps sugeridas.
+  - **Microsoft 365 / Office de prueba:** se desinstala sin ventanas.
+  - **OneDrive:** se desinstala.
+- En los PCs de supervisores, Microsoft 365 y OneDrive se conservan por defecto.
+- Hay apps que nunca se tocan: la Tienda, el instalador de programas (winget), Calculadora, Fotos, Bloc de notas, Paint, Recortes, Terminal, Seguridad de Windows, Notas rápidas, Alarmas, Grabadora y Cámara.
+- **Barra de tareas** en Ajustes del PC: sin cuadro de búsqueda, sin Vista de tareas, sin Widgets y sin Reanudar. Los cambios se ven al momento.
+
 ## [4.1.1] - 2026-10-07 - Dealer App y scanner vuelven al autoarranque
 
 ### Corregido
