@@ -2,6 +2,15 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.2.2] - 2026-10-07 - Arreglos de la primera prueba real
+
+### Corregido
+- Un error en una sección ya no detiene el script. Cada sección queda aislada: si falla, lo avisa en rojo, lo anota en el resumen y el script sigue con las demás. En la primera prueba, un error en *Quitar apps preinstaladas* impidió que se ejecutaran la instalación de programas, la configuración, el autoarranque y el resumen.
+- *Quitar apps preinstaladas* fallaba con *No mapping between account names and security IDs was done* cuando Windows no podía resolver alguna cuenta, por ejemplo justo después de renombrar el usuario. Ahora quita las apps de la cuenta actual y de las cuentas nuevas.
+- Crear una clave del registro que ya existía la vaciaba. Eso provocaba el error *Cannot delete a subkey tree* al desactivar las notificaciones, y además restablecía otros ajustes de Windows de esas claves. Ahora las claves solo se crean si no existen.
+- El ajuste de ahorro de energía USB no existe en todos los PCs. Ahora se informa como "no presente" en lugar de mostrar un aviso.
+- Los errores de las herramientas de Windows se muestran con su mensaje limpio, sin el texto técnico de PowerShell.
+
 ## [4.2.1] - 2026-10-07 - Office y OneDrive fuera también en supervisores
 
 ### Cambiado

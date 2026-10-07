@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.2.1 - PowerShell)
+  Kerma Games - PC Setup  (v4.2.2 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -64,7 +64,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.2.1'
+$ScriptVersion = '4.2.2'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -221,10 +221,18 @@ function Invoke-Native([string]$exe, [string[]]$arguments) {
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        $out  = (& $exe @arguments 2>&1 | Out-String)
+        $out = (& $exe @arguments 2>&1 | ForEach-Object {
+                if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ }
+            } | Out-String)
         $code = $LASTEXITCODE
     } finally { $ErrorActionPreference = $prev }
     return @{ Output = $out; ExitCode = $code; Text = (($out -replace '\s+', ' ').Trim()) }
+}
+
+# Creates a registry key only if it is missing. (New-Item -Force on an
+# existing registry key would DELETE it with all its values.)
+function Initialize-RegistryKey([string]$path) {
+    if (-not (Test-Path -LiteralPath $path)) { New-Item -Path $path -Force | Out-Null }
 }
 
 # ---------------------------- input helpers --------------------------
@@ -682,7 +690,7 @@ function Invoke-WindowsUpdateSetup($pc) {
     $wu = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
     $au = "$wu\AU"
     $applyPolicy = {
-        New-Item -Path $au -Force | Out-Null
+        Initialize-RegistryKey $au
         Set-ItemProperty -Path $au -Name NoAutoUpdate                    -Value 1 -Type DWord
         Set-ItemProperty -Path $au -Name NoAutoRebootWithLoggedOnUsers   -Value 1 -Type DWord
         Set-ItemProperty -Path $wu -Name ExcludeWUDriversInQualityUpdate -Value 1 -Type DWord
@@ -977,24 +985,27 @@ function Invoke-PcTuning($pc) {
         @('/change', 'monitor-timeout-ac', '0'),
         @('/change', 'standby-timeout-ac', '0'),
         @('/change', 'hibernate-timeout-ac', '0'),
-        @('/hibernate', 'off'),
-        @('/setacvalueindex', 'SCHEME_CURRENT', $sub, $sel, '0'),
-        @('/setactive', 'SCHEME_CURRENT')
+        @('/hibernate', 'off')
     )
     $bad = 0
     foreach ($c in $cmds) {
         $r = Invoke-Native 'powercfg.exe' $c
         if ($r.ExitCode -ne 0) { $bad++; Write-Warn "powercfg $($c -join ' '): $($r.Text)" }
     }
+    # USB selective suspend: some PCs / power plans do not have this setting at all
+    Invoke-Native 'powercfg.exe' @('/attributes', $sub, $sel, '-ATTRIB_HIDE') | Out-Null
+    $usb = Invoke-Native 'powercfg.exe' @('/setacvalueindex', 'SCHEME_CURRENT', $sub, $sel, '0')
+    $usbText = if ($usb.ExitCode -eq 0) { 'USB never suspended' } else { 'USB suspend setting not present on this PC (nothing to change)' }
+    Invoke-Native 'powercfg.exe' @('/setactive', 'SCHEME_CURRENT') | Out-Null
     if ($bad -eq 0) {
-        Write-Ok 'Power: screen always on, no sleep / hibernation, USB never suspended.'
-        Add-Change 'Tuning: screen always on, no sleep, USB never suspended'
+        Write-Ok "Power: screen always on, no sleep / hibernation. $usbText."
+        Add-Change "Tuning: screen always on, no sleep. $usbText"
     }
 
     # Per-user settings (HKCU = the account this elevated window runs as)
     try {
         $pn = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications'
-        New-Item -Path $pn -Force | Out-Null
+        Initialize-RegistryKey $pn
         Set-ItemProperty -Path $pn -Name ToastEnabled -Value 0 -Type DWord
         Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name ScreenSaveActive -Value '0' -Type String
         Write-Ok "Notifications and screen saver off for user '$env:USERNAME'."
@@ -1005,7 +1016,7 @@ function Invoke-PcTuning($pc) {
     $tb = @()
     try {
         $sr = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search'
-        New-Item -Path $sr -Force | Out-Null
+        Initialize-RegistryKey $sr
         Set-ItemProperty -Path $sr -Name SearchboxTaskbarMode -Value 0 -Type DWord
         $tb += 'search hidden'
     } catch { Write-Warn "Taskbar search: $($_.Exception.Message)" }
@@ -1016,13 +1027,13 @@ function Invoke-PcTuning($pc) {
     try { Set-ItemProperty -Path $adv -Name TaskbarDa -Value 0 -Type DWord -ErrorAction Stop } catch { }
     try {
         $dsh = 'HKLM:\SOFTWARE\Policies\Microsoft\Dsh'
-        New-Item -Path $dsh -Force | Out-Null
+        Initialize-RegistryKey $dsh
         Set-ItemProperty -Path $dsh -Name AllowNewsAndInterests -Value 0 -Type DWord
         $tb += 'Widgets off'
     } catch { Write-Warn "Widgets: $($_.Exception.Message)" }
     try {
         $res = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\CrossDeviceResume\Configuration'
-        New-Item -Path $res -Force | Out-Null
+        Initialize-RegistryKey $res
         Set-ItemProperty -Path $res -Name IsResumeAllowed -Value 0 -Type DWord
         $tb += 'Resume off'
     } catch { Write-Warn "Resume: $($_.Exception.Message)" }
@@ -1062,8 +1073,19 @@ function Get-ClickToRunOffice {
 function Invoke-RemoveJunk($pc) {
     Write-Section 'REMOVE PREINSTALLED APPS  (Solitaire, Xbox, Teams, Office trial...)'
     # ---- 1. Store apps (installed for any user, or provisioned for new users)
-    $installed   = @(Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue)
-    $provisioned = @(Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue)
+    # -AllUsers fails when Windows cannot resolve an account (for example
+    # right after the user rename above): then work on this user only.
+    $allUsers = $true
+    try { $installed = @(Get-AppxPackage -AllUsers -ErrorAction Stop) }
+    catch {
+        $allUsers = $false
+        Write-Note "  (Windows could not list the apps of every account: $($_.Exception.Message)"
+        Write-Note '   Removing them for this account and for new accounts instead.)'
+        $installed = @(Get-AppxPackage -ErrorAction SilentlyContinue)
+    }
+    $provisioned = @()
+    try { $provisioned = @(Get-AppxProvisionedPackage -Online -ErrorAction Stop) }
+    catch { Write-Warn "Could not list the apps for new accounts: $($_.Exception.Message)" }
     $names = @(@($installed | ForEach-Object { $_.Name }) + @($provisioned | ForEach-Object { $_.DisplayName }) | Sort-Object -Unique |
         Where-Object { (Test-AppNameMatch $_ $RemoveApps) -and -not (Test-AppNameMatch $_ $NeverRemove) })
     if ($names.Count -eq 0) {
@@ -1078,7 +1100,12 @@ function Invoke-RemoveJunk($pc) {
             foreach ($n in $names) {
                 $ok = $true
                 foreach ($pkg in @($installed | Where-Object { $_.Name -eq $n })) {
-                    try { Remove-AppxPackage -Package $pkg.PackageFullName -AllUsers -ErrorAction Stop } catch { $ok = $false }
+                    try {
+                        if ($allUsers) {
+                            try { Remove-AppxPackage -Package $pkg.PackageFullName -AllUsers -ErrorAction Stop }
+                            catch { Remove-AppxPackage -Package $pkg.PackageFullName -ErrorAction Stop }
+                        } else { Remove-AppxPackage -Package $pkg.PackageFullName -ErrorAction Stop }
+                    } catch { $ok = $false }
                 }
                 foreach ($pp in @($provisioned | Where-Object { $_.DisplayName -eq $n })) {
                     try { Remove-AppxProvisionedPackage -Online -PackageName $pp.PackageName -ErrorAction Stop | Out-Null } catch { $ok = $false }
@@ -1092,10 +1119,10 @@ function Invoke-RemoveJunk($pc) {
             # stop suggested apps (Candy Crush & co.) from coming back
             try {
                 $cc = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent'
-                New-Item -Path $cc -Force | Out-Null
+                Initialize-RegistryKey $cc
                 Set-ItemProperty -Path $cc -Name DisableWindowsConsumerFeatures -Value 1 -Type DWord
                 $cdm = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'
-                New-Item -Path $cdm -Force | Out-Null
+                Initialize-RegistryKey $cdm
                 foreach ($v in @('SilentInstalledAppsEnabled', 'PreInstalledAppsEnabled', 'OemPreInstalledAppsEnabled',
                                  'SystemPaneSuggestionsEnabled', 'SubscribedContent-338388Enabled')) {
                     Set-ItemProperty -Path $cdm -Name $v -Value 0 -Type DWord
@@ -1631,16 +1658,19 @@ try {
     Write-Host ''
     Write-Host "  Selected PC: $($selected.Label)  [$($selected.Type)]" -ForegroundColor Cyan
 
-    Invoke-TimeSetup          $selected
-    Invoke-Rename             $selected
-    Invoke-LoginSetup         $selected
-    Invoke-WindowsUpdateSetup $selected
-    Invoke-NetworkSetup       $selected
-    Invoke-PcTuning           $selected
-    Invoke-RemoveJunk         $selected
-    Invoke-InstallPrograms    $selected
-    Invoke-ProgramSettings    $selected
-    Invoke-AppAutostart       $selected
+    # Each section is isolated: if one fails, it is reported and the rest still runs
+    $sections = @('Invoke-TimeSetup', 'Invoke-Rename', 'Invoke-LoginSetup', 'Invoke-WindowsUpdateSetup',
+                  'Invoke-NetworkSetup', 'Invoke-PcTuning', 'Invoke-RemoveJunk', 'Invoke-InstallPrograms',
+                  'Invoke-ProgramSettings', 'Invoke-AppAutostart')
+    foreach ($sec in $sections) {
+        try { & $sec $selected }
+        catch {
+            Write-Host ''
+            Write-Fail "Section stopped by an error: $($_.Exception.Message)"
+            Write-Note "  ($sec, line $($_.InvocationInfo.ScriptLineNumber)). Continuing with the next section."
+            Add-Change "ERROR in $($sec -replace '^Invoke-', ''): $($_.Exception.Message)"
+        }
+    }
     Invoke-Finish
 } catch {
     Write-Host ''
