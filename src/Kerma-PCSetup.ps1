@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.2.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.2.1 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -39,8 +39,8 @@
   (supervisor PCs: leave as is); Windows Update = manual only
   (supervisor PCs: leave as is); network = static only if this PC
   has an IP filled in the table below, else untouched; tuning = yes
-  (supervisor PCs: no); remove junk apps = yes (Microsoft 365 and
-  OneDrive: yes, supervisor PCs: kept); install = yes; program settings = yes (an
+  (supervisor PCs: no); remove junk apps = yes (also Microsoft 365
+  and OneDrive, on every PC type); install = yes; program settings = yes (an
   existing HDMI Mirror config is kept); apps = all
   of this PC's apps whose path is known and valid (apps without a
   valid path are skipped and reported), maximized as in the APPS table.
@@ -64,7 +64,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.2.0'
+$ScriptVersion = '4.2.1'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -1061,8 +1061,6 @@ function Get-ClickToRunOffice {
 
 function Invoke-RemoveJunk($pc) {
     Write-Section 'REMOVE PREINSTALLED APPS  (Solitaire, Xbox, Teams, Office trial...)'
-    $isStaff = ($pc.Type -eq 'Staff')
-
     # ---- 1. Store apps (installed for any user, or provisioned for new users)
     $installed   = @(Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue)
     $provisioned = @(Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue)
@@ -1114,8 +1112,7 @@ function Invoke-RemoveJunk($pc) {
         Write-Ok 'No Microsoft 365 / Office installed.'
     } else {
         foreach ($o in $office) { Write-Host "  Installed: $($o.DisplayName)" }
-        if ($isStaff) { Write-Note '>> Supervisor PC: kept by default, in case Excel / Word are used here.' }
-        if (Ask-YesNo '  Uninstall Microsoft 365 / Office? (takes a few minutes)' (-not $isStaff)) {
+        if (Ask-YesNo '  Uninstall Microsoft 365 / Office? (takes a few minutes)' $true) {
             Get-Process -Name 'WINWORD', 'EXCEL', 'POWERPNT', 'OUTLOOK', 'ONENOTE', 'MSACCESS', 'MSPUB' -ErrorAction SilentlyContinue |
                 Stop-Process -Force -ErrorAction SilentlyContinue
             foreach ($o in $office) {
@@ -1144,8 +1141,7 @@ function Invoke-RemoveJunk($pc) {
     if (-not $odPresent) {
         Write-Ok 'OneDrive is not installed.'
     } else {
-        if ($isStaff) { Write-Note '>> Supervisor PC: kept by default, in case OneDrive is used here.' }
-        if (Ask-YesNo '  Uninstall OneDrive?' (-not $isStaff)) {
+        if (Ask-YesNo '  Uninstall OneDrive?' $true) {
             Get-Process -Name 'OneDrive' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
             $w = Get-WingetPath
             if ($w) { Invoke-Native $w @('uninstall', '--id', 'Microsoft.OneDrive', '--exact', '--silent', '--accept-source-agreements', '--disable-interactivity') | Out-Null }

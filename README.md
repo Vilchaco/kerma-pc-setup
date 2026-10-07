@@ -56,7 +56,7 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Windows Update | Solo manual, desactivado del todo, o restaurar las actualizaciones automáticas. |
 | Red | Muestra los adaptadores y pone una IP fija o vuelve a DHCP. Solo hay que teclear la IP. |
 | Ajustes del PC | Pantalla siempre encendida, sin suspensión, USB sin ahorro de energía, sin notificaciones ni salvapantallas. Barra de tareas sin búsqueda, Vista de tareas, Widgets ni Reanudar. |
-| Quitar apps preinstaladas | Quita Solitario, Xbox, Teams, apps de Bing, Candy Crush y similares, Microsoft 365 de prueba y OneDrive. En supervisores conserva Microsoft 365 y OneDrive por defecto. |
+| Quitar apps preinstaladas | Quita Solitario, Xbox, Teams, apps de Bing, Candy Crush y similares, Microsoft 365 de prueba y OneDrive, en todos los tipos de PC. |
 | Instalar programas | Instala o actualiza los programas de ese tipo de PC. |
 | Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck. |
 | Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. |

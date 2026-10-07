@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.2.1] - 2026-10-07 - Office y OneDrive fuera también en supervisores
+
+### Cambiado
+- Microsoft 365 y OneDrive se quitan por defecto también en los PCs de supervisores, que no los usan. Se sigue preguntando antes de quitarlos.
+
 ## [4.2.0] - 2026-10-07 - Fuera la basura preinstalada y barra de tareas limpia
 
 ### Añadido
