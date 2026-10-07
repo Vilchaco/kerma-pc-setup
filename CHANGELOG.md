@@ -2,6 +2,14 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.1.1] - 2026-10-07 - Dealer App y scanner vuelven al autoarranque
+
+### Corregido
+- La 4.1.0 quitó Dealer App y Card Scanner del autoarranque de las mesas, cuando solo había que dejar de instalarlos. Vuelven a configurarse: el script pide su programa como antes. Las tareas que ya existían en los PCs nunca se borraron.
+
+### Cambiado
+- Card Scanner solo se ofrece en las mesas de blackjack, que son las que escanean cartas. Ruleta y craps ya no lo preguntan.
+
 ## [4.1.0] - 2026-10-06 - Audio de OBS y Scarlett
 
 ### Añadido

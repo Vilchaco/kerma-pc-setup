@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.1.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.1.1 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -61,7 +61,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.1.0'
+$ScriptVersion = '4.1.1'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -84,9 +84,12 @@ $Apps = [ordered]@{
                     Note = 'If "start Deskflow on login" is already enabled inside Deskflow, answer N here so it is not launched twice.' }
     Cameras    = @{ Name = 'Cameras';      Id = '02_cameras';    Path = '';                                                 Delay = 25; Maximize = $true  }
 }
-# Card Scanner and Dealer App are not set up by the script for now
-# (scanner: only some tables, manual setup; Dealer App: managed by the devs).
-$TableApps  = @('StreamDeck', 'HdmiMirror', 'OBS')
+# Card Scanner and Dealer App are NOT installed by the script (the devs
+# manage the Dealer App; the scanner needs a manual setup), but their
+# autostart is configured: the script asks for their program file.
+# The card scanner is only used on the tables that scan cards.
+$TableApps            = @('StreamDeck', 'DealerApp', 'HdmiMirror', 'OBS')
+$TableAppsWithScanner = @('Scanner') + $TableApps
 $OfficeApps = @('Cameras')
 
 # =====================================================================
@@ -147,11 +150,11 @@ $TimeSyncDailyAt    = '07:00'                           # daily safety-net sync 
 # =====================================================================
 $PCs = @(
     @{ Key = 'RL01';    Group = 'Table PCs';      Label = 'Roulette 01';                          Type = 'Table';  Hostname = 'KG-TBL-RL-01';    Username = 'kg-tbl-rl-01';    FullName = 'Roulette Table 01';      Apps = $TableApps;  Game = 'roulette';  Net = @{ IP = '' } }
-    @{ Key = 'BJ01';    Group = 'Table PCs';      Label = 'Blackjack 01';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-01';    Username = 'kg-tbl-bj-01';    FullName = 'Blackjack Table 01';     Apps = $TableApps;  Game = 'blackjack';  Net = @{ IP = '' } }
-    @{ Key = 'BJ02';    Group = 'Table PCs';      Label = 'Blackjack 02';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-02';    Username = 'kg-tbl-bj-02';    FullName = 'Blackjack Table 02';     Apps = $TableApps;  Game = 'blackjack';  Net = @{ IP = '' } }
-    @{ Key = 'BJ03';    Group = 'Table PCs';      Label = 'Blackjack 03';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-03';    Username = 'kg-tbl-bj-03';    FullName = 'Blackjack Table 03';     Apps = $TableApps;  Game = 'blackjack';  Net = @{ IP = '' } }
-    @{ Key = 'BJ04';    Group = 'Table PCs';      Label = 'Blackjack 04';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-04';    Username = 'kg-tbl-bj-04';    FullName = 'Blackjack Table 04';     Apps = $TableApps;  Game = 'blackjack';  Net = @{ IP = '' } }
-    @{ Key = 'BJUNL01'; Group = 'Table PCs';      Label = 'Blackjack Unlimited 01';               Type = 'Table';  Hostname = 'KG-TBL-BJUNL-01'; Username = 'kg-tbl-bjunl-01'; FullName = 'Blackjack Unlimited 01'; Apps = $TableApps;  Game = 'blackjack-unlimited';  Net = @{ IP = '' } }
+    @{ Key = 'BJ01';    Group = 'Table PCs';      Label = 'Blackjack 01';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-01';    Username = 'kg-tbl-bj-01';    FullName = 'Blackjack Table 01';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'BJ02';    Group = 'Table PCs';      Label = 'Blackjack 02';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-02';    Username = 'kg-tbl-bj-02';    FullName = 'Blackjack Table 02';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'BJ03';    Group = 'Table PCs';      Label = 'Blackjack 03';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-03';    Username = 'kg-tbl-bj-03';    FullName = 'Blackjack Table 03';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'BJ04';    Group = 'Table PCs';      Label = 'Blackjack 04';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-04';    Username = 'kg-tbl-bj-04';    FullName = 'Blackjack Table 04';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'BJUNL01'; Group = 'Table PCs';      Label = 'Blackjack Unlimited 01';               Type = 'Table';  Hostname = 'KG-TBL-BJUNL-01'; Username = 'kg-tbl-bjunl-01'; FullName = 'Blackjack Unlimited 01'; Apps = $TableAppsWithScanner;  Game = 'blackjack-unlimited';  Net = @{ IP = '' } }
     @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';                             Type = 'Table';  Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Apps = $TableApps;  Game = 'craps';  Net = @{ IP = '' } }
     @{ Key = 'SUP01';   Group = 'Supervisor PCs'; Label = 'Supervisor 01';                        Type = 'Staff';  Hostname = 'KG-SUP-01';       Username = 'kg-sup-01';       FullName = 'Supervisor 01';          Apps = @();         Net = @{ IP = '' } }
     @{ Key = 'SUP02';   Group = 'Supervisor PCs'; Label = 'Supervisor 02';                        Type = 'Staff';  Hostname = 'KG-SUP-02';       Username = 'kg-sup-02';       FullName = 'Supervisor 02';          Apps = @();         Net = @{ IP = '' } }

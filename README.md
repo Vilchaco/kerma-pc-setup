@@ -59,7 +59,7 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 
 | Tipo | PCs | Comportamiento |
 |---|---|---|
-| Mesa | Ruleta, Blackjack, Blackjack Unlimited, Craps | Sin contraseña y actualizaciones manuales. Instala Chrome, RustDesk, Stream Deck, HDMI Mirror, OBS y atkAudio, con el perfil de Stream Deck de su juego. |
+| Mesa | Ruleta, Blackjack, Blackjack Unlimited, Craps | Sin contraseña y actualizaciones manuales. Instala Chrome, RustDesk, Stream Deck, HDMI Mirror, OBS y atkAudio, con el perfil de Stream Deck de su juego. Configura el autoarranque de Dealer App y, en blackjack, del Card Scanner, que se instalan a mano. |
 | Supervisor | Supervisor 01 y 02 | Recomienda mantener la contraseña y las actualizaciones automáticas. Instala Chrome y RustDesk. Sin autoarranque de apps. |
 | Oficina | PC de Hector | Igual que una mesa, pero instala Chrome y RustDesk, y su app de inicio es el programa de cámaras. |
 
