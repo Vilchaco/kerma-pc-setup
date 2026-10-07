@@ -1,0 +1,4 @@
+# Short address for the one-line install: https://kermasetup.netlify.app
+# It only redirects to bootstrap.ps1 on main, so it never needs redeploying.
+[build]
+  publish = "web"

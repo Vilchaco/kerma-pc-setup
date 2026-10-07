@@ -9,7 +9,13 @@ Script para dejar listo un PC del casino de Kerma Games en unos minutos: mesas d
 
 1. Conecta el PC a internet.
 2. Abre **PowerShell**: clic derecho en el botón de Inicio y **Terminal** o **Windows PowerShell**.
-3. Pega esta línea y pulsa Enter:
+3. Escribe esta línea y pulsa Enter:
+
+```powershell
+irm https://kermasetup.netlify.app | iex
+```
+
+`kermasetup.netlify.app` solo redirige a [bootstrap.ps1](bootstrap.ps1) en `main`, así que nunca hay que volver a desplegarlo. La línea larga equivalente es:
 
 ```powershell
 irm https://raw.githubusercontent.com/Vilchaco/kerma-pc-setup/main/bootstrap.ps1 | iex
@@ -18,7 +24,7 @@ irm https://raw.githubusercontent.com/Vilchaco/kerma-pc-setup/main/bootstrap.ps1
 Desde **CMD** la línea es esta:
 
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/Vilchaco/kerma-pc-setup/main/bootstrap.ps1 | iex"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://kermasetup.netlify.app | iex"
 ```
 
 El script se descarga en `C:\KermaSetup\app`, pide permisos de administrador y empieza. Responde a cada sección y reinicia al final.
