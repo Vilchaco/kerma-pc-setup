@@ -18,18 +18,18 @@ jobs:
         shell: powershell
         run: |
           $bad = @()
-          Get-ChildItem src -File -Recurse -Include *.ps1, *.bat, *.cmd | ForEach-Object {
+          @(Get-ChildItem src -File -Recurse -Include *.ps1, *.bat, *.cmd) + @(Get-ChildItem -File -Filter *.ps1) | ForEach-Object {
             $bytes = [IO.File]::ReadAllBytes($_.FullName)
             if ($bytes | Where-Object { $_ -gt 127 } | Select-Object -First 1) { $bad += $_.Name }
           }
-          foreach ($n in $bad) { "::error file=src/$n::Non-ASCII characters (accents, n-tilde...). Windows PowerShell 5.1 would read them wrong." }
+          foreach ($n in $bad) { "::error file=$n::Non-ASCII characters (accents, n-tilde...). Windows PowerShell 5.1 would read them wrong." }
           if ($bad.Count) { exit 1 }
           'OK: all scripts are ASCII'
 
       - name: Syntax check (PowerShell 5.1 parser)
         shell: powershell
         run: |
-          $files = @(Get-ChildItem src -Filter *.ps1 -Recurse)
+          $files = @(Get-ChildItem src -Filter *.ps1 -Recurse) + @(Get-ChildItem -File -Filter *.ps1)
           if ($files.Count -eq 0) { 'No .ps1 files in this version'; exit 0 }
           $failed = $false
           foreach ($f in $files) {
@@ -38,7 +38,7 @@ jobs:
             [void][System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$tokens, [ref]$errors)
             if ($errors.Count) {
               $failed = $true
-              foreach ($e in $errors) { "::error file=src/$($f.Name),line=$($e.Extent.StartLineNumber),col=$($e.Extent.StartColumnNumber)::$($e.Message)" }
+              foreach ($e in $errors) { "::error file=$($f.Name),line=$($e.Extent.StartLineNumber),col=$($e.Extent.StartColumnNumber)::$($e.Message)" }
             } else { "OK: $($f.Name)" }
           }
           if ($failed) { exit 1 }
@@ -51,7 +51,7 @@ jobs:
             Set-PSRepository PSGallery -InstallationPolicy Trusted
             Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
           }
-          $r = @(Invoke-ScriptAnalyzer -Path src -Recurse -Severity Error)
+          $r = @(Invoke-ScriptAnalyzer -Path src -Recurse -Severity Error) + @(Get-ChildItem -File -Filter *.ps1 | ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Severity Error })
           foreach ($i in $r) { "::error file=src/$($i.ScriptName),line=$($i.Line)::[$($i.RuleName)] $($i.Message)" }
           if ($r.Count) { exit 1 }
           'OK: no PSScriptAnalyzer errors'

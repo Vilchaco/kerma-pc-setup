@@ -1,9 +1,12 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v3.2.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.0.0 - PowerShell)
 =====================================================================
-  Double-click "Kerma-PCSetup.bat" next to this file. The script asks
-  for administrator rights by itself.
+  Fresh PC, one line in PowerShell (downloads the latest release and
+  starts it - see README):
+    irm https://raw.githubusercontent.com/Vilchaco/kerma-pc-setup/main/bootstrap.ps1 | iex
+  Or double-click "Kerma-PCSetup.bat" next to this file. The script
+  asks for administrator rights by itself.
 
   What it does, in order (every section can be skipped):
     1) Select which PC this is (table / supervisor / office)
@@ -15,8 +18,13 @@
        store it for auto-login, or leave it
     5) Windows Update: manual-only / disabled / restore defaults
     6) Network: pick an adapter, set a static IP (or back to DHCP)
-    7) App autostart: one scheduled task per app at logon
-    8) Summary + optional restart
+    7) PC tuning: screen never off, no sleep, USB never suspended,
+       no notifications, no screen saver
+    8) Install programs for this PC type (winget / GitHub releases)
+    9) Program settings: HDMI Mirror config, OBS scenes/profile,
+       Stream Deck profile of the table's game (from assets\)
+   10) App autostart: one scheduled task per app at logon
+   11) Summary + optional restart
 
   Everything applied is logged to C:\KermaSetup\logs\setup-<date>.log
 
@@ -27,7 +35,9 @@
   yes; login = remove password
   (supervisor PCs: leave as is); Windows Update = manual only
   (supervisor PCs: leave as is); network = static only if this PC
-  has an IP filled in the table below, else untouched; apps = all
+  has an IP filled in the table below, else untouched; tuning = yes
+  (supervisor PCs: no); install = yes; program settings = yes (an
+  existing HDMI Mirror config is kept); apps = all
   of this PC's apps whose path is known and valid (apps without a
   valid path are skipped and reported), maximized as in the APPS table.
 
@@ -50,7 +60,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '3.2.0'
+$ScriptVersion = '4.0.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -59,19 +69,55 @@ $ScriptVersion = '3.2.0'
 #  in app-paths.json next to this script. Apps always start with their
 #  own folder as working directory (OBS needs this).
 # =====================================================================
+#  SelfStarts: the program registers its own start at logon, so no task
+#  is created (and an old one is removed) to avoid opening it twice.
+#  Replaces: name of an older app whose autostart task is removed.
 $Apps = [ordered]@{
     Scanner    = @{ Name = 'Card Scanner'; Id = '01_scanner';    Path = '';                                                 Delay = 10; Maximize = $false }
-    StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = '';                                                 Delay = 15; Maximize = $false }
+    StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';  Delay = 15; Maximize = $false; SelfStarts = $true }
     DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '';                                                 Delay = 30; Maximize = $true  }
-    Mirror     = @{ Name = 'Mirror App';   Id = '04_mirror';     Path = '';                                                 Delay = 45; Maximize = $false }
+    HdmiMirror = @{ Name = 'HDMI Mirror';  Id = '04_hdmimirror'; Path = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';               Delay = 45; Maximize = $false; Replaces = 'Mirror App' }
     OBS        = @{ Name = 'OBS';          Id = '05_obs';        Path = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Delay = 60; Maximize = $false }
     # Office PC (Hector's office: cameras on the TV + Deskflow client controlled from his Mac)
     Deskflow   = @{ Name = 'Deskflow';     Id = '01_deskflow';   Path = 'C:\Program Files\Deskflow\deskflow.exe';          Delay = 10; Maximize = $false
                     Note = 'If "start Deskflow on login" is already enabled inside Deskflow, answer N here so it is not launched twice.' }
     Cameras    = @{ Name = 'Cameras';      Id = '02_cameras';    Path = '';                                                 Delay = 25; Maximize = $true  }
 }
-$TableApps  = @('Scanner', 'StreamDeck', 'DealerApp', 'Mirror', 'OBS')
+$TableApps  = @('Scanner', 'StreamDeck', 'DealerApp', 'HdmiMirror', 'OBS')
 $OfficeApps = @('Deskflow', 'Cameras')
+
+# =====================================================================
+#  CONFIG: PROGRAMS TO INSTALL
+#  Source 'winget' : Id = winget package id (search: winget search <name>)
+#  Source 'github' : Repo = owner/name of a PUBLIC repo, Asset = regex of
+#                    the release file. .msi = silent install; .zip =
+#                    extracted into InstallTo (and updated when a newer
+#                    release exists).
+#  Check           : file that exists once installed (then it is skipped)
+# =====================================================================
+$Packages = [ordered]@{
+    Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome';        Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe' }
+    RustDesk   = @{ Name = 'RustDesk';      Source = 'github'; Repo = 'rustdesk/rustdesk';  Asset = '^rustdesk-[0-9.]+-x86_64\.msi$';  Check = 'C:\Program Files\RustDesk\rustdesk.exe' }
+    StreamDeck = @{ Name = 'Stream Deck';   Source = 'winget'; Id = 'Elgato.StreamDeck';    Check = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe' }
+    HdmiMirror = @{ Name = 'HDMI Mirror';   Source = 'github'; Repo = 'Vilchaco/kerma-hdmi-mirror'; Asset = '^HdmiMirror-v[0-9.]+\.zip$'
+                    InstallTo = 'C:\Kerma'; Check = 'C:\Kerma\HdmiMirror\HdmiMirror.exe'; Process = 'HdmiMirror'
+                    UserWritable = 'C:\Kerma\HdmiMirror' }   # it saves hdmimirror.config.json next to its exe
+    OBS        = @{ Name = 'OBS Studio';    Source = 'winget'; Id = 'OBSProject.OBSStudio'; Check = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe' }
+    Deskflow   = @{ Name = 'Deskflow';      Source = 'winget'; Id = 'Deskflow.Deskflow';    Check = 'C:\Program Files\Deskflow\deskflow.exe' }
+    Focusrite  = @{ Name = 'Focusrite Control (Scarlett)'; Source = 'winget'; Id = ''; Check = '' }   # Id comes from $ScarlettPackageId
+}
+# Programs per PC type (keys of $Packages)
+$InstallByType = @{
+    Table  = @('Chrome', 'RustDesk', 'StreamDeck', 'HdmiMirror', 'OBS')
+    Office = @('Chrome', 'RustDesk', 'Deskflow')
+    Staff  = @('Chrome')
+}
+# Focusrite Scarlett software. Depends on the generation printed on the
+# device: 3rd Gen = 'FocusriteAudioEngineeringLtd.FocusriteControl',
+# 4th Gen = 'FocusriteAudioEngineeringLtd.FocusriteControl2'. Leave '' to
+# skip. $ScarlettPcTypes = PC types that have one, e.g. @('Table').
+$ScarlettPackageId = ''
+$ScarlettPcTypes   = @()
 
 # =====================================================================
 #  CONFIG: NETWORK DEFAULTS  (used for every PC unless its line overrides)
@@ -89,15 +135,16 @@ $TimeSyncDailyAt    = '07:00'                           # daily safety-net sync 
 # =====================================================================
 #  CONFIG: PCs  (one line per PC - Type is Table / Staff / Office)
 #  Net: leave IP empty to be asked interactively (or skipped unattended)
+#  Game: picks assets\streamdeck\<Game>.streamDeckProfile for the table
 # =====================================================================
 $PCs = @(
-    @{ Key = 'RL01';    Group = 'Table PCs';      Label = 'Roulette 01';                          Type = 'Table';  Hostname = 'KG-TBL-RL-01';    Username = 'kg-tbl-rl-01';    FullName = 'Roulette Table 01';      Apps = $TableApps;  Net = @{ IP = '' } }
-    @{ Key = 'BJ01';    Group = 'Table PCs';      Label = 'Blackjack 01';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-01';    Username = 'kg-tbl-bj-01';    FullName = 'Blackjack Table 01';     Apps = $TableApps;  Net = @{ IP = '' } }
-    @{ Key = 'BJ02';    Group = 'Table PCs';      Label = 'Blackjack 02';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-02';    Username = 'kg-tbl-bj-02';    FullName = 'Blackjack Table 02';     Apps = $TableApps;  Net = @{ IP = '' } }
-    @{ Key = 'BJ03';    Group = 'Table PCs';      Label = 'Blackjack 03';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-03';    Username = 'kg-tbl-bj-03';    FullName = 'Blackjack Table 03';     Apps = $TableApps;  Net = @{ IP = '' } }
-    @{ Key = 'BJ04';    Group = 'Table PCs';      Label = 'Blackjack 04';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-04';    Username = 'kg-tbl-bj-04';    FullName = 'Blackjack Table 04';     Apps = $TableApps;  Net = @{ IP = '' } }
-    @{ Key = 'BJUNL01'; Group = 'Table PCs';      Label = 'Blackjack Unlimited 01';               Type = 'Table';  Hostname = 'KG-TBL-BJUNL-01'; Username = 'kg-tbl-bjunl-01'; FullName = 'Blackjack Unlimited 01'; Apps = $TableApps;  Net = @{ IP = '' } }
-    @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';                             Type = 'Table';  Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Apps = $TableApps;  Net = @{ IP = '' } }
+    @{ Key = 'RL01';    Group = 'Table PCs';      Label = 'Roulette 01';                          Type = 'Table';  Hostname = 'KG-TBL-RL-01';    Username = 'kg-tbl-rl-01';    FullName = 'Roulette Table 01';      Apps = $TableApps;  Game = 'roulette';  Net = @{ IP = '' } }
+    @{ Key = 'BJ01';    Group = 'Table PCs';      Label = 'Blackjack 01';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-01';    Username = 'kg-tbl-bj-01';    FullName = 'Blackjack Table 01';     Apps = $TableApps;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'BJ02';    Group = 'Table PCs';      Label = 'Blackjack 02';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-02';    Username = 'kg-tbl-bj-02';    FullName = 'Blackjack Table 02';     Apps = $TableApps;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'BJ03';    Group = 'Table PCs';      Label = 'Blackjack 03';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-03';    Username = 'kg-tbl-bj-03';    FullName = 'Blackjack Table 03';     Apps = $TableApps;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'BJ04';    Group = 'Table PCs';      Label = 'Blackjack 04';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-04';    Username = 'kg-tbl-bj-04';    FullName = 'Blackjack Table 04';     Apps = $TableApps;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'BJUNL01'; Group = 'Table PCs';      Label = 'Blackjack Unlimited 01';               Type = 'Table';  Hostname = 'KG-TBL-BJUNL-01'; Username = 'kg-tbl-bjunl-01'; FullName = 'Blackjack Unlimited 01'; Apps = $TableApps;  Game = 'blackjack-unlimited';  Net = @{ IP = '' } }
+    @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';                             Type = 'Table';  Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Apps = $TableApps;  Game = 'craps';  Net = @{ IP = '' } }
     @{ Key = 'SUP01';   Group = 'Supervisor PCs'; Label = 'Supervisor 01';                        Type = 'Staff';  Hostname = 'KG-SUP-01';       Username = 'kg-sup-01';       FullName = 'Supervisor 01';          Apps = @();         Net = @{ IP = '' } }
     @{ Key = 'SUP02';   Group = 'Supervisor PCs'; Label = 'Supervisor 02';                        Type = 'Staff';  Hostname = 'KG-SUP-02';       Username = 'kg-sup-02';       FullName = 'Supervisor 02';          Apps = @();         Net = @{ IP = '' } }
     @{ Key = 'HECTOR';  Group = 'Office PCs';     Label = 'Hector office PC (cameras on TV + Deskflow)'; Type = 'Office'; Hostname = 'KG-OFC-HECTOR'; Username = 'kg-ofc-hector'; FullName = 'Hector Office PC';    Apps = $OfficeApps; Net = @{ IP = '' } }
@@ -747,7 +794,8 @@ function Invoke-NetworkSetup($pc) {
 
 # ------------------------- app path helpers --------------------------
 # Remembered paths live next to the script (so they travel on the USB
-# stick to the next PC); if that folder is read-only, in C:\KermaSetup.
+# stick to the next PC) and in C:\KermaSetup (kept across versions when
+# the script is started with the one-line bootstrap).
 $AppPathsFiles = @((Join-Path $PSScriptRoot 'app-paths.json'), 'C:\KermaSetup\app-paths.json')
 
 function Get-SavedAppPaths {
@@ -765,14 +813,15 @@ function Get-SavedAppPaths {
 
 function Save-AppPaths($h) {
     $json = $h | ConvertTo-Json
+    $saved = $false
     foreach ($f in $AppPathsFiles) {
         try {
             New-Item -ItemType Directory -Path (Split-Path -Path $f -Parent) -Force | Out-Null
             Set-Content -LiteralPath $f -Value $json -Encoding UTF8
-            return
+            $saved = $true
         } catch { }
     }
-    Write-Warn 'Could not save the app paths (not critical - they will be asked again next time).'
+    if (-not $saved) { Write-Warn 'Could not save the app paths (not critical - they will be asked again next time).' }
 }
 
 # Checks a path typed / pasted / browsed by the user.
@@ -866,7 +915,296 @@ function Get-AppPathInteractive($app, [string]$suggested) {
     }
 }
 
-# ============================ 7) APP AUTOSTART =======================
+# ============================ 7) PC TUNING ============================
+function Invoke-PcTuning($pc) {
+    Write-Section 'PC TUNING  (power, USB, notifications)'
+    Write-Host '  - Screen never turns off, the PC never sleeps or hibernates'
+    Write-Host '  - USB devices are never suspended (avoids Stream Deck / Scarlett dropouts)'
+    Write-Host '  - Windows notifications and the screen saver are turned off'
+    Write-Host ''
+    $isStaff = ($pc.Type -eq 'Staff')
+    if ($isStaff) { Write-Note '>> Supervisor PC: these settings are meant for table / office PCs. Default here is N.'; Write-Host '' }
+    if (-not (Ask-YesNo '  Apply these settings?' (-not $isStaff))) { Write-Skip 'PC tuning left unchanged.'; return }
+
+    $sub = '2a737441-1930-4402-8d77-b2bebba308a3'   # USB settings
+    $sel = '48e6b7a6-50f5-4782-a5d4-53bb50f7e206'   # USB selective suspend
+    $cmds = @(
+        @('/change', 'monitor-timeout-ac', '0'),
+        @('/change', 'standby-timeout-ac', '0'),
+        @('/change', 'hibernate-timeout-ac', '0'),
+        @('/hibernate', 'off'),
+        @('/setacvalueindex', 'SCHEME_CURRENT', $sub, $sel, '0'),
+        @('/setactive', 'SCHEME_CURRENT')
+    )
+    $bad = 0
+    foreach ($c in $cmds) {
+        $r = Invoke-Native 'powercfg.exe' $c
+        if ($r.ExitCode -ne 0) { $bad++; Write-Warn "powercfg $($c -join ' '): $($r.Text)" }
+    }
+    if ($bad -eq 0) {
+        Write-Ok 'Power: screen always on, no sleep / hibernation, USB never suspended.'
+        Add-Change 'Tuning: screen always on, no sleep, USB never suspended'
+    }
+
+    # Per-user settings (HKCU = the account this elevated window runs as)
+    try {
+        $pn = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications'
+        New-Item -Path $pn -Force | Out-Null
+        Set-ItemProperty -Path $pn -Name ToastEnabled -Value 0 -Type DWord
+        Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name ScreenSaveActive -Value '0' -Type String
+        Write-Ok "Notifications and screen saver off for user '$env:USERNAME'."
+        Add-Change "Tuning: notifications + screen saver off ($env:USERNAME)"
+    } catch { Write-Warn "Notifications / screen saver: $($_.Exception.Message)" }
+    $console = ''
+    try { $console = [string](Get-CimInstance Win32_ComputerSystem).UserName } catch { }
+    if ($console -and ($console -split '\\')[-1] -ine $env:USERNAME) {
+        Write-Warn "The PC is logged on as '$console' but this window runs as '$env:USERNAME' (another admin"
+        Write-Note '  account was used at the permission prompt). Notifications / screen saver were changed for'
+        Write-Note "  '$env:USERNAME' only. Run the script from the table account itself to apply them there."
+    }
+}
+
+# ========================= 8) INSTALL PROGRAMS =======================
+function Test-Internet {
+    try {
+        Invoke-WebRequest -Uri 'https://api.github.com' -Method Head -UseBasicParsing -TimeoutSec 15 | Out-Null
+        return $true
+    } catch { return $false }
+}
+
+function Get-WingetPath {
+    $cmd = Get-Command winget.exe -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    $alias = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe'
+    if (Test-Path -LiteralPath $alias) { return $alias }
+    # Elevated windows sometimes miss the alias: use the App Installer package folder
+    $pkg = Get-ChildItem -Path "$env:ProgramFiles\WindowsApps" -Filter 'Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe' -Directory -ErrorAction SilentlyContinue |
+        Sort-Object -Property Name -Descending | Select-Object -First 1
+    if ($pkg -and (Test-Path -LiteralPath (Join-Path $pkg.FullName 'winget.exe'))) { return (Join-Path $pkg.FullName 'winget.exe') }
+    return $null
+}
+
+# Finds winget; on a fresh PC tries to register / repair it first.
+function Initialize-Winget {
+    $w = Get-WingetPath
+    if ($w) { return $w }
+    Write-Host '  winget not found - trying to activate it (can take a minute)...'
+    try { Add-AppxPackage -RegisterByFamilyName -MainPackage 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe' -ErrorAction Stop; Start-Sleep -Seconds 3 } catch { }
+    $w = Get-WingetPath
+    if ($w) { return $w }
+    try {
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers | Out-Null
+        Install-Module -Name Microsoft.WinGet.Client -Repository PSGallery -Force -Scope AllUsers -AllowClobber
+        Import-Module Microsoft.WinGet.Client
+        Repair-WinGetPackageManager -AllUsers -Latest -Force | Out-Null
+    } catch { Write-Warn "Could not repair winget: $($_.Exception.Message)" }
+    return (Get-WingetPath)
+}
+
+function Get-LatestReleaseAsset([string]$repo, [string]$pattern) {
+    $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -UseBasicParsing -Headers @{ 'User-Agent' = 'Kerma-PCSetup' }
+    $asset = $rel.assets | Where-Object { $_.name -match $pattern } | Select-Object -First 1
+    if (-not $asset) { throw "no file matching '$pattern' in the latest release of $repo ($($rel.tag_name))" }
+    return @{ Tag = [string]$rel.tag_name; Name = [string]$asset.name; Url = [string]$asset.browser_download_url }
+}
+
+function Install-KermaPackage($key, $p) {
+    $marker = if ($p.Check) { Join-Path (Split-Path -Path $p.Check -Parent) '.kerma-version' } else { '' }
+
+    if ($p.Source -eq 'winget') {
+        if ($p.Check -and (Test-Path -LiteralPath $p.Check)) { Write-Ok "$($p.Name): already installed."; return }
+        if (-not $script:Winget) { $script:Winget = Initialize-Winget }
+        if (-not $script:Winget) {
+            Write-Fail "$($p.Name): winget is not available on this PC, so it cannot be installed automatically."
+            Write-Note '  On Windows LTSC / IoT editions winget is not included. Install it by hand.'
+            return
+        }
+        $base = @('install', '--id', $p.Id, '--exact', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
+        Write-Host "  Installing $($p.Name) (winget $($p.Id))..."
+        $r = Invoke-Native $script:Winget ($base + @('--scope', 'machine'))
+        if ($r.ExitCode -ne 0 -and -not ($p.Check -and (Test-Path -LiteralPath $p.Check))) {
+            # some packages have no machine-wide installer: try the default scope
+            $r = Invoke-Native $script:Winget $base
+        }
+        $listed = (Invoke-Native $script:Winget @('list', '--id', $p.Id, '--exact', '--accept-source-agreements', '--disable-interactivity')).ExitCode -eq 0
+        $ok = if ($p.Check) { Test-Path -LiteralPath $p.Check } else { $listed }
+        if ($ok -or $listed) {
+            Write-Ok "$($p.Name) installed."
+            Add-Change "Installed: $($p.Name)"
+        } else {
+            $tail = if ($r.Text.Length -gt 300) { $r.Text.Substring($r.Text.Length - 300) } else { $r.Text }
+            Write-Fail "$($p.Name) not installed (winget exit code $($r.ExitCode)): $tail"
+        }
+        return
+    }
+
+    # ---- GitHub release (.msi or .zip)
+    $rel = Get-LatestReleaseAsset $p.Repo $p.Asset
+    $installedTag = ''
+    if ($marker -and (Test-Path -LiteralPath $marker)) { $installedTag = (Get-Content -LiteralPath $marker -Raw).Trim() }
+    if ($p.Check -and (Test-Path -LiteralPath $p.Check)) {
+        if ($rel.Name -notmatch '\.zip$' -or $installedTag -eq $rel.Tag) { Write-Ok "$($p.Name): already installed$(if ($installedTag) { " ($installedTag)" })."; return }
+        Write-Host "  $($p.Name): updating $(if ($installedTag) { $installedTag } else { 'installed copy' }) -> $($rel.Tag)"
+    }
+    $dl = 'C:\KermaSetup\downloads'
+    New-Item -ItemType Directory -Path $dl -Force | Out-Null
+    $file = Join-Path $dl $rel.Name
+    Write-Host "  Downloading $($p.Name) $($rel.Tag) ($($rel.Name))..."
+    Invoke-WebRequest -Uri $rel.Url -OutFile $file -UseBasicParsing
+
+    if ($rel.Name -match '\.msi$') {
+        $proc = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$file`" /qn /norestart" -Wait -PassThru
+        if ($proc.ExitCode -eq 3010) { $State.NeedsRestart = $true }
+        if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) { Write-Fail "$($p.Name): the installer returned code $($proc.ExitCode)."; return }
+    } elseif ($rel.Name -match '\.zip$') {
+        if ($p.Process) { Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1 }
+        New-Item -ItemType Directory -Path $p.InstallTo -Force | Out-Null
+        Expand-Archive -LiteralPath $file -DestinationPath $p.InstallTo -Force   # its own config file is kept
+        if ($p.UserWritable) {
+            $r = Invoke-Native 'icacls.exe' @($p.UserWritable, '/grant', '*S-1-5-32-545:(OI)(CI)M')
+            if ($r.ExitCode -ne 0) { Write-Warn "Could not let users write in $($p.UserWritable): $($r.Text)" }
+        }
+    } else {
+        Write-Fail "$($p.Name): do not know how to install '$($rel.Name)'."
+        return
+    }
+    if ($p.Check -and -not (Test-Path -LiteralPath $p.Check)) { Write-Fail "$($p.Name): installed, but $($p.Check) is missing."; return }
+    if ($marker) { Set-Content -LiteralPath $marker -Value $rel.Tag -Encoding Ascii }
+    Write-Ok "$($p.Name) $($rel.Tag) installed."
+    Add-Change "Installed: $($p.Name) $($rel.Tag)"
+}
+
+function Show-FocusriteDevices {
+    $dev = @(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.InstanceId -like 'USB\VID_1235*' })
+    foreach ($d in $dev) { Write-Host "  Focusrite device connected: $($d.FriendlyName)  [$($d.InstanceId)]" }
+    if ($dev.Count -and -not $ScarlettPackageId) {
+        Write-Note '  The Scarlett software is not configured yet ($ScarlettPackageId). Send the line above to IT.'
+    }
+}
+
+function Invoke-InstallPrograms($pc) {
+    Write-Section 'INSTALL PROGRAMS'
+    $list = @($InstallByType[$pc.Type])
+    if ($ScarlettPackageId -and ($ScarlettPcTypes -contains $pc.Type)) {
+        $Packages['Focusrite'].Id = $ScarlettPackageId
+        $list += 'Focusrite'
+    }
+    Show-FocusriteDevices
+    if ($list.Count -eq 0) { Write-Skip 'No programs defined for this PC type.'; return }
+
+    Write-Host '  Programs for this PC:'
+    foreach ($k in $list) {
+        $p = $Packages[$k]
+        $st = if ($p.Check -and (Test-Path -LiteralPath $p.Check)) { 'installed' } else { 'to install' }
+        Write-Host ("    - {0,-30} {1}" -f $p.Name, $st)
+    }
+    Write-Host ''
+    if (-not (Ask-YesNo '  Install / update them now?' $true)) { Write-Skip 'Programs left as they are.'; return }
+    if (-not (Test-Internet)) {
+        Write-Fail 'No internet connection (github.com does not answer) - programs NOT installed.'
+        Write-Note '  Check the network section above, then run the script again.'
+        return
+    }
+    $script:Winget = $null
+    foreach ($k in $list) {
+        Write-Host ''
+        try { Install-KermaPackage $k $Packages[$k] }
+        catch { Write-Fail "$($Packages[$k].Name): $($_.Exception.Message)" }
+    }
+}
+
+# ========================= 9) PROGRAM SETTINGS =======================
+function Get-AssetsDir {
+    foreach ($d in @((Join-Path $PSScriptRoot 'assets'), (Join-Path (Split-Path -Path $PSScriptRoot -Parent) 'assets'))) {
+        if (Test-Path -LiteralPath $d -PathType Container) { return (Resolve-Path -LiteralPath $d).ProviderPath }
+    }
+    return $null
+}
+
+function Invoke-ProgramSettings($pc) {
+    Write-Section 'PROGRAM SETTINGS  (HDMI Mirror, OBS, Stream Deck)'
+    if ($pc.Type -eq 'Staff') { Write-Skip 'Does not apply to supervisor PCs.'; return }
+    $assets = Get-AssetsDir
+    if (-not $assets) { Write-Skip 'No assets folder next to the script - nothing to apply.'; return }
+    if (-not (Ask-YesNo '  Apply the saved settings for this PC?' $true)) { Write-Skip 'Program settings left unchanged.'; return }
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+
+    # ---- HDMI Mirror: assets\hdmi-mirror\<PC key>.json (or default.json)
+    $hmExe = $Packages['HdmiMirror'].Check
+    $hmSrc = @((Join-Path $assets "hdmi-mirror\$($pc.Key).json"), (Join-Path $assets 'hdmi-mirror\default.json')) |
+        Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    Write-Host ''
+    if (-not (Test-Path -LiteralPath $hmExe)) {
+        Write-Skip 'HDMI Mirror: not installed on this PC.'
+    } elseif (-not $hmSrc) {
+        Write-Skip "HDMI Mirror: no saved config (assets\hdmi-mirror\$($pc.Key).json)."
+    } else {
+        $dst = Join-Path (Split-Path -Path $hmExe -Parent) 'hdmimirror.config.json'
+        $go = $true
+        if (Test-Path -LiteralPath $dst) {
+            Write-Note '  HDMI Mirror already has a config on this PC (it may have been adjusted by hand).'
+            $go = Ask-YesNo '  Replace it with the saved one? (a backup is kept)' $false
+            if ($go) { Copy-Item -LiteralPath $dst -Destination "$dst.bak-$stamp" -Force }
+        }
+        if ($go) {
+            Get-Process -Name 'HdmiMirror' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Copy-Item -LiteralPath $hmSrc -Destination $dst -Force
+            Write-Ok "HDMI Mirror: config applied from $(Split-Path -Path $hmSrc -Leaf)."
+            Add-Change "Settings: HDMI Mirror config $(Split-Path -Path $hmSrc -Leaf)"
+        } else { Write-Skip 'HDMI Mirror: config kept.' }
+    }
+
+    # ---- OBS: assets\obs\ is copied into %APPDATA%\obs-studio\ (scenes, profiles, global.ini, plugin settings)
+    Write-Host ''
+    $obsSrc = Join-Path $assets 'obs'
+    $obsFiles = @(Get-ChildItem -LiteralPath $obsSrc -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'README.md' })
+    if (-not (Test-Path -LiteralPath $Packages['OBS'].Check)) {
+        Write-Skip 'OBS: not installed on this PC.'
+    } elseif ($obsFiles.Count -eq 0) {
+        Write-Skip 'OBS: no saved scenes / profile in assets\obs.'
+    } else {
+        $obsDst = Join-Path $env:APPDATA 'obs-studio'
+        if (Get-Process -Name 'obs64' -ErrorAction SilentlyContinue) {
+            Write-Note '  OBS is open. It must be closed so it does not overwrite the copied files.'
+            if (Ask-YesNo '  Close OBS now?' $true) { Get-Process -Name 'obs64' | Stop-Process -Force; Start-Sleep -Seconds 2 }
+        }
+        if (Get-Process -Name 'obs64' -ErrorAction SilentlyContinue) {
+            Write-Skip 'OBS: still open - settings not copied.'
+        } else {
+            if (Test-Path -LiteralPath $obsDst) {
+                Copy-Item -LiteralPath $obsDst -Destination "$obsDst.bak-$stamp" -Recurse -Force
+            }
+            foreach ($f in $obsFiles) {
+                $rel = $f.FullName.Substring($obsSrc.Length).TrimStart('\')
+                $to = Join-Path $obsDst $rel
+                New-Item -ItemType Directory -Path (Split-Path -Path $to -Parent) -Force | Out-Null
+                Copy-Item -LiteralPath $f.FullName -Destination $to -Force
+            }
+            Write-Ok "OBS: $($obsFiles.Count) settings files copied to $obsDst (backup: obs-studio.bak-$stamp)."
+            Add-Change 'Settings: OBS scenes / profile'
+        }
+    }
+
+    # ---- Stream Deck: assets\streamdeck\<Game>.streamDeckProfile
+    Write-Host ''
+    $sdExe = $Packages['StreamDeck'].Check
+    $sdProfile = if ($pc.Game) { Join-Path $assets "streamdeck\$($pc.Game).streamDeckProfile" } else { '' }
+    if (-not (Test-Path -LiteralPath $sdExe)) {
+        Write-Skip 'Stream Deck: not installed on this PC.'
+    } elseif (-not $pc.Game) {
+        Write-Skip 'Stream Deck: no game set for this PC.'
+    } elseif (-not (Test-Path -LiteralPath $sdProfile)) {
+        Write-Skip "Stream Deck: no saved profile (assets\streamdeck\$($pc.Game).streamDeckProfile)."
+    } else {
+        # Opening the profile file makes the Stream Deck app import it
+        Start-Process -FilePath $sdProfile
+        Write-Ok "Stream Deck: profile '$($pc.Game)' sent to the Stream Deck app."
+        Write-Note '  If the Stream Deck app asks to import the profile, accept it.'
+        Add-Change "Settings: Stream Deck profile $($pc.Game)"
+    }
+}
+
+# ============================ 10) APP AUTOSTART =======================
 function Invoke-AppAutostart($pc) {
     Write-Section 'APP AUTOSTART'
     if ($pc.Type -eq 'Staff' -or $pc.Apps.Count -eq 0) { Write-Skip 'App autostart does not apply to this PC type.'; return }
@@ -895,6 +1233,18 @@ function Invoke-AppAutostart($pc) {
         $app      = $Apps[$k]
         $taskName = "$tableName - $($app.Name) Startup"
         Write-Host ''
+        if ($app.Replaces) {
+            $old = "$tableName - $($app.Replaces) Startup"
+            if (Get-ScheduledTask -TaskName $old -ErrorAction SilentlyContinue) {
+                Unregister-ScheduledTask -TaskName $old -Confirm:$false -ErrorAction SilentlyContinue
+                Write-Ok "Old '$($app.Replaces)' autostart task removed - replaced by $($app.Name)."
+            }
+        }
+        if ($app.SelfStarts) {
+            Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+            Write-Skip "$($app.Name): it starts by itself at logon - no task needed (an old one was removed, if any)."
+            continue
+        }
         if ($app.Note) { Write-Note $app.Note }
 
         if (-not (Ask-YesNo "  Enable $($app.Name) auto-start?" $true)) {
@@ -994,7 +1344,7 @@ function Invoke-AppAutostart($pc) {
     Write-Note 'To make an app open on the correct monitor, move its window there by hand once - most apps (OBS included) remember the position.'
 }
 
-# ============================== 8) FINISH ============================
+# ============================== 11) FINISH ===========================
 function Invoke-Finish {
     Write-Section 'SUMMARY'
     if ($State.Changes.Count -eq 0) {
@@ -1035,6 +1385,10 @@ if (-not $isAdmin) {
     exit
 }
 
+# -- downloads: GitHub needs TLS 1.2; the progress bar makes big downloads very slow
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+$ProgressPreference = 'SilentlyContinue'
+
 # -- log everything
 $logDir = 'C:\KermaSetup\logs'
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
@@ -1056,6 +1410,9 @@ try {
     Invoke-LoginSetup         $selected
     Invoke-WindowsUpdateSetup $selected
     Invoke-NetworkSetup       $selected
+    Invoke-PcTuning           $selected
+    Invoke-InstallPrograms    $selected
+    Invoke-ProgramSettings    $selected
     Invoke-AppAutostart       $selected
     Invoke-Finish
 } catch {

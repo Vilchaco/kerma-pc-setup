@@ -2,6 +2,31 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.0.0] - 2026-10-06 - Instalación completa con una línea
+
+El script pasa a ser el instalador maestro de los PCs de la empresa. En un PC recién instalado basta con pegar una línea en PowerShell: descarga la última versión, instala los programas, los configura y deja el PC listo tras reiniciar.
+
+### Añadido
+- **Instalación con una línea** mediante `bootstrap.ps1`. Descarga la última release en `C:\KermaSetup\app` y la ejecuta con permisos de administrador.
+- Sección **Instalar programas** según el tipo de PC:
+  - Mesas: Google Chrome, RustDesk, Stream Deck, HDMI Mirror y OBS Studio.
+  - Despacho: Google Chrome, RustDesk y Deskflow.
+  - Supervisores: Google Chrome.
+- Los programas del catálogo de Windows se instalan con winget. Si winget no está activo en un PC nuevo, el script intenta activarlo.
+- RustDesk y HDMI Mirror se descargan de su última release en GitHub. HDMI Mirror se instala en `C:\Kerma\HdmiMirror` y se actualiza solo cuando sale una versión nueva, conservando su configuración.
+- Si hay una Focusrite conectada, el script la detecta y la muestra. Su software se instalará cuando se confirme la generación de las Scarlett.
+- Sección **Ajustes del PC**: la pantalla nunca se apaga, el PC no entra en suspensión, los USB no se suspenden, y se desactivan las notificaciones y el salvapantallas.
+- Sección **Configuración de programas**, que aplica lo que haya en la carpeta `assets`:
+  - La configuración de HDMI Mirror de cada mesa.
+  - Las escenas, el perfil y los ajustes de OBS.
+  - El perfil de Stream Deck del juego de cada mesa.
+
+### Cambiado
+- HDMI Mirror sustituye a Mirror App en el autoarranque de las mesas. La tarea antigua de Mirror App se elimina.
+- Stream Deck ya no tiene tarea de autoarranque, porque se abre sola al iniciar sesión. Así no se abre dos veces.
+- Las rutas de las apps que instala el script ya no se preguntan: el script sabe dónde están.
+- Las rutas recordadas se guardan también en `C:\KermaSetup`, para conservarlas entre versiones.
+
 ## [3.2.0] - 2026-10-02 - Sincronización de la hora
 
 Las cuentas atrás de la Dealer App dependen del reloj de Windows. Con unos segundos de desfase terminan antes de tiempo, por ejemplo de 40 a 27 en vez de 13 a 0, o se quedan paradas en 1 s.

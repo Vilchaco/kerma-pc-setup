@@ -4,6 +4,8 @@ Guía para quien mantiene el script. Los técnicos solo necesitan descargar la �
 
 ## 1. Hacer el cambio
 
+> La línea de instalación descarga siempre la **última release**, no lo que haya en `main`. Un cambio no llega a los PCs hasta que publicas una versión. La excepción es `bootstrap.ps1`, que se lee directamente de `main`: cualquier cambio en él afecta al momento.
+
 - Edita `src/Kerma-PCSetup.ps1`.
 - Sube el número de versión en dos sitios del propio script: la línea `$ScriptVersion = '...'` y la cabecera `Kerma Games - PC Setup (vX.Y.Z - PowerShell)`.
 - El script tiene que seguir siendo **solo ASCII**: sin tildes ni eñes. Windows PowerShell 5.1 lee mal esos caracteres en un archivo sin BOM, y la comprobación automática lo rechaza.

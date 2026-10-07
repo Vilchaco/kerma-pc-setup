@@ -5,11 +5,31 @@
 
 Script para dejar listo un PC del casino de Kerma Games en unos minutos: mesas de juego, PC de supervisores y PC del despacho. Pregunta paso a paso, valida cada dato y deja un registro de todo lo que cambia.
 
-## Descargar
+## Instalar en un PC nuevo con una línea
 
-Descarga siempre la **[última versión](https://github.com/Vilchaco/kerma-pc-setup/releases/latest)**. El zip está en el apartado **Assets** de la release. Las notas de cada versión están en [CHANGELOG.md](CHANGELOG.md).
+1. Conecta el PC a internet.
+2. Abre **PowerShell**: clic derecho en el botón de Inicio y **Terminal** o **Windows PowerShell**.
+3. Pega esta línea y pulsa Enter:
 
-## Uso
+```powershell
+irm https://raw.githubusercontent.com/Vilchaco/kerma-pc-setup/main/bootstrap.ps1 | iex
+```
+
+Desde **CMD** la línea es esta:
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://raw.githubusercontent.com/Vilchaco/kerma-pc-setup/main/bootstrap.ps1 | iex"
+```
+
+El script se descarga en `C:\KermaSetup\app`, pide permisos de administrador y empieza. Responde a cada sección y reinicia al final.
+
+> **Seguridad.** Esa línea ejecuta como administrador lo que haya en este repositorio. Cualquiera con permiso de escritura en él decide lo que se instala en los PCs de la empresa. Revisa con cuidado quién tiene ese permiso.
+
+## Descargar el zip
+
+También puedes descargar la **[última versión](https://github.com/Vilchaco/kerma-pc-setup/releases/latest)** a mano. El zip está en el apartado **Assets** de la release. Las notas de cada versión están en [CHANGELOG.md](CHANGELOG.md).
+
+## Uso con el zip
 
 1. Copia el zip al PC con Windows, por ejemplo con un USB.
 2. Clic derecho en el zip, **Propiedades**, marca **Desbloquear** y acepta. Sin esto Windows puede bloquear el script por venir de internet.
@@ -29,6 +49,9 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Login | Quita la contraseña para que arranque directo al escritorio tras un apagón, o guarda la contraseña para el auto-login. |
 | Windows Update | Solo manual, desactivado del todo, o restaurar las actualizaciones automáticas. |
 | Red | Muestra los adaptadores y pone una IP fija o vuelve a DHCP. Solo hay que teclear la IP. |
+| Ajustes del PC | Pantalla siempre encendida, sin suspensión, USB sin ahorro de energía, sin notificaciones ni salvapantallas. |
+| Instalar programas | Instala o actualiza los programas de ese tipo de PC. |
+| Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck. |
 | Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. |
 | Resumen | Lista todo lo que ha cambiado y ofrece reiniciar. |
 
@@ -36,9 +59,23 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 
 | Tipo | PCs | Comportamiento |
 |---|---|---|
-| Mesa | Ruleta, Blackjack, Blackjack Unlimited, Craps | Sin contraseña, actualizaciones manuales, apps de mesa: scanner, StreamDeck, Dealer App, Mirror y OBS. |
-| Supervisor | Supervisor 01 y 02 | Recomienda mantener la contraseña y las actualizaciones automáticas. Sin autoarranque de apps. |
-| Despacho | PC de Hector | Igual que una mesa, pero sus apps son Deskflow y el programa de cámaras. |
+| Mesa | Ruleta, Blackjack, Blackjack Unlimited, Craps | Sin contraseña y actualizaciones manuales. Instala Chrome, RustDesk, Stream Deck, HDMI Mirror y OBS, con el perfil de Stream Deck de su juego. |
+| Supervisor | Supervisor 01 y 02 | Recomienda mantener la contraseña y las actualizaciones automáticas. Instala Chrome. Sin autoarranque de apps. |
+| Despacho | PC de Hector | Igual que una mesa, pero instala Chrome, RustDesk y Deskflow, y sus apps de inicio son Deskflow y el programa de cámaras. |
+
+## Programas
+
+| Programa | De dónde sale |
+|---|---|
+| Google Chrome | winget, `Google.Chrome` |
+| RustDesk | Última release de [rustdesk/rustdesk](https://github.com/rustdesk/rustdesk) |
+| Stream Deck | winget, `Elgato.StreamDeck` |
+| HDMI Mirror | Última release de [Vilchaco/kerma-hdmi-mirror](https://github.com/Vilchaco/kerma-hdmi-mirror) |
+| OBS Studio | winget, `OBSProject.OBSStudio` |
+| Deskflow | winget, `Deskflow.Deskflow` |
+| Focusrite Control | winget. Pendiente de confirmar la generación de las Scarlett. |
+
+Las listas por tipo de PC están en `$InstallByType`, en la cabecera del script.
 
 ## Modo desatendido
 
@@ -59,6 +96,8 @@ Todo se edita en los bloques `CONFIG` del principio de `Kerma-PCSetup.ps1`:
 - **IPs fijas:** rellena `IP` en la línea de cada PC. La máscara, la puerta de enlace y las DNS se toman de `$NetDefaults`.
 - **Apps:** el retardo y si se abren maximizadas, en la tabla `$Apps`. Las rutas no hace falta ponerlas: se piden al configurar.
 - **Hora:** zona horaria, servidores de hora y hora de la sincronización diaria.
+- **Programas:** la tabla `$Packages` y las listas `$InstallByType`.
+- **Configuración de los programas:** se guarda en la carpeta [assets](assets/README.md), no en el script.
 
 El script debe seguir siendo **solo ASCII**, sin tildes ni eñes. La comprobación automática de GitHub rechaza cualquier otro carácter.
 
@@ -66,6 +105,9 @@ El script debe seguir siendo **solo ASCII**, sin tildes ni eñes. La comprobaci�
 
 | Ruta o elemento | Para qué |
 |---|---|
+| `C:\KermaSetup\app\<versión>\` | El script descargado con la línea de instalación. |
+| `C:\KermaSetup\downloads\` | Los instaladores descargados. |
+| `C:\Kerma\HdmiMirror\` | HDMI Mirror y su configuración. |
 | `C:\KermaStartup\<equipo>\` | Un pequeño `.bat` por app con su retardo de arranque. |
 | Tareas `<equipo> - <App> Startup` | Abren cada app al iniciar sesión. |
 | Tarea `Kerma - Time Sync` | Sincroniza la hora al encender y cada día. |

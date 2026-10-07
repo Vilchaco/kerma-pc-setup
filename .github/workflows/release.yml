@@ -22,7 +22,8 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           ZIP="Kerma_PC_Setup-v${VERSION}.zip"
           mkdir -p dist/Kerma_PC_Setup
-          cp src/* dist/Kerma_PC_Setup/
+          cp -r src/. dist/Kerma_PC_Setup/
+          if [ -d assets ]; then cp -r assets dist/Kerma_PC_Setup/assets; fi
           (cd dist && zip -r -X "$ZIP" Kerma_PC_Setup)
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "ZIP=$ZIP" >> "$GITHUB_ENV"
