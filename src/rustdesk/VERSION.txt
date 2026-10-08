@@ -1,6 +1,6 @@
 Kerma RustDesk - vendored copy
 Source : https://github.com/restidavid/kerma-rust (private), by David (restidavid)
-Commit : 5fef9de (2026-10-08) "Documentar instalacion y modos Master y Client"
+Commit : 24be0b3 (2026-10-08) "Preparar credenciales de RustDesk en cola para evitar sesiones simultaneas"
 Files  : Configurar-Esta-PC.ps1, Instalar-Logo-Kerma.ps1, Agregar-Favoritos.ps1,
          Configurar-Display.ps1, Limpiar-Perfil-Cliente.ps1,
          Configurar-Contrasena-Saliente.ps1, logo-kerma-games.png

@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.0.1] - 2026-10-08 - Kerma RustDesk actualizado
+
+### Cambiado
+- Scripts de RustDesk de David actualizados a su último commit (`24be0b3`):
+  - Los MASTER que ya tenían el MCR en Favoritos lo pierden al volver a pasar el script.
+  - En modo MASTER ya no se exige que RustDesk confirme la contraseña de salida por línea de comandos. Se sigue escribiendo y comprobando en el perfil del usuario.
+
 ## [5.0.0] - 2026-10-08 - Reorganización: perfiles, idioma y modos
 
 El script deja de ser un único archivo de 2.200 líneas. Hace lo mismo que la 4.7.1, pero organizado para crecer y para trabajar solo.

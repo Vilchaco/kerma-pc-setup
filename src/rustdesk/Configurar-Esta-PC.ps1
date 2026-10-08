@@ -102,7 +102,8 @@ if ($resultadoContrasena -notmatch 'Done!') {
 & $rustdesk --option verification-method use-permanent-password | Out-Null
 if ($Modo -eq 'Master') {
     & $rustdesk --option default-connect-password $Contrasena | Out-Null
-} else {
+}
+if ($Modo -eq 'Client') {
     foreach ($permiso in @('enable-keyboard', 'enable-clipboard', 'enable-file-transfer', 'enable-audio', 'enable-remote-restart')) {
         & $rustdesk --option $permiso Y | Out-Null
     }
@@ -127,13 +128,6 @@ foreach ($nombre in $esperado.Keys) {
     if ($actual -ne $esperado[$nombre]) {
         throw "RustDesk no confirmo $nombre. Esperado '$($esperado[$nombre])'; actual '$actual'."
     }
-}
-if ($Modo -eq 'Master') {
-    $passwordConexion = (& $rustdesk --option default-connect-password | Out-String).Trim()
-    if ($passwordConexion -ne $Contrasena) {
-        throw 'RustDesk no confirmo la contrasena predeterminada para conexiones salientes.'
-    }
-    $passwordConexion = $null
 }
 
 $nombreRegla = 'RustDesk-DirectIP-Local'

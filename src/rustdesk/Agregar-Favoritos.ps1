@@ -60,6 +60,7 @@ if ($coincidenciasFav.Count -eq 0 -and $contenido -match '(?m)^[ \t]*fav[ \t]*='
 $inicioArreglo = -1
 $finArreglo = -1
 $valoresExistentes = New-Object -TypeName 'System.Collections.Generic.HashSet[string]' -ArgumentList ([System.StringComparer]::Ordinal)
+$ordenExistente = New-Object 'System.Collections.Generic.List[string]'
 if ($coincidenciasFav.Count -eq 1) {
     $inicioArreglo = $coincidenciasFav[0].Index + $coincidenciasFav[0].Length - 1
     $profundidad = 0
@@ -81,6 +82,7 @@ if ($coincidenciasFav.Count -eq 1) {
                 $escape = $true
             } elseif ($caracter -eq $comilla) {
                 [void]$valoresExistentes.Add($valor.ToString())
+                $ordenExistente.Add($valor.ToString())
                 $comilla = ''
             } else {
                 [void]$valor.Append($caracter)
@@ -118,8 +120,15 @@ foreach ($id in $ids) {
     }
 }
 
-if ($pendientes.Count -gt 0) {
-    if ($inicioArreglo -ge 0) {
+$quitarMcr = $valoresExistentes.Contains('192.168.1.79')
+if ($pendientes.Count -gt 0 -or $quitarMcr) {
+    if ($quitarMcr) {
+        $conservar = @($ordenExistente | Where-Object { $_ -ne '192.168.1.79' } |
+            ForEach-Object { ConvertTo-Json -InputObject $_ -Compress })
+        $nuevoArreglo = '[' + ((@($pendientes.ToArray()) + $conservar) -join ', ') + ']'
+        $contenido = $contenido.Substring(0, $inicioArreglo) + $nuevoArreglo +
+            $contenido.Substring($finArreglo + 1)
+    } elseif ($inicioArreglo -ge 0) {
         $interior = $contenido.Substring($inicioArreglo + 1, $finArreglo - $inicioArreglo - 1)
         $separador = if ($valoresExistentes.Count -gt 0) { ', ' } else { '' }
         $nuevoArreglo = '[' + ($pendientes -join ', ') + $separador + $interior + ']'
@@ -192,5 +201,5 @@ if ($sinFavorito.Count -gt 0 -or $sinFicha.Count -gt 0) {
     throw "Verificacion incompleta. Favoritos faltantes: $($sinFavorito -join ', '). Fichas faltantes: $($sinFicha -join ', ')."
 }
 Write-Host "Favoritos verificados: $($ids.Count)/$($ids.Count). Favoritos nuevos: $($pendientes.Count). Fichas nuevas: $nuevosPeers. Fichas con vista adaptable actualizada: $peersActualizados."
-Write-Host 'Abre RustDesk de nuevo y revisa la pestana Favoritos.'
-Write-Host 'La contrasena de conexion predeterminada se configura con Configurar-Esta-PC.cmd.'
+Write-Host 'Abre RustDesk de nuevo y revisa la pestana Favoritos. MCR se retiro si estaba guardada.'
+Write-Host 'Para recordar la contrasena, conecta una vez a cada Favorito y marca Remember password.'
