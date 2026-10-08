@@ -171,6 +171,26 @@ function Test-KermaConfig {
     if (-not $assets) { $errors.Add('no se encuentra la carpeta assets') } else {
         $def = Test-Path -LiteralPath (Join-Path $assets 'wallpaper\default.jpg')
         if (-not $def) { $errors.Add('falta assets\wallpaper\default.jpg') }
+        foreach ($f in @('Orbitron-Black.ttf', 'Sora-Regular.ttf')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $assets "fonts\$f"))) { $errors.Add("falta la fuente assets\fonts\$f") }
+        }
+        # Prueba real del fondo: cargar las fuentes y dibujar uno de dos lineas
+        if ($def) {
+            try {
+                Add-Type -AssemblyName System.Drawing
+                $wf = Get-WallpaperFonts
+                if (-not $wf.Title) { $errors.Add('Windows no carga assets\fonts\Orbitron-Black.ttf') }
+                if (-not $wf.Info)  { $errors.Add('Windows no carga assets\fonts\Sora-Regular.ttf') }
+                if ($wf.Pfc) { $wf.Pfc.Dispose() }
+                $tmp = Join-Path ([IO.Path]::GetTempPath()) 'kerma-wallpaper-test.jpg'
+                New-KermaWallpaper (Join-Path $assets 'wallpaper\default.jpg') 'Office | Manager' 'KG-TEST    192.168.0.1    test' $tmp
+                $img = [System.Drawing.Image]::FromFile($tmp)
+                if ($img.Width -ne 1920 -or $img.Height -ne 1080) { $errors.Add("el fondo de prueba sale de $($img.Width)x$($img.Height)") }
+                $img.Dispose()
+                Write-Host "Fondo de prueba: OK ($((Get-Item $tmp).Length) bytes, fuentes $($wf.Title.Name) / $($wf.Info.Name))"
+                Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            } catch { $errors.Add("no se pudo generar un fondo de prueba: $($_.Exception.Message)") }
+        }
         $theme = Join-Path $assets "obs\themes\$ObsThemeFile"
         if (-not (Test-Path -LiteralPath $theme)) { $errors.Add("falta el tema de OBS assets\obs\themes\$ObsThemeFile") }
         elseif (-not (Select-String -LiteralPath $theme -SimpleMatch "id: '$ObsThemeId'" -Quiet)) { $errors.Add("el id del tema de OBS ($ObsThemeId) no coincide con @OBSThemeMeta de $ObsThemeFile") }

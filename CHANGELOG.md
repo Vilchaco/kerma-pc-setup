@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.2.0] - 2026-10-08 - Fuentes del MCR en el fondo
+
+### Cambiado
+- El nombre que escribe el script en el fondo usa **Orbitron Black**, y la línea con el nombre del equipo, la IP y la versión usa **Sora**: las fuentes del MCR, propuestas por David. Se aplica a los PCs sin plantilla propia y a los nombres escritos a mano. Las fuentes van en `assets/fonts`, con licencia libre SIL OFL, y Windows las carga solo para el fondo, sin instalarlas. Si no se pudieran cargar, se usan Bahnschrift y Segoe UI, como antes.
+
 ## [5.1.0] - 2026-10-08 - Otro PC y nombre del fondo a mano
 
 ### Añadido

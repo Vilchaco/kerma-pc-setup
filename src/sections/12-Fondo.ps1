@@ -4,8 +4,30 @@
 #  nombre del PC escrito por el script.
 # =====================================================================
 
+# Fuentes de assets\fonts (las del MCR): se cargan solo para dibujar, sin instalarlas.
+# Si no se pueden cargar, se usan Bahnschrift / Segoe UI de Windows.
+function Get-WallpaperFonts {
+    $r = @{ Title = $null; Info = $null; Pfc = $null }
+    $assets = Get-AssetsDir
+    if (-not $assets) { return $r }
+    try {
+        $pfc = New-Object System.Drawing.Text.PrivateFontCollection
+        foreach ($f in @('Orbitron-Black.ttf', 'Sora-Regular.ttf')) {
+            $p = Join-Path $assets "fonts\$f"
+            if (Test-Path -LiteralPath $p) { $pfc.AddFontFile($p) }
+        }
+        foreach ($fam in $pfc.Families) {
+            if ($fam.Name -like 'Orbitron*') { $r.Title = $fam }
+            elseif ($fam.Name -like 'Sora*') { $r.Info = $fam }
+        }
+        $r.Pfc = $pfc
+    } catch { }
+    return $r
+}
+
 function New-KermaWallpaper([string]$template, [string]$label, [string]$info, [string]$out) {
     Add-Type -AssemblyName System.Drawing
+    $fonts = Get-WallpaperFonts
     $src = [System.Drawing.Image]::FromFile($template)
     $bmp = New-Object System.Drawing.Bitmap 1920, 1080
     $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -16,21 +38,26 @@ function New-KermaWallpaper([string]$template, [string]$label, [string]$info, [s
         $g.DrawImage($src, 0, 0, 1920, 1080)
         $px = [System.Drawing.GraphicsUnit]::Pixel
         if ($label) {
-            $family = 'Segoe UI'
-            try { [void](New-Object System.Drawing.FontFamily 'Bahnschrift'); $family = 'Bahnschrift' } catch { }
-            $f1 = New-Object System.Drawing.Font($family, 32, [System.Drawing.FontStyle]::Bold, $px)
+            if ($fonts.Title) {
+                $f1 = New-Object System.Drawing.Font($fonts.Title, 34, [System.Drawing.FontStyle]::Regular, $px)
+            } else {
+                $family = 'Segoe UI'
+                try { [void](New-Object System.Drawing.FontFamily 'Bahnschrift'); $family = 'Bahnschrift' } catch { }
+                $f1 = New-Object System.Drawing.Font($family, 32, [System.Drawing.FontStyle]::Bold, $px)
+            }
             # "|" parte el nombre en dos lineas, como en las plantillas de las mesas
             $lines = @($label.Split('|') | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -First 2)
             $y = if ($lines.Count -gt 1) { 800 } else { 826 }
             foreach ($ln in $lines) { $g.DrawString($ln.ToUpper(), $f1, [System.Drawing.Brushes]::White, 146, $y); $y += 54 }
             $f1.Dispose()
         }
-        $f2 = New-Object System.Drawing.Font('Segoe UI', 21, [System.Drawing.FontStyle]::Regular, $px)
+        $f2 = if ($fonts.Info) { New-Object System.Drawing.Font($fonts.Info, 21, [System.Drawing.FontStyle]::Regular, $px) }
+              else { New-Object System.Drawing.Font('Segoe UI', 21, [System.Drawing.FontStyle]::Regular, $px) }
         $br = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(215, 196, 186, 236))
         $g.DrawString($info, $f2, $br, 146, 918)
         $f2.Dispose()
         $br.Dispose()
-    } finally { $g.Dispose(); $src.Dispose() }
+    } finally { $g.Dispose(); $src.Dispose(); if ($fonts.Pfc) { $fonts.Pfc.Dispose() } }
     $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
     $ep = New-Object System.Drawing.Imaging.EncoderParameters 1
     $ep.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.Drawing.Imaging.Encoder]::Quality), 95L
