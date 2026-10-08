@@ -2,6 +2,15 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.7.0] - 2026-10-07 - MCR y lista de equipos desde el repositorio de David
+
+### Añadido
+- **Master Control Room** en la tabla de PCs, con su IP 192.168.1.79. Se configura como MASTER de RustDesk, igual que los supervisores, y aparece en su propio apartado del panel.
+- Los MASTER leen la lista de equipos de RustDesk del repositorio de David (`Equipos.ejemplo.csv`, columnas Nombre, IP y Puerto). Las IPs se mantienen allí. Si no se puede leer, porque su repositorio es privado o no hay internet, se usan los PCs de la tabla del script que tienen IP.
+
+### Cambiado
+- El panel agrupa los PCs por grupo: Mesas, Oficina, Supervisores y Master Control Room.
+
 ## [4.6.0] - 2026-10-07 - Acceso remoto con Kerma RustDesk
 
 Integra el trabajo de David ([restidavid/kerma-rust](https://github.com/restidavid/kerma-rust)), que configura RustDesk para conectarse por IP directa dentro de la red de la oficina, sin servidores externos.

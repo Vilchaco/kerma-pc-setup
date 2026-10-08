@@ -94,6 +94,8 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 const OFFLINE_MIN = 15;
 const TYPE_ORDER = { Table: 0, Office: 1, Staff: 2 };
 const TYPE_NAME = { Table: 'Mesas', Office: 'Oficina', Staff: 'Supervisores' };
+const GROUP_NAME = { 'Table PCs': 'Mesas', 'Supervisor PCs': 'Supervisores', 'Office PCs': 'Oficina', 'Control room': 'Master Control Room' };
+const groupOf = (p) => GROUP_NAME[p.group] || p.group || TYPE_NAME[p.type] || p.type || 'Otros';
 let data = null, open = new Set();
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -142,7 +144,7 @@ const H_TXT = { ok: 'Bien', warn: 'Revisar', bad: 'Problema', off: 'Sin reportar
 function render() {
   const now = new Date(data.now);
   const pcs = data.pcs.slice().sort((a, b) =>
-    (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9) || String(a.label || a.id).localeCompare(String(b.label || b.id)));
+    (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9) || groupOf(a).localeCompare(groupOf(b)) || String(a.label || a.id).localeCompare(String(b.label || b.id)));
   const count = { ok: 0, warn: 0, bad: 0, off: 0 };
   pcs.forEach((p) => count[(p._h = health(p, now))]++);
   $('summary').innerHTML = ['ok', 'warn', 'bad', 'off'].map((k) =>
@@ -152,7 +154,7 @@ function render() {
 
   let html = '', lastType = null;
   for (const p of pcs) {
-    if (p.type !== lastType) { lastType = p.type; html += `<tr class="group"><td colspan="9">${esc(TYPE_NAME[p.type] || p.type || 'Otros')}</td></tr>`; }
+    if (groupOf(p) !== lastType) { lastType = groupOf(p); html += `<tr class="group"><td colspan="9">${esc(lastType)}</td></tr>`; }
     const off = p.clock ? p.clock.offset_s : null;
     const ip = (p.network || []).filter((n) => n.ip).map((n) => n.ip).join(', ');
     const apps = (p.apps || []).map((a) => {

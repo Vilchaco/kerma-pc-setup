@@ -38,11 +38,11 @@ Los PCs se conectan entre sí con RustDesk por **IP directa** dentro de la red d
 | Tipo de PC | Modo | Qué hace |
 |---|---|---|
 | Mesas y oficina | CLIENT | Acepta conexiones con la contraseña común, sin que nadie acepte en pantalla. |
-| Supervisores | MASTER | Lleva en Favoritos todos los PCs con IP de la tabla del script, y tiene la contraseña guardada para conectarse. |
+| Supervisores y Master Control Room | MASTER | Lleva en Favoritos la lista de equipos y tiene la contraseña guardada para conectarse. |
 
 > **La contraseña común es la única llave de las mesas.** Con ella, cualquiera dentro de la red puede tomar el control de una mesa en juego sin aviso previo. Usa una contraseña larga, que la conozcan pocas personas, y cámbiala cuando alguien deje el equipo. Para cambiarla, vuelve a pasar el script con la nueva contraseña en todos los PCs.
 
-Para añadir un PC a los Favoritos del MASTER, ponle su IP en la tabla `$PCs`. Si no es un PC configurado con el script, añádelo a `$RustDeskExtraPeers`.
+La lista de equipos del MASTER se mantiene en el repositorio de David, en `Equipos.ejemplo.csv`. El script la lee al configurar cada MASTER, así que basta con actualizarla allí y volver a pasar el script en los MASTER. Para eso su repositorio tiene que ser público: solo contiene nombres e IPs, sin contraseñas. Mientras sea privado, el script usa los PCs de la tabla `$PCs` que tienen IP, más `$RustDeskExtraPeers`.
 
 ## Panel de estado
 

@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.6.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.7.0 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -25,8 +25,8 @@
        Candy Crush & co., Microsoft 365 trial, OneDrive
     8) Install programs for this PC type (winget / GitHub releases)
     8b) Remote access: RustDesk by direct IP on the LAN (Kerma RustDesk
-       by David). Tables = CLIENT, supervisors = MASTER with every PC
-       of the table below in its Favorites
+       by David). Tables = CLIENT; supervisors and the Master Control
+       Room = MASTER, with the PC list of David's repo in its Favorites
     9) Program settings: HDMI Mirror config, OBS scenes/profile,
        VST3 plugins, Stream Deck profile of the table's game
        (all from assets\)
@@ -80,7 +80,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.6.0'
+$ScriptVersion = '4.7.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -193,12 +193,16 @@ $NeverRemove = @(
 # =====================================================================
 #  CONFIG: REMOTE ACCESS (RustDesk by direct IP - scripts in src\rustdesk)
 #  Tables / office = CLIENT (accept connections with the common password).
-#  Supervisors = MASTER (control the others: every PC of the $PCs table
-#  with an IP, plus $RustDeskExtraPeers, goes into its Favorites).
+#  Supervisors and MCR = MASTER (control the others). Their Favorites come
+#  from the PC list kept in David's repo ($RustDeskPeersUrl: columns
+#  Nombre, IP, Puerto). If it cannot be read (the repo is private, or no
+#  internet), the PCs of the $PCs table with an IP are used instead, plus
+#  $RustDeskExtraPeers.
 # =====================================================================
 $RustDeskPort        = 21118
 $RustDeskAllowedFrom = @('LocalSubnet', '192.168.0.0/22')       # who may connect (the whole office network)
-$RustDeskExtraPeers  = @(@{ Nombre = 'MCR'; IP = '192.168.1.79' })   # PCs not in the $PCs table
+$RustDeskPeersUrl    = 'https://raw.githubusercontent.com/restidavid/kerma-rust/main/Equipos.ejemplo.csv'
+$RustDeskExtraPeers  = @()   # e.g. @(@{ Nombre = 'Printer PC'; IP = '192.168.1.90' }) - PCs not in the $PCs table
 
 # =====================================================================
 #  CONFIG: AUDIO + STATUS PANEL
@@ -234,6 +238,7 @@ $PCs = @(
     @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';                             Type = 'Table';  Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Apps = $TableApps;  Game = 'craps';  Net = @{ IP = '192.168.1.86' } }
     @{ Key = 'SUP01';   Group = 'Supervisor PCs'; Label = 'Supervisor 01';                        Type = 'Staff';  Hostname = 'KG-SUP-01';       Username = 'kg-sup-01';       FullName = 'Supervisor 01';          Apps = @();         Net = @{ IP = '' } }
     @{ Key = 'SUP02';   Group = 'Supervisor PCs'; Label = 'Supervisor 02';                        Type = 'Staff';  Hostname = 'KG-SUP-02';       Username = 'kg-sup-02';       FullName = 'Supervisor 02';          Apps = @();         Net = @{ IP = '' } }
+    @{ Key = 'MCR';     Group = 'Control room';   Label = 'Master Control Room';                  Type = 'Staff';  Hostname = 'KG-MCR-01';       Username = 'kg-mcr-01';       FullName = 'Master Control Room';    Apps = @();         Net = @{ IP = '192.168.1.79' } }
     @{ Key = 'HECTOR';  Group = 'Office PCs';     Label = 'Hector office PC (cameras on TV)'; Type = 'Office'; Hostname = 'KG-OFC-HECTOR'; Username = 'kg-ofc-hector'; FullName = 'Hector Office PC';    Apps = $OfficeApps; Net = @{ IP = '' } }
 )
 
@@ -1292,6 +1297,39 @@ function Read-NewSecret([string]$what) {
     }
 }
 
+# PCs for the MASTER Favorites: David's list if readable, else the $PCs table
+function Get-RustDeskPeers($pc) {
+    $own = @($pc.Net.IP) + @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | ForEach-Object { $_.IPAddress })
+    $peers = @()
+    $source = ''
+    if ($RustDeskPeersUrl) {
+        try {
+            $csv = (Invoke-WebRequest -Uri $RustDeskPeersUrl -UseBasicParsing -TimeoutSec 15).Content | ConvertFrom-Csv
+            foreach ($r in $csv) {
+                $ip = [string]$r.IP
+                $port = 0
+                if (-not (Test-IPv4 $ip) -or -not $r.Nombre) { continue }
+                if (-not [int]::TryParse([string]$r.Puerto, [ref]$port) -or $port -lt 1 -or $port -gt 65535) { $port = $RustDeskPort }
+                if ($own -contains $ip) { continue }
+                $peers += [pscustomobject]@{ Nombre = ([string]$r.Nombre).Trim(); IP = $ip; Puerto = $port }
+            }
+            if ($peers.Count) { $source = "David's repo (kerma-rust)" }
+        } catch { }
+    }
+    if (-not $peers.Count) {
+        $source = 'the PC table of this script'
+        foreach ($row in $PCs) {
+            if (-not $row.Net -or -not $row.Net.IP -or $row.Key -eq $pc.Key -or $own -contains $row.Net.IP) { continue }
+            $peers += [pscustomobject]@{ Nombre = $row.Label; IP = $row.Net.IP; Puerto = $RustDeskPort }
+        }
+        foreach ($x in $RustDeskExtraPeers) {
+            if ($own -contains $x.IP) { continue }
+            $peers += [pscustomobject]@{ Nombre = $x.Nombre; IP = $x.IP; Puerto = $RustDeskPort }
+        }
+    }
+    return @{ Peers = $peers; Source = $source }
+}
+
 function Invoke-RemoteAccess($pc) {
     Write-Section 'REMOTE ACCESS  (RustDesk by direct IP on the LAN)'
     $exe = $Packages['RustDesk'].Check
@@ -1304,8 +1342,8 @@ function Invoke-RemoteAccess($pc) {
         Write-Host '  CLIENT: this PC accepts RustDesk connections from the office network, by IP'
         Write-Host "  (port $RustDeskPort), with the common password and without anyone accepting on screen."
     } else {
-        Write-Host '  MASTER: this PC controls the others. All PCs with an IP in the script table go'
-        Write-Host '  into its RustDesk Favorites, and the common password is saved for connecting.'
+        Write-Host "  MASTER: this PC controls the others. The PC list (from David's repo, or the script"
+        Write-Host '  table) goes into its RustDesk Favorites, and the common password is saved for connecting.'
     }
     Write-Host ''
     if (-not (Ask-YesNo "  Configure RustDesk as $mode?" $true)) { Write-Skip 'RustDesk left unchanged.'; return }
@@ -1336,12 +1374,10 @@ function Invoke-RemoteAccess($pc) {
             & (Join-Path $rd 'Limpiar-Perfil-Cliente.ps1') | Out-Null
             Write-Ok 'RustDesk: no saved PCs or outgoing password on this table.'
         } else {
-            $peers = @()
-            foreach ($row in $PCs) {
-                if ($row.Key -eq $pc.Key -or -not $row.Net -or -not $row.Net.IP) { continue }
-                $peers += [pscustomobject]@{ Nombre = $row.Label; IP = $row.Net.IP; Puerto = $RustDeskPort }
-            }
-            foreach ($x in $RustDeskExtraPeers) { $peers += [pscustomobject]@{ Nombre = $x.Nombre; IP = $x.IP; Puerto = $RustDeskPort } }
+            $list = Get-RustDeskPeers $pc
+            $peers = @($list.Peers)
+            Write-Host "  PC list taken from $($list.Source)."
+            if ($peers.Count -eq 0) { Write-Warn 'No PCs with an IP to add to the Favorites.'; return }
             & (Join-Path $rd 'Configurar-Contrasena-Saliente.ps1') -Contrasena $pw | Out-Null
             & (Join-Path $rd 'Agregar-Favoritos.ps1') -Equipos $peers | Out-Null
             Write-Ok "RustDesk: $($peers.Count) PCs in Favorites ($(@($peers | ForEach-Object { $_.Nombre }) -join ', '))."
@@ -1995,7 +2031,7 @@ function Get-StatusConfig($pc) {
         $list[$k] = @{ name = $a.Name; check = $path; process = $proc; autostart = $true }
     }
     return [ordered]@{
-        key = $pc.Key; label = $pc.Label; type = $pc.Type; game = $pc.Game
+        key = $pc.Key; label = $pc.Label; type = $pc.Type; group = $pc.Group; game = $pc.Game
         script_version = $ScriptVersion; apps = @($list.Values)
     }
 }

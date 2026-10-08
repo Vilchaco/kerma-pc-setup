@@ -181,6 +181,7 @@ $status = [ordered]@{
     label          = if ($cfg) { [string]$cfg.label } else { $env:COMPUTERNAME }
     type           = if ($cfg) { [string]$cfg.type } else { $null }
     game           = if ($cfg) { [string]$cfg.game } else { $null }
+    group          = if ($cfg) { [string]$cfg.group } else { $null }
     hostname       = $env:COMPUTERNAME
     script_version = if ($cfg) { [string]$cfg.script_version } else { $null }
     collected_at   = (Get-Date).ToUniversalTime().ToString('o')
