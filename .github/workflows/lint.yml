@@ -18,7 +18,7 @@ jobs:
         shell: powershell
         run: |
           $bad = @()
-          @(Get-ChildItem src -File -Recurse -Include *.ps1, *.bat, *.cmd) + @(Get-ChildItem -File -Filter *.ps1) | ForEach-Object {
+          @(Get-ChildItem src -File -Recurse -Include *.ps1, *.psd1, *.bat, *.cmd) + @(Get-ChildItem -File -Filter *.ps1) | ForEach-Object {
             $bytes = [IO.File]::ReadAllBytes($_.FullName)
             # UTF-8 with BOM is fine (PowerShell 5.1 reads it right); without BOM only plain ASCII
             $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
@@ -52,6 +52,12 @@ jobs:
             } else { "OK: $($f.Name)" }
           }
           if ($failed) { exit 1 }
+
+      - name: Configuration check (inventory, profiles, programs, assets)
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File src/Kerma-PCSetup.ps1 -ValidateConfig
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: PSScriptAnalyzer (errors only)
         shell: powershell
