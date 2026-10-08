@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.3.1] - 2026-10-08 - Arreglo del modo Automático
+
+### Corregido
+- En modo Automático el script se paraba en la fase 0 con el error *The variable cannot be validated because the value Automático is not a valid value for the Mode variable*. El texto del modo se guardaba en una variable con el mismo nombre que el parámetro `-Mode`. En modo Manual no pasaba.
+- La comprobación de GitHub detecta ahora este tipo de choque entre variables y parámetros del script.
+
 ## [5.3.0] - 2026-10-08 - Nuevo diseño del fondo de pantalla
 
 ### Cambiado

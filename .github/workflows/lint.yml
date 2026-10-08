@@ -53,6 +53,28 @@ jobs:
           }
           if ($failed) { exit 1 }
 
+      - name: No script-level variable reuses a parameter name
+        shell: powershell
+        run: |
+          # PowerShell no distingue mayusculas: '$mode = ...' en el script principal
+          # escribe en el parametro -Mode y choca con su ValidateSet.
+          $errs = $null; $tok = $null
+          $ast = [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'src/Kerma-PCSetup.ps1'), [ref]$tok, [ref]$errs)
+          $params = @($ast.ParamBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath })
+          $allowed = @('Lang')   # $script:Lang reutiliza el parametro a proposito (solo 'es' / 'en')
+          $bad = $ast.FindAll({ param($n)
+              $n -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+              $n.Left -is [System.Management.Automation.Language.VariableExpressionAst] }, $false) |
+            Where-Object {
+              $name = $_.Left.VariablePath.UserPath -replace '^script:', ''
+              $inFunc = $false; $p = $_.Parent
+              while ($p) { if ($p -is [System.Management.Automation.Language.FunctionDefinitionAst]) { $inFunc = $true; break }; $p = $p.Parent }
+              -not $inFunc -and ($params | Where-Object { $_ -ieq $name -and $allowed -notcontains $_ })
+            }
+          foreach ($b in $bad) { "::error file=src/Kerma-PCSetup.ps1,line=$($b.Extent.StartLineNumber)::'$($b.Left)' is a parameter of the script: use another variable name" }
+          if (@($bad).Count) { exit 1 }
+          'OK: no variable reuses a parameter name'
+
       - name: Configuration check (inventory, profiles, programs, assets)
         shell: powershell
         run: |

@@ -1,6 +1,6 @@
 ﻿<#
 =====================================================================
-  Kerma Games - PC Setup  (v5.3.0 - PowerShell)
+  Kerma Games - PC Setup  (v5.3.1 - PowerShell)
 =====================================================================
   PC nuevo, una linea en PowerShell (descarga la ultima version):
     irm https://kermasetup.netlify.app | iex
@@ -48,7 +48,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '5.3.0'
+$ScriptVersion = '5.3.1'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
 $State = @{ UserRenamed = $false; HostRenamed = $false; NeedsRestart = $false; Changes = @() }
 $Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin }
@@ -167,10 +167,11 @@ try {
     if ($online) { Write-Ok (L 'Internet: OK' 'Internet: OK') } else { Write-Warn (L 'No internet: programs, time sync and the panel will fail. Check the cable / network.' 'Sin internet: fallarán los programas, la hora y el panel. Revisa el cable o la red.') }
     if ($online -and (Merge-DavidIPs)) { Write-Ok (L "IPs taken from David's list." 'IPs tomadas de la lista de David.') }
     else { Write-Note (L "  David's list could not be read (private repo or no internet): using the inventory IPs." '  No se pudo leer la lista de David (repositorio privado o sin internet): se usan las IPs del inventario.') }
-    $mode = if ($Auto) { L 'Automatic' 'Automático' } else { 'Manual' }
+    # ojo: no llamar $mode a esta variable: es el parametro -Mode (ValidateSet) y fallaria
+    $modeText = if ($Auto) { L 'Automatic' 'Automático' } else { 'Manual' }
     Write-Host ''
     Write-Host ((L '  PC       : {0}  [{1}]' '  PC       : {0}  [{1}]') -f $selected.Label, (Get-ProfileName $Prof)) -ForegroundColor Cyan
-    Write-Host ((L '  Mode     : {0}' '  Modo     : {0}') -f $mode) -ForegroundColor Cyan
+    Write-Host ((L '  Mode     : {0}' '  Modo     : {0}') -f $modeText) -ForegroundColor Cyan
     Write-Host ((L '  IP       : {0}' '  IP       : {0}') -f $(if ($selected.Net.IP) { $selected.Net.IP } else { L '(none - network left as it is)' '(ninguna: la red se queda como está)' })) -ForegroundColor Cyan
 
     # ------------------------------------------- en Automatico: todo lo que hay que preguntar, ahora
