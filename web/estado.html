@@ -131,8 +131,9 @@ function health(pc, now) {
   const c = clockCls(pc.clock && pc.clock.offset_s);
   const appsDown = (pc.apps || []).some((a) => a.autostart && a.installed && a.running === false) && pc.user;
   const disk = pc.disk && pc.disk.free_gb !== undefined && pc.disk.free_gb < 10;
+  const remoteDown = pc.type !== 'Staff' && pc.remote && !pc.remote.listening;
   if (c === 'bad' || appsDown) return 'bad';
-  if (c === 'warn' || disk || c === 'mut') return 'warn';
+  if (c === 'warn' || disk || remoteDown || c === 'mut') return 'warn';
   return 'ok';
 }
 const H_DOT = { ok: 'bg-ok', warn: 'bg-warn', bad: 'bg-bad', off: 'bg-off' };
@@ -188,7 +189,7 @@ function detail(p) {
     <div class="box"><h4>Windows</h4>${kv('Edición', w.caption)}${kv('Versión', `${w.display_version || ''} (build ${w.build || '?'})`)}
       ${kv('Arrancó', w.boot_time ? new Date(w.boot_time).toLocaleString('es-MX') : null)}${kv('Disco C:', p.disk ? `${p.disk.free_gb} GB libres de ${p.disk.total_gb} GB` : null)}
       ${kv('Hora', `${c.offset_s ?? '?'} s · ${c.server || ''} · servicio ${c.service || '?'}`)}${kv('Zona horaria', c.timezone)}
-      ${kv('Focusrite', (p.focusrite || []).join(', ') || 'no conectada')}${kv('Micrófono', p.audio && p.audio.default_recording)}${kv('Salida', p.audio && p.audio.default_playback)}</div>
+      ${kv('Focusrite', (p.focusrite || []).join(', ') || 'no conectada')}${kv('RustDesk', p.remote ? `${p.remote.rustdesk_service} · puerto ${p.remote.port} ${p.remote.listening ? 'abierto' : 'CERRADO'}` : 'no instalado')}${kv('Micrófono', p.audio && p.audio.default_recording)}${kv('Salida', p.audio && p.audio.default_playback)}</div>
     <div class="box"><h4>Red</h4>${net || '<div class="mut">sin datos</div>'}</div>
     <div class="box"><h4>Apps</h4>${apps || '<div class="mut">-</div>'}<h4 style="margin-top:12px">Tareas</h4>${tasks || '<div class="mut">-</div>'}</div>
   </div>

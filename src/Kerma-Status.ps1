@@ -161,6 +161,19 @@ if (Get-Module -ListAvailable -Name AudioDeviceCmdlets) {
     } catch { }
 }
 
+# ------------------------------------------------------------- remote access (RustDesk by direct IP)
+$remote = $null
+$rsvc = Get-Safe { Get-CimInstance Win32_Service -Filter "Name='RustDesk'" -ErrorAction Stop }
+if ($rsvc) {
+    $rport = 21118
+    $remote = @{
+        rustdesk_service = [string]$rsvc.State
+        rustdesk_start   = [string]$rsvc.StartMode
+        port             = $rport
+        listening        = [bool](Get-Safe { Get-NetTCPConnection -LocalPort $rport -State Listen -ErrorAction Stop })
+    }
+}
+
 # ------------------------------------------------------------- report
 $status = [ordered]@{
     schema         = 1
@@ -181,6 +194,7 @@ $status = [ordered]@{
     tasks          = $tasks
     focusrite      = $focusrite
     audio          = $audio
+    remote         = $remote
     warnings       = @($Warnings)
 }
 
@@ -214,6 +228,7 @@ if ($Print) {
     Show 'Focusrite' $(if ($focusrite.Count) { $focusrite -join ', ' } else { 'not connected' })
     if ($audio.default_recording) { Show 'Microphone' $audio.default_recording }
     if ($audio.default_playback) { Show 'Speakers' $audio.default_playback }
+    if ($remote) { Show 'RustDesk' "service $($remote.rustdesk_service) ($($remote.rustdesk_start)), port $($remote.port) $(if ($remote.listening) { 'listening' } else { 'NOT listening' })" $(if ($remote.listening) { 'Green' } else { 'Yellow' }) }
     foreach ($w in $Warnings) { Write-Host "  [WARN] $w" -ForegroundColor Yellow }
     Write-Host ''
 }

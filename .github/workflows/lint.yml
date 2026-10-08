@@ -20,11 +20,13 @@ jobs:
           $bad = @()
           @(Get-ChildItem src -File -Recurse -Include *.ps1, *.bat, *.cmd) + @(Get-ChildItem -File -Filter *.ps1) | ForEach-Object {
             $bytes = [IO.File]::ReadAllBytes($_.FullName)
-            if ($bytes | Where-Object { $_ -gt 127 } | Select-Object -First 1) { $bad += $_.Name }
+            # UTF-8 with BOM is fine (PowerShell 5.1 reads it right); without BOM only plain ASCII
+            $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+            if (-not $bom -and ($bytes | Where-Object { $_ -gt 127 } | Select-Object -First 1)) { $bad += $_.Name }
           }
-          foreach ($n in $bad) { "::error file=$n::Non-ASCII characters (accents, n-tilde...). Windows PowerShell 5.1 would read them wrong." }
+          foreach ($n in $bad) { "::error file=$n::Non-ASCII characters without a UTF-8 BOM. Windows PowerShell 5.1 would read them wrong: save the file as UTF-8 with BOM, or use plain ASCII." }
           if ($bad.Count) { exit 1 }
-          'OK: all scripts are ASCII'
+          'OK: all scripts are ASCII or UTF-8 with BOM'
 
       - name: No secrets in assets
         shell: powershell

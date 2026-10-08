@@ -1,0 +1,13 @@
+Kerma RustDesk - vendored copy
+Source : https://github.com/restidavid/kerma-rust (private), by David (restidavid)
+Commit : 5fef9de (2026-10-08) "Documentar instalacion y modos Master y Client"
+Files  : Configurar-Esta-PC.ps1, Instalar-Logo-Kerma.ps1, Agregar-Favoritos.ps1,
+         Configurar-Display.ps1, Limpiar-Perfil-Cliente.ps1,
+         Configurar-Contrasena-Saliente.ps1, logo-kerma-games.png
+Changes: none to the code. Line endings set to CRLF and a UTF-8 BOM added to
+         the files with accents, so Windows PowerShell 5.1 reads them right.
+Not copied: the interactive wizard (.cmd), Importar-Equipos.ps1 and
+         Conectar-Equipos.ps1 - Kerma-PCSetup.ps1 drives these scripts itself
+         and builds the MASTER list from its own PC table.
+To update: copy the new files from David's repo, update this file, and
+         publish a new version of Kerma PC Setup.

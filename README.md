@@ -31,6 +31,19 @@ El script se descarga en `C:\KermaSetup\app`, pide permisos de administrador y e
 
 > **Seguridad.** Esa línea ejecuta como administrador lo que haya en este repositorio. Cualquiera con permiso de escritura en él decide lo que se instala en los PCs de la empresa. Revisa con cuidado quién tiene ese permiso.
 
+## Acceso remoto con RustDesk
+
+Los PCs se conectan entre sí con RustDesk por **IP directa** dentro de la red de la oficina, en el puerto 21118, sin pasar por servidores externos. La configuración es el trabajo de David, [Kerma RustDesk](https://github.com/restidavid/kerma-rust), copiado en `src/rustdesk` con la versión anotada en `VERSION.txt`.
+
+| Tipo de PC | Modo | Qué hace |
+|---|---|---|
+| Mesas y oficina | CLIENT | Acepta conexiones con la contraseña común, sin que nadie acepte en pantalla. |
+| Supervisores | MASTER | Lleva en Favoritos todos los PCs con IP de la tabla del script, y tiene la contraseña guardada para conectarse. |
+
+> **La contraseña común es la única llave de las mesas.** Con ella, cualquiera dentro de la red puede tomar el control de una mesa en juego sin aviso previo. Usa una contraseña larga, que la conozcan pocas personas, y cámbiala cuando alguien deje el equipo. Para cambiarla, vuelve a pasar el script con la nueva contraseña en todos los PCs.
+
+Para añadir un PC a los Favoritos del MASTER, ponle su IP en la tabla `$PCs`. Si no es un PC configurado con el script, añádelo a `$RustDeskExtraPeers`.
+
 ## Panel de estado
 
 Abre **[kermasetup.netlify.app/estado](https://kermasetup.netlify.app/estado)** desde cualquier navegador e introduce el PIN del panel. El PIN lo tiene quien mantiene el script, y se cambia en Netlify, en la variable `STATUS_PIN` del sitio `kermasetup`.
@@ -77,6 +90,7 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Ajustes del PC | Pantalla siempre encendida, sin suspensión, USB sin ahorro de energía, sin notificaciones ni salvapantallas. Barra de tareas sin búsqueda, Vista de tareas, Widgets ni Reanudar. Red con encendido remoto y sin ahorro de energía. |
 | Quitar apps preinstaladas | Quita Solitario, Xbox, Teams, apps de Bing, Candy Crush y similares, Microsoft 365 de prueba y OneDrive, en todos los tipos de PC. |
 | Instalar programas | Instala o actualiza los programas de ese tipo de PC. |
+| Acceso remoto | Configura RustDesk por IP directa: CLIENT en mesas, MASTER en supervisores. |
 | Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck, y el tema Kerma de OBS. |
 | Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. OBS arranca sin el aviso de modo seguro aunque se haya cerrado mal, y sin el aviso de actualizaciones. |
 | Audio | Quita los sonidos de Windows y pone la Scarlett como micrófono y salida predeterminados. |

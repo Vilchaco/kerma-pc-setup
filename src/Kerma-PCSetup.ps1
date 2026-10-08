@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.5.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.6.0 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -24,6 +24,9 @@
     7b) Remove preinstalled junk: Solitaire, Xbox, Teams, Bing apps,
        Candy Crush & co., Microsoft 365 trial, OneDrive
     8) Install programs for this PC type (winget / GitHub releases)
+    8b) Remote access: RustDesk by direct IP on the LAN (Kerma RustDesk
+       by David). Tables = CLIENT, supervisors = MASTER with every PC
+       of the table below in its Favorites
     9) Program settings: HDMI Mirror config, OBS scenes/profile,
        VST3 plugins, Stream Deck profile of the table's game
        (all from assets\)
@@ -72,11 +75,12 @@ param(
     [switch]$Unattended,    # apply defaults without asking (needs -PC)
     [switch]$Restart,       # unattended only: restart when finished
     [switch]$Check,         # review mode: show the state of this PC, change nothing
-    [string]$PanelPin       # status panel PIN (unattended registration)
+    [string]$PanelPin,      # status panel PIN (unattended registration)
+    [string]$RustDeskPassword  # RustDesk common password (unattended); never stored by this script
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.5.0'
+$ScriptVersion = '4.6.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -187,6 +191,16 @@ $NeverRemove = @(
 )
 
 # =====================================================================
+#  CONFIG: REMOTE ACCESS (RustDesk by direct IP - scripts in src\rustdesk)
+#  Tables / office = CLIENT (accept connections with the common password).
+#  Supervisors = MASTER (control the others: every PC of the $PCs table
+#  with an IP, plus $RustDeskExtraPeers, goes into its Favorites).
+# =====================================================================
+$RustDeskPort        = 21118
+$RustDeskAllowedFrom = @('LocalSubnet', '192.168.0.0/22')       # who may connect (the whole office network)
+$RustDeskExtraPeers  = @(@{ Nombre = 'MCR'; IP = '192.168.1.79' })   # PCs not in the $PCs table
+
+# =====================================================================
 #  CONFIG: AUDIO + STATUS PANEL
 # =====================================================================
 $ScarlettAsDefaultPlayback = $true    # the Scarlett is also the default speakers ($false = microphone only)
@@ -211,13 +225,13 @@ $TimeSyncDailyAt    = '07:00'                           # daily safety-net sync 
 #  Game: picks assets\streamdeck\<Game>.streamDeckProfile for the table
 # =====================================================================
 $PCs = @(
-    @{ Key = 'RL01';    Group = 'Table PCs';      Label = 'Roulette 01';                          Type = 'Table';  Hostname = 'KG-TBL-RL-01';    Username = 'kg-tbl-rl-01';    FullName = 'Roulette Table 01';      Apps = $TableApps;  Game = 'roulette';  Net = @{ IP = '' } }
-    @{ Key = 'BJ01';    Group = 'Table PCs';      Label = 'Blackjack 01';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-01';    Username = 'kg-tbl-bj-01';    FullName = 'Blackjack Table 01';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '' } }
-    @{ Key = 'BJ02';    Group = 'Table PCs';      Label = 'Blackjack 02';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-02';    Username = 'kg-tbl-bj-02';    FullName = 'Blackjack Table 02';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '' } }
+    @{ Key = 'RL01';    Group = 'Table PCs';      Label = 'Roulette 01';                          Type = 'Table';  Hostname = 'KG-TBL-RL-01';    Username = 'kg-tbl-rl-01';    FullName = 'Roulette Table 01';      Apps = $TableApps;  Game = 'roulette';  Net = @{ IP = '192.168.0.156' } }
+    @{ Key = 'BJ01';    Group = 'Table PCs';      Label = 'Blackjack 01';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-01';    Username = 'kg-tbl-bj-01';    FullName = 'Blackjack Table 01';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '192.168.0.151' } }
+    @{ Key = 'BJ02';    Group = 'Table PCs';      Label = 'Blackjack 02';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-02';    Username = 'kg-tbl-bj-02';    FullName = 'Blackjack Table 02';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '192.168.0.152' } }
     @{ Key = 'BJ03';    Group = 'Table PCs';      Label = 'Blackjack 03';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-03';    Username = 'kg-tbl-bj-03';    FullName = 'Blackjack Table 03';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '' } }
     @{ Key = 'BJ04';    Group = 'Table PCs';      Label = 'Blackjack 04';                         Type = 'Table';  Hostname = 'KG-TBL-BJ-04';    Username = 'kg-tbl-bj-04';    FullName = 'Blackjack Table 04';     Apps = $TableAppsWithScanner;  Game = 'blackjack';  Net = @{ IP = '' } }
-    @{ Key = 'BJUNL01'; Group = 'Table PCs';      Label = 'Blackjack Unlimited 01';               Type = 'Table';  Hostname = 'KG-TBL-BJUNL-01'; Username = 'kg-tbl-bjunl-01'; FullName = 'Blackjack Unlimited 01'; Apps = $TableAppsWithScanner;  Game = 'blackjack-unlimited';  Net = @{ IP = '' } }
-    @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';                             Type = 'Table';  Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Apps = $TableApps;  Game = 'craps';  Net = @{ IP = '' } }
+    @{ Key = 'BJUNL01'; Group = 'Table PCs';      Label = 'Blackjack Unlimited 01';               Type = 'Table';  Hostname = 'KG-TBL-BJUNL-01'; Username = 'kg-tbl-bjunl-01'; FullName = 'Blackjack Unlimited 01'; Apps = $TableAppsWithScanner;  Game = 'blackjack-unlimited';  Net = @{ IP = '192.168.0.155' } }
+    @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';                             Type = 'Table';  Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Apps = $TableApps;  Game = 'craps';  Net = @{ IP = '192.168.1.86' } }
     @{ Key = 'SUP01';   Group = 'Supervisor PCs'; Label = 'Supervisor 01';                        Type = 'Staff';  Hostname = 'KG-SUP-01';       Username = 'kg-sup-01';       FullName = 'Supervisor 01';          Apps = @();         Net = @{ IP = '' } }
     @{ Key = 'SUP02';   Group = 'Supervisor PCs'; Label = 'Supervisor 02';                        Type = 'Staff';  Hostname = 'KG-SUP-02';       Username = 'kg-sup-02';       FullName = 'Supervisor 02';          Apps = @();         Net = @{ IP = '' } }
     @{ Key = 'HECTOR';  Group = 'Office PCs';     Label = 'Hector office PC (cameras on TV)'; Type = 'Office'; Hostname = 'KG-OFC-HECTOR'; Username = 'kg-ofc-hector'; FullName = 'Hector Office PC';    Apps = $OfficeApps; Net = @{ IP = '' } }
@@ -1251,6 +1265,94 @@ function Invoke-RemoveJunk($pc) {
     }
 }
 
+# ====================== 8b) REMOTE ACCESS (RustDesk) ==================
+# RustDesk main window processes of the users (not the service / tray)
+function Get-RustDeskWindows {
+    return @(Get-CimInstance Win32_Process -Filter "Name='rustdesk.exe'" -ErrorAction SilentlyContinue | Where-Object {
+        $_.SessionId -ne 0 -and [string]$_.CommandLine -notmatch '(?i)(?:^|\s)--(?:server|service|tray|cm|portable-service)(?:\s|$)'
+    })
+}
+
+function Read-NewSecret([string]$what) {
+    while ($true) {
+        $a = Read-Host "  $what (input is hidden; Enter to skip)" -AsSecureString
+        if ($a.Length -eq 0) { return '' }
+        $b = Read-Host "  Type it again to confirm" -AsSecureString
+        $pa = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($a)
+        $pb = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($b)
+        try {
+            $x = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pa)
+            $y = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pb)
+        } finally {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pa)
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pb)
+        }
+        if ($x -ceq $y) { return $x }
+        Write-Warn 'They do not match - try again.'
+    }
+}
+
+function Invoke-RemoteAccess($pc) {
+    Write-Section 'REMOTE ACCESS  (RustDesk by direct IP on the LAN)'
+    $exe = $Packages['RustDesk'].Check
+    if (-not (Test-Path -LiteralPath $exe)) { Write-Skip 'RustDesk is not installed on this PC.'; return }
+    $rd = Join-Path $PSScriptRoot 'rustdesk'
+    if (-not (Test-Path -LiteralPath (Join-Path $rd 'Configurar-Esta-PC.ps1'))) { Write-Skip 'The Kerma RustDesk scripts are missing (src\rustdesk).'; return }
+    $mode = if ($pc.Type -eq 'Staff') { 'Master' } else { 'Client' }
+
+    if ($mode -eq 'Client') {
+        Write-Host '  CLIENT: this PC accepts RustDesk connections from the office network, by IP'
+        Write-Host "  (port $RustDeskPort), with the common password and without anyone accepting on screen."
+    } else {
+        Write-Host '  MASTER: this PC controls the others. All PCs with an IP in the script table go'
+        Write-Host '  into its RustDesk Favorites, and the common password is saved for connecting.'
+    }
+    Write-Host ''
+    if (-not (Ask-YesNo "  Configure RustDesk as $mode?" $true)) { Write-Skip 'RustDesk left unchanged.'; return }
+
+    $pw = $RustDeskPassword
+    if (-not $pw -and -not $Unattended) { $pw = Read-NewSecret 'RustDesk common password' }
+    if (-not $pw) { Write-Skip 'No password given - RustDesk left unchanged.'; return }
+
+    try {
+        # ---- service, permanent password, direct IP, permissions, firewall (David's script, verifies every option)
+        & (Join-Path $rd 'Configurar-Esta-PC.ps1') -Modo $mode -Contrasena $pw -Puerto $RustDeskPort -OrigenesPermitidos $RustDeskAllowedFrom
+        Write-Ok "RustDesk $mode configured: direct IP on port $RustDeskPort, permanent password, service automatic."
+        Add-Change "RustDesk: $mode, direct IP port $RustDeskPort"
+
+        # ---- Kerma logo inside RustDesk (resources only, with backup)
+        try {
+            & (Join-Path $rd 'Instalar-Logo-Kerma.ps1') -RutaRustDesk $exe | Out-Null
+            Write-Ok 'RustDesk: Kerma logo installed (a RustDesk update can bring the original back).'
+        } catch { Write-Warn "RustDesk logo: $($_.Exception.Message)" }
+
+        # ---- per-user lists: RustDesk's main window must be closed so it does not overwrite them
+        $open = Get-RustDeskWindows
+        foreach ($w in $open) { $proc = Get-Process -Id $w.ProcessId -ErrorAction SilentlyContinue; if ($proc) { [void]$proc.CloseMainWindow() } }
+        for ($i = 0; $i -lt 10 -and (Get-RustDeskWindows).Count; $i++) { Start-Sleep -Seconds 1 }
+        foreach ($w in (Get-RustDeskWindows)) { Stop-Process -Id $w.ProcessId -Force -ErrorAction SilentlyContinue }
+
+        if ($mode -eq 'Client') {
+            & (Join-Path $rd 'Limpiar-Perfil-Cliente.ps1') | Out-Null
+            Write-Ok 'RustDesk: no saved PCs or outgoing password on this table.'
+        } else {
+            $peers = @()
+            foreach ($row in $PCs) {
+                if ($row.Key -eq $pc.Key -or -not $row.Net -or -not $row.Net.IP) { continue }
+                $peers += [pscustomobject]@{ Nombre = $row.Label; IP = $row.Net.IP; Puerto = $RustDeskPort }
+            }
+            foreach ($x in $RustDeskExtraPeers) { $peers += [pscustomobject]@{ Nombre = $x.Nombre; IP = $x.IP; Puerto = $RustDeskPort } }
+            & (Join-Path $rd 'Configurar-Contrasena-Saliente.ps1') -Contrasena $pw | Out-Null
+            & (Join-Path $rd 'Agregar-Favoritos.ps1') -Equipos $peers | Out-Null
+            Write-Ok "RustDesk: $($peers.Count) PCs in Favorites ($(@($peers | ForEach-Object { $_.Nombre }) -join ', '))."
+            Add-Change "RustDesk: $($peers.Count) PCs in Favorites"
+        }
+        Write-Note "  RustDesk lists were saved for user '$env:USERNAME'. Open RustDesk again to use it."
+    } finally {
+        $pw = $null
+    }
+}
+
 # ========================= 8) INSTALL PROGRAMS =======================
 function Test-Internet {
     try {
@@ -2045,7 +2147,7 @@ try {
 
     # Each section is isolated: if one fails, it is reported and the rest still runs
     $sections = @('Invoke-TimeSetup', 'Invoke-Rename', 'Invoke-LoginSetup', 'Invoke-WindowsUpdateSetup',
-                  'Invoke-NetworkSetup', 'Invoke-PcTuning', 'Invoke-RemoveJunk', 'Invoke-InstallPrograms',
+                  'Invoke-NetworkSetup', 'Invoke-PcTuning', 'Invoke-RemoveJunk', 'Invoke-InstallPrograms', 'Invoke-RemoteAccess',
                   'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-AppAutostart', 'Invoke-Wallpaper', 'Invoke-StatusPanel')
     foreach ($sec in $sections) {
         try { & $sec $selected }

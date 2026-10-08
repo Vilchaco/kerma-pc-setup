@@ -2,6 +2,22 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.6.0] - 2026-10-07 - Acceso remoto con Kerma RustDesk
+
+Integra el trabajo de David ([restidavid/kerma-rust](https://github.com/restidavid/kerma-rust)), que configura RustDesk para conectarse por IP directa dentro de la red de la oficina, sin servidores externos.
+
+### Añadido
+- Nueva sección **Acceso remoto**, después de instalar los programas:
+  - **Mesas y oficina, modo CLIENT:** aceptan conexiones por IP en el puerto 21118 con la contraseña común, sin que nadie tenga que aceptar en pantalla. Teclado, portapapeles, archivos, audio y reinicio remoto activados. El servicio de RustDesk arranca solo. Regla de cortafuegos solo para la red de la oficina.
+  - **Supervisores, modo MASTER:** además guardan la contraseña común para conectarse sin escribirla, y tienen en Favoritos todos los PCs de la tabla del script que tienen IP, más el MCR.
+  - Logo de Kerma dentro de RustDesk.
+- La contraseña común se pide al configurar, dos veces para evitar errores, y nunca se guarda en el script ni en el repositorio. Modo desatendido: `-RustDeskPassword`.
+- IPs fijas de Blackjack 01 y 02, Blackjack Unlimited 01, Roulette 01 y Craps 01 en la tabla de PCs, tomadas de la lista de David. Se ofrecen al configurar la red y alimentan los Favoritos del MASTER.
+- El panel de estado muestra si el servicio de RustDesk está activo y si el puerto 21118 acepta conexiones, y marca para revisar las mesas donde no.
+
+### Cambiado
+- La comprobación automática acepta scripts con tildes si están guardados como UTF-8 con BOM, que Windows PowerShell 5.1 lee bien.
+
 ## [4.5.0] - 2026-10-07 - Fondo de pantalla de cada mesa
 
 ### Añadido
