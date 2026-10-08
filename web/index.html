@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kerma Games · PC Setup</title>
+<link rel="icon" href="icon.jpg"><link rel="apple-touch-icon" href="icon.jpg">
+<meta name="robots" content="noindex">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+:root{--bg:#0a0a0f;--card:#12121a;--card2:#181824;--line:#1e1e2e;--txt:#e8e4dc;--mut:#8a88a0;--mut2:#5a5870;--acc:#c8a96e;--acc-ink:#0a0a0f;--acc-soft:rgba(200,169,110,.1);--ok:#5fb878}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 Inter,system-ui,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:48px 24px 64px}
+header{display:flex;align-items:center;gap:16px;margin-bottom:36px}
+header img{height:44px}
+h1{font-size:26px;font-weight:600;margin:0;letter-spacing:.2px}
+h1 span{color:var(--acc)}
+.ver{margin-left:auto;font:500 12.5px 'DM Mono',monospace;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:5px 12px;white-space:nowrap}
+.ver b{color:var(--acc);font-weight:500}
+.lead{color:var(--mut);margin:0 0 28px;font-size:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 22px 20px;margin-bottom:18px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--acc);font-weight:500;margin:0 0 12px}
+.cmd{display:flex;align-items:stretch;gap:10px}
+.cmd code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font:500 15px 'DM Mono',monospace;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:13px 14px;color:var(--txt)}
+.cmd.small code{font-size:12.5px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--acc);background:var(--acc);color:var(--acc-ink);font-weight:600;padding:0 16px;min-width:92px}
+button.done{background:var(--ok);border-color:var(--ok)}
+ol{margin:4px 0 0;padding-left:20px}
+ol li{margin:6px 0}
+.note{color:var(--mut);font-size:13.5px;margin:12px 0 0}
+kbd{font:500 12px 'DM Mono',monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--card2);color:var(--txt)}
+.links{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.links a{display:block;text-decoration:none;color:var(--txt);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.links a:hover{border-color:var(--acc)}
+.links b{display:block;font-weight:600;margin-bottom:2px}
+.links small{color:var(--mut)}
+details summary{cursor:pointer;color:var(--mut);font-size:14px}
+details[open] summary{margin-bottom:12px}
+footer{color:var(--mut2);font-size:12.5px;margin-top:32px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logo.png" alt="Kerma Games">
+    <h1>PC <span>Setup</span></h1>
+    <div class="ver" id="ver">última versión: <b>…</b></div>
+  </header>
+
+  <p class="lead">Deja listo un PC de Kerma Games con una sola línea: hora sincronizada, nombre estándar, inicio automático, programas, RustDesk, fondo de pantalla y panel de estado.</p>
+
+  <div class="card">
+    <h2>Instalar en un PC</h2>
+    <div class="cmd"><code id="ps">irm https://kermasetup.netlify.app | iex</code><button data-copy="ps">Copiar</button></div>
+    <ol>
+      <li>Conecta el PC a internet, mejor con cable.</li>
+      <li>Clic derecho en el botón de Inicio y abre <b>Terminal</b> o <b>Windows PowerShell</b>.</li>
+      <li>Escribe la línea de arriba y pulsa <kbd>Enter</kbd>. La barra vertical <kbd>|</kbd> se escribe con <kbd>AltGr</kbd> + <kbd>1</kbd>.</li>
+      <li>Acepta el aviso de permisos y elige idioma, modo y qué PC es.</li>
+    </ol>
+    <p class="note">En modo <b>Automático</b> solo pregunta al principio lo que no puede saber, como la contraseña de RustDesk o el PIN del panel. Después puedes dejar el PC trabajando solo.</p>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>Desde CMD, en lugar de PowerShell</summary>
+      <div class="cmd small"><code id="cmd">powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://kermasetup.netlify.app | iex"</code><button data-copy="cmd">Copiar</button></div>
+    </details>
+  </div>
+
+  <div class="links">
+    <a href="/estado"><b>Panel de estado</b><small>Cómo están todos los PCs ahora. Con PIN.</small></a>
+    <a href="https://github.com/Vilchaco/kerma-pc-setup#readme"><b>Manual</b><small>Qué hace cada sección y cómo se configura.</small></a>
+    <a href="https://github.com/Vilchaco/kerma-pc-setup/releases/latest"><b>Novedades</b><small>Notas de la última versión y descarga del zip.</small></a>
+  </div>
+
+  <footer>Kerma Games · si algo falla, abre una incidencia en GitHub con el log de C:\KermaSetup\logs</footer>
+</div>
+<script>
+document.querySelectorAll('[data-copy]').forEach((b) => {
+  b.onclick = async () => {
+    const t = document.getElementById(b.dataset.copy).textContent;
+    try { await navigator.clipboard.writeText(t); } catch (e) {
+      const r = document.createRange(); r.selectNodeContents(document.getElementById(b.dataset.copy));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand('copy'); s.removeAllRanges();
+    }
+    b.textContent = 'Copiado'; b.classList.add('done');
+    setTimeout(() => { b.textContent = 'Copiar'; b.classList.remove('done'); }, 1600);
+  };
+});
+fetch('https://api.github.com/repos/Vilchaco/kerma-pc-setup/releases/latest')
+  .then((r) => r.ok ? r.json() : null)
+  .then((r) => { if (r && r.tag_name) document.querySelector('#ver b').textContent = r.tag_name; else document.getElementById('ver').hidden = true; })
+  .catch(() => { document.getElementById('ver').hidden = true; });
+</script>
+</body>
+</html>

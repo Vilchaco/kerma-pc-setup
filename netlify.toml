@@ -1,7 +1,9 @@
 # kermasetup.netlify.app
-#   /         -> 302 to bootstrap.ps1 on main (the one-line install)
-#   /estado   -> status panel of every PC (PIN)
-#   /api/*    -> status API (netlify/functions/status.mjs)
+#   /         -> navegador: pagina de bienvenida (web/index.html)
+#                PowerShell / curl: 302 al bootstrap.ps1 de main (la instalacion de una linea)
+#                (netlify/edge-functions/root.ts decide)
+#   /estado   -> panel de estado de los PCs (PIN)
+#   /api/*    -> API del panel (netlify/functions/status.mjs)
 [build]
   publish = "web"
 
