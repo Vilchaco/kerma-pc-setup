@@ -31,6 +31,25 @@ El script se descarga en `C:\KermaSetup\app`, pide permisos de administrador y e
 
 > **Seguridad.** Esa línea ejecuta como administrador lo que haya en este repositorio. Cualquiera con permiso de escritura en él decide lo que se instala en los PCs de la empresa. Revisa con cuidado quién tiene ese permiso.
 
+## Panel de estado
+
+Abre **[kermasetup.netlify.app/estado](https://kermasetup.netlify.app/estado)** desde cualquier navegador e introduce el PIN del panel. El PIN lo tiene quien mantiene el script, y se cambia en Netlify, en la variable `STATUS_PIN` del sitio `kermasetup`.
+
+Cada PC registrado envía su estado cada 5 minutos: hora, apps, disco, red, equipo y tareas. Un PC que deja de reportar está apagado o sin red. Al configurar un PC, la sección *Panel de estado* pide el PIN una sola vez y lo cambia por una clave propia del PC. El PIN no se guarda en el PC.
+
+Para ver lo mismo en el propio PC, sin enviar nada y sin cambiar nada:
+
+```bat
+Kerma-PCSetup.bat -Check
+```
+
+## Pasos manuales en la BIOS
+
+El script no puede cambiar la BIOS. Hazlo una vez en cada PC:
+
+- **Encendido tras un corte de luz.** Suele llamarse *Restore on AC Power Loss* o *AC Recovery*. Ponlo en *Power On*, para que el PC arranque solo cuando vuelve la luz.
+- **Encendido por red.** Suele llamarse *Wake on LAN* o *Power On by PCI-E*. Actívalo si queréis encender los PCs a distancia. El script ya lo deja preparado en Windows.
+
 ## Descargar el zip
 
 También puedes descargar la **[última versión](https://github.com/Vilchaco/kerma-pc-setup/releases/latest)** a mano. El zip está en el apartado **Assets** de la release. Las notas de cada versión están en [CHANGELOG.md](CHANGELOG.md).
@@ -55,11 +74,13 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Login | Quita la contraseña para que arranque directo al escritorio tras un apagón, o guarda la contraseña para el auto-login. |
 | Windows Update | Solo manual, desactivado del todo, o restaurar las actualizaciones automáticas. |
 | Red | Muestra los adaptadores y pone una IP fija o vuelve a DHCP. Solo hay que teclear la IP. |
-| Ajustes del PC | Pantalla siempre encendida, sin suspensión, USB sin ahorro de energía, sin notificaciones ni salvapantallas. Barra de tareas sin búsqueda, Vista de tareas, Widgets ni Reanudar. |
+| Ajustes del PC | Pantalla siempre encendida, sin suspensión, USB sin ahorro de energía, sin notificaciones ni salvapantallas. Barra de tareas sin búsqueda, Vista de tareas, Widgets ni Reanudar. Red con encendido remoto y sin ahorro de energía. |
 | Quitar apps preinstaladas | Quita Solitario, Xbox, Teams, apps de Bing, Candy Crush y similares, Microsoft 365 de prueba y OneDrive, en todos los tipos de PC. |
 | Instalar programas | Instala o actualiza los programas de ese tipo de PC. |
 | Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck, y el tema Kerma de OBS. |
 | Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. OBS arranca sin el aviso de modo seguro aunque se haya cerrado mal, y sin el aviso de actualizaciones. |
+| Audio | Quita los sonidos de Windows y pone la Scarlett como micrófono predeterminado. |
+| Panel de estado | Registra el PC en el panel web y envía su estado cada 5 minutos. |
 | Resumen | Lista todo lo que ha cambiado y ofrece reiniciar. |
 
 ## Tipos de PC

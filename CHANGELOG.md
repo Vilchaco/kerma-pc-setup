@@ -2,6 +2,16 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.4.0] - 2026-10-07 - Panel de estado, modo revisión, audio y red
+
+### Añadido
+- **Panel de estado** en [kermasetup.netlify.app/estado](https://kermasetup.netlify.app/estado), protegido con PIN. Cada PC envía su estado cada 5 minutos y al arrancar: desfase del reloj, apps instaladas y abiertas, espacio en disco, red con IP y MAC, versión de Windows, equipo y número de serie, tareas del script y Scarlett. Se abre desde cualquier navegador, también el móvil, y marca en rojo los PCs con problemas o que dejan de reportar.
+- Nueva sección **Panel de estado**: registra el PC con el PIN del panel, que no se guarda en el PC, e instala la tarea *Kerma - Status*, que se ejecuta como sistema.
+- **Modo revisión**: `Kerma-PCSetup.bat -Check` muestra el estado del PC en pantalla sin cambiar nada.
+- Nueva sección **Audio**: quita los sonidos de Windows y el sonido de inicio, y pone la Scarlett como micrófono predeterminado si está conectada.
+- **Red** en Ajustes del PC: activa el encendido por red, impide que Windows apague la tarjeta para ahorrar energía, desactiva el Ethernet de bajo consumo y el inicio rápido, y marca la red como privada.
+- Modo desatendido: parámetro `-PanelPin` para registrar el PC en el panel.
+
 ## [4.3.0] - 2026-10-07 - OBS arranca solo tras un cierre inesperado, y con el tema Kerma
 
 ### Corregido

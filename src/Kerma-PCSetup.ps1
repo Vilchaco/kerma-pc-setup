@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.3.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.4.0 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -19,7 +19,8 @@
     5) Windows Update: manual-only / disabled / restore defaults
     6) Network: pick an adapter, set a static IP (or back to DHCP)
     7) PC tuning: screen never off, no sleep, USB never suspended,
-       no notifications, no screen saver
+       no notifications, no screen saver, taskbar, network adapter
+       (wake-on-LAN, never powered off, no energy-efficient Ethernet)
     7b) Remove preinstalled junk: Solitaire, Xbox, Teams, Bing apps,
        Candy Crush & co., Microsoft 365 trial, OneDrive
     8) Install programs for this PC type (winget / GitHub releases)
@@ -27,7 +28,13 @@
        VST3 plugins, Stream Deck profile of the table's game
        (all from assets\)
    10) App autostart: one scheduled task per app at logon
+   10b) Audio: Windows sounds off, Scarlett as default microphone
+   10c) Status panel: this PC reports every 5 min to
+       https://kermasetup.netlify.app/estado
    11) Summary + optional restart
+
+  Review mode (changes nothing, shows the state of this PC):
+    Kerma-PCSetup.bat -Check
 
   Everything applied is logged to C:\KermaSetup\logs\setup-<date>.log
 
@@ -60,11 +67,13 @@
 param(
     [string]$PC,            # key from the $PCs table, e.g. RL01
     [switch]$Unattended,    # apply defaults without asking (needs -PC)
-    [switch]$Restart        # unattended only: restart when finished
+    [switch]$Restart,       # unattended only: restart when finished
+    [switch]$Check,         # review mode: show the state of this PC, change nothing
+    [string]$PanelPin       # status panel PIN (unattended registration)
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.3.0'
+$ScriptVersion = '4.4.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -173,6 +182,12 @@ $NeverRemove = @(
     'Microsoft.XboxIdentityProvider', 'Microsoft.Xbox.TCUI', 'Microsoft.MicrosoftStickyNotes', 'Microsoft.WindowsAlarms',
     'Microsoft.WindowsSoundRecorder', 'Microsoft.WindowsCamera'
 )
+
+# =====================================================================
+#  CONFIG: AUDIO + STATUS PANEL
+# =====================================================================
+$ScarlettAsDefaultPlayback = $false   # $true = also use the Scarlett as the default speakers
+$PanelBase = 'https://kermasetup.netlify.app'
 
 # =====================================================================
 #  CONFIG: NETWORK DEFAULTS  (used for every PC unless its line overrides)
@@ -978,6 +993,40 @@ function Get-AppPathInteractive($app, [string]$suggested) {
     }
 }
 
+# Wired adapters: wake-on-LAN on, never powered off to save energy, no
+# energy-efficient Ethernet. Advanced properties are set with -NoRestart
+# (applied after the restart) so the network does not drop mid-setup.
+function Invoke-NetworkTuning {
+    $done = @()
+    $nics = @(Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.MediaType -eq '802.3' })
+    foreach ($n in $nics) {
+        try { Set-NetAdapterPowerManagement -Name $n.Name -WakeOnMagicPacket Enabled -ErrorAction Stop } catch { }
+        try { Set-NetAdapterPowerManagement -Name $n.Name -AllowComputerToTurnOffDevice Disabled -ErrorAction Stop } catch { }
+        $props = @{ '*WakeOnMagicPacket' = '1'; '*ModernStandbyWoLMagicPacket' = '1'; '*EEE' = '0'; 'EnableGreenEthernet' = '0' }
+        foreach ($kw in $props.Keys) {
+            if (Get-NetAdapterAdvancedProperty -Name $n.Name -RegistryKeyword $kw -ErrorAction SilentlyContinue) {
+                try { Set-NetAdapterAdvancedProperty -Name $n.Name -RegistryKeyword $kw -RegistryValue $props[$kw] -NoRestart -ErrorAction Stop } catch { }
+            }
+        }
+        $done += "$($n.Name) (MAC $($n.MacAddress))"
+    }
+    try {
+        $pw = 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power'
+        Set-ItemProperty -Path $pw -Name HiberbootEnabled -Value 0 -Type DWord   # fast startup off: wake-on-LAN works from shutdown
+    } catch { }
+    try {
+        Get-NetConnectionProfile -ErrorAction Stop | Where-Object { $_.NetworkCategory -eq 'Public' } |
+            ForEach-Object { Set-NetConnectionProfile -InterfaceIndex $_.InterfaceIndex -NetworkCategory Private -ErrorAction Stop }
+    } catch { }
+    if ($done.Count) {
+        Write-Ok "Network: wake-on-LAN on, power saving off for $($done -join ', ')."
+        Write-Note '  Wake-on-LAN must also be enabled in the BIOS (see the README checklist).'
+        Add-Change "Tuning: wake-on-LAN on ($($done -join ', '))"
+    } else {
+        Write-Skip 'Network: no wired adapter found.'
+    }
+}
+
 # ============================ 7) PC TUNING ============================
 function Invoke-PcTuning($pc) {
     Write-Section 'PC TUNING  (power, USB, notifications)'
@@ -985,6 +1034,7 @@ function Invoke-PcTuning($pc) {
     Write-Host '  - USB devices are never suspended (avoids Stream Deck / Scarlett dropouts)'
     Write-Host '  - Windows notifications and the screen saver are turned off'
     Write-Host '  - Taskbar: no search box, no Task view, no Widgets, no Resume'
+    Write-Host '  - Wired network: wake-on-LAN on, never powered off, no energy-efficient Ethernet'
     Write-Host ''
     $isStaff = ($pc.Type -eq 'Staff')
     if ($isStaff) { Write-Note '>> Supervisor PC: these settings are meant for table / office PCs. Default here is N.'; Write-Host '' }
@@ -1058,6 +1108,8 @@ function Invoke-PcTuning($pc) {
             Get-Process -Name 'explorer' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
         }
     }
+    Invoke-NetworkTuning
+
     $console = ''
     try { $console = [string](Get-CimInstance Win32_ComputerSystem).UserName } catch { }
     if ($console -and ($console -split '\\')[-1] -ine $env:USERNAME) {
@@ -1676,6 +1728,161 @@ function Invoke-AppAutostart($pc) {
     Write-Note 'To make an app open on the correct monitor, move its window there by hand once - most apps (OBS included) remember the position.'
 }
 
+# =========================== 10b) AUDIO ===============================
+function Initialize-AudioModule {
+    if (Get-Module -ListAvailable -Name AudioDeviceCmdlets) { Import-Module AudioDeviceCmdlets; return $true }
+    try {
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers | Out-Null
+        Install-Module -Name AudioDeviceCmdlets -Repository PSGallery -Force -Scope AllUsers -AllowClobber
+        Import-Module AudioDeviceCmdlets
+        return $true
+    } catch {
+        Write-Warn "Could not install the audio module (AudioDeviceCmdlets): $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Invoke-AudioSetup($pc) {
+    Write-Section 'AUDIO  (Windows sounds, Scarlett)'
+    Write-Host '  - Windows sounds off (no beeps or chimes on the stream), no startup sound'
+    Write-Host '  - Focusrite Scarlett as the default microphone, if one is connected'
+    Write-Host ''
+    if (-not (Ask-YesNo '  Apply these audio settings?' $true)) { Write-Skip 'Audio left unchanged.'; return }
+
+    # ---- Windows sounds: scheme "No sounds" for this account + no startup sound
+    try {
+        Set-ItemProperty -Path 'HKCU:\AppEvents\Schemes' -Name '(Default)' -Value '.None'
+        Get-ChildItem -Path 'HKCU:\AppEvents\Schemes\Apps' -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.PSChildName -eq '.Current' } |
+            ForEach-Object { Set-ItemProperty -Path $_.PSPath -Name '(Default)' -Value '' -ErrorAction SilentlyContinue }
+        $boot = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI\BootAnimation'
+        Initialize-RegistryKey $boot
+        Set-ItemProperty -Path $boot -Name DisableStartupSound -Value 1 -Type DWord
+        Write-Ok "Windows sounds off (user '$env:USERNAME') and no startup sound."
+        Add-Change "Audio: Windows sounds off ($env:USERNAME)"
+    } catch { Write-Warn "Windows sounds: $($_.Exception.Message)" }
+
+    # ---- Scarlett as default microphone
+    Write-Host ''
+    $fr = @(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.InstanceId -like 'USB\VID_1235*' })
+    if ($fr.Count -eq 0) { Write-Skip 'Scarlett: no Focusrite connected.'; return }
+    if (-not (Initialize-AudioModule)) { return }
+    $devs = @(Get-AudioDevice -List | Where-Object { $_.Name -match 'Focusrite|Scarlett' })
+    $rec  = $devs | Where-Object { $_.Type -eq 'Recording' } | Select-Object -First 1
+    $play = $devs | Where-Object { $_.Type -eq 'Playback' } | Select-Object -First 1
+    if (-not $rec) {
+        Write-Warn 'The Scarlett is connected but Windows does not show it as a microphone yet.'
+        Write-Note '  Unplug and plug it again (or restart) after Focusrite Control 2 is installed, then run the script again.'
+        return
+    }
+    Set-AudioDevice -ID $rec.ID | Out-Null
+    Write-Ok "Default microphone: $($rec.Name)"
+    Add-Change "Audio: default microphone $($rec.Name)"
+    if ($ScarlettAsDefaultPlayback -and $play) {
+        Set-AudioDevice -ID $play.ID | Out-Null
+        Write-Ok "Default speakers: $($play.Name)"
+        Add-Change "Audio: default speakers $($play.Name)"
+    }
+}
+
+# ========================= 10c) STATUS PANEL ==========================
+# What the status collector should look for on this PC (pc.json)
+function Get-StatusConfig($pc) {
+    $saved = Get-SavedAppPaths
+    $list = [ordered]@{}
+    foreach ($k in @($InstallByType[$pc.Type])) {
+        $p = $Packages[$k]
+        if (-not $p -or -not $p.Check) { continue }
+        $proc = if ($p.Process) { $p.Process } elseif ($p.Check -match '\.exe$') { [IO.Path]::GetFileNameWithoutExtension($p.Check) } else { '' }
+        $list[$k] = @{ name = $p.Name; check = $p.Check; process = $proc; autostart = $false }
+    }
+    foreach ($k in @($pc.Apps)) {
+        $a = $Apps[$k]
+        $path = if ($saved[$k]) { $saved[$k] } else { $a.Path }
+        if (-not $path) { continue }
+        $proc = if ($path -match '\.exe$') { [IO.Path]::GetFileNameWithoutExtension($path) } else { '' }
+        if ($list.Contains($k)) { $list[$k].autostart = $true; continue }
+        $list[$k] = @{ name = $a.Name; check = $path; process = $proc; autostart = $true }
+    }
+    return [ordered]@{
+        key = $pc.Key; label = $pc.Label; type = $pc.Type; game = $pc.Game
+        script_version = $ScriptVersion; apps = @($list.Values)
+    }
+}
+
+function Invoke-StatusPanel($pc) {
+    Write-Section 'STATUS PANEL  (kermasetup.netlify.app/estado)'
+    Write-Host '  This PC will send its state every 5 minutes: clock, apps, disk, network.'
+    Write-Host ''
+    if (-not (Ask-YesNo '  Register this PC in the status panel?' $true)) { Write-Skip 'Not registered.'; return }
+
+    $dir = Join-Path $env:ProgramData 'Kerma'
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $r = Invoke-Native 'icacls.exe' @($dir, '/inheritance:r', '/grant:r', '*S-1-5-18:(OI)(CI)F', '*S-1-5-32-544:(OI)(CI)F', '*S-1-5-32-545:(OI)(CI)RX')
+    if ($r.ExitCode -ne 0) { Write-Warn "Could not lock down $dir permissions: $($r.Text)" }
+    $collector = Join-Path $dir 'Kerma-Status.ps1'
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Kerma-Status.ps1') -Destination $collector -Force
+    (Get-StatusConfig $pc) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $dir 'pc.json') -Encoding Ascii
+
+    # ---- write key: asked once with the panel PIN, the PIN itself is never stored
+    $keyFile = Join-Path $dir 'status.key'
+    if (Test-Path -LiteralPath $keyFile) {
+        Write-Ok 'This PC is already registered in the panel.'
+    } else {
+        $pin = $PanelPin
+        if (-not $pin -and -not $Unattended) {
+            $sec = Read-Host '  Panel PIN (input is hidden; Enter to skip)' -AsSecureString
+            $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+            try { $pin = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+        }
+        if (-not $pin) { Write-Skip 'No PIN given - the PC is not registered (run the script again to do it).'; return }
+        try {
+            $resp = Invoke-RestMethod -Uri "$PanelBase/api/register" -Method Post -Headers @{ 'x-pin' = $pin } -UseBasicParsing -TimeoutSec 20
+            Set-Content -LiteralPath $keyFile -Value $resp.key -Encoding Ascii
+            Write-Ok 'PC registered in the status panel.'
+        } catch {
+            $code = 0
+            try { $code = [int]$_.Exception.Response.StatusCode } catch { }
+            if ($code -eq 401) { Write-Fail 'Wrong panel PIN - the PC is not registered.' }
+            elseif ($code -eq 429) { Write-Fail 'Too many wrong PINs: the panel is locked for 15 minutes.' }
+            else { Write-Fail "Could not reach the panel: $($_.Exception.Message)" }
+            return
+        }
+        $pin = $null
+    }
+
+    # ---- task: every 5 minutes and at startup, as SYSTEM
+    $taskName = 'Kerma - Status'
+    $psArgs   = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$collector`""
+    $created = $false
+    $err1 = ''
+    try {
+        $a  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $psArgs
+        $tS = New-ScheduledTaskTrigger -AtStartup
+        $tR = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
+        $p  = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+        $st = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 3)
+        Register-ScheduledTask -TaskName $taskName -Action $a -Trigger @($tS, $tR) -Principal $p -Settings $st -Force -ErrorAction Stop | Out-Null
+        $created = $true
+    } catch { $err1 = ($_.Exception.Message -replace '\s+', ' ').Trim() }
+    if (-not $created) {
+        $tr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $collector"
+        $r2 = Invoke-Native 'schtasks.exe' @('/create', '/tn', $taskName, '/tr', $tr, '/sc', 'minute', '/mo', '5', '/ru', 'SYSTEM', '/rl', 'highest', '/f')
+        if ($r2.ExitCode -eq 0) { $created = $true } else { Write-Fail "Status task NOT created: $err1 / $($r2.Text)"; return }
+    }
+
+    # ---- send the first report now
+    try {
+        Start-ScheduledTask -TaskName $taskName -ErrorAction Stop
+        $deadline = (Get-Date).AddSeconds(90)
+        do { Start-Sleep -Seconds 2 } while ((Get-ScheduledTask -TaskName $taskName).State -eq 'Running' -and (Get-Date) -lt $deadline)
+        $res = (Get-ScheduledTaskInfo -TaskName $taskName).LastTaskResult
+        if ($res -eq 0) { Write-Ok "First report sent. See it at $PanelBase/estado" }
+        else { Write-Warn "The first report failed (code $res). See $dir\status.log" }
+    } catch { Write-Warn "Could not send the first report now: $($_.Exception.Message)" }
+    Add-Change 'Status panel: reports every 5 minutes'
+}
+
 # ============================== 11) FINISH ===========================
 function Invoke-Finish {
     Write-Section 'SUMMARY'
@@ -1703,6 +1910,17 @@ function Invoke-Finish {
 }
 
 # =============================== MAIN ================================
+# -- review mode: show the state of this PC, change nothing
+if ($Check) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $installed = Join-Path $env:ProgramData 'Kerma\Kerma-Status.ps1'
+    $collector = if (Test-Path -LiteralPath $installed) { $installed } else { Join-Path $PSScriptRoot 'Kerma-Status.ps1' }
+    & $collector -Print -NoSend
+    Write-Host ''
+    Read-Host '  Press Enter to close' | Out-Null
+    exit
+}
+
 # -- self-elevate
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
@@ -1740,7 +1958,7 @@ try {
     # Each section is isolated: if one fails, it is reported and the rest still runs
     $sections = @('Invoke-TimeSetup', 'Invoke-Rename', 'Invoke-LoginSetup', 'Invoke-WindowsUpdateSetup',
                   'Invoke-NetworkSetup', 'Invoke-PcTuning', 'Invoke-RemoveJunk', 'Invoke-InstallPrograms',
-                  'Invoke-ProgramSettings', 'Invoke-AppAutostart')
+                  'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-AppAutostart', 'Invoke-StatusPanel')
     foreach ($sec in $sections) {
         try { & $sec $selected }
         catch {

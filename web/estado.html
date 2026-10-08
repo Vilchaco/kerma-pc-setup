@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kerma Games · Estado de los PCs</title>
+<link rel="icon" href="icon.jpg"><link rel="apple-touch-icon" href="icon.jpg">
+<meta name="robots" content="noindex">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+:root{--bg:#0a0a0f;--card:#12121a;--card2:#181824;--line:#1e1e2e;--txt:#e8e4dc;--mut:#8a88a0;--mut2:#5a5870;--acc:#c8a96e;--acc-ink:#0a0a0f;--acc-soft:rgba(200,169,110,.1);--ok:#5fb878;--bad:#e05555;--warn:#f29a2e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 Inter,system-ui,sans-serif}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+header{display:flex;align-items:center;gap:14px;padding:18px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header img{height:34px}
+header h1{font-size:17px;font-weight:600;margin:0;letter-spacing:.2px}
+header h1 span{color:var(--acc)}
+.spacer{flex:1}
+.meta{color:var(--mut);font-size:12.5px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--txt);padding:7px 12px}
+button:hover{border-color:var(--acc)}
+button.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
+button.danger{color:var(--bad)}
+main{padding:20px 24px 60px;max-width:1500px;margin:0 auto}
+.summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.pill{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 16px;min-width:120px}
+.pill b{display:block;font-size:22px;font-weight:600}
+.pill small{color:var(--mut);font-size:12px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:1050px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);font-weight:500;background:var(--card2)}
+tr.row{cursor:pointer}
+tr.row:hover td{background:rgba(255,255,255,.02)}
+tr.group td{background:var(--bg);color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.8px;padding:14px 12px 6px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.mut{color:var(--mut)}
+.bg-ok{background:var(--ok)}.bg-bad{background:var(--bad)}.bg-warn{background:var(--warn)}.bg-off{background:var(--mut2)}
+.chip{display:inline-block;font-size:11.5px;padding:2px 7px;border-radius:6px;margin:1px 3px 1px 0;border:1px solid var(--line)}
+.chip.ok{border-color:rgba(95,184,120,.35);background:rgba(95,184,120,.08)}
+.chip.bad{border-color:rgba(224,85,85,.4);background:rgba(224,85,85,.08)}
+.chip.mut{opacity:.75}
+.name b{font-weight:600}
+.name small{display:block;color:var(--mut);font-size:12px}
+tr.detail td{background:var(--card2);white-space:normal;padding:16px 18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.box h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--acc);font-weight:500}
+.box div{font-size:13px;margin:2px 0}
+.box .k{color:var(--mut);display:inline-block;min-width:110px}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;max-height:340px;font-size:12px}
+.login{max-width:360px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;text-align:center}
+.login img{height:46px;margin-bottom:12px}
+.login input{width:100%;font:inherit;font-size:20px;letter-spacing:6px;text-align:center;padding:10px;margin:14px 0;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--txt)}
+.login input:focus{outline:none;border-color:var(--acc)}
+.err{color:var(--bad);min-height:20px;font-size:13px}
+.note{color:var(--mut);font-size:12.5px;margin-top:14px}
+</style>
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <img src="logo.png" alt="Kerma Games">
+  <div>Estado de los PCs</div>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="PIN">
+  <button class="acc" id="enter" style="width:100%">Entrar</button>
+  <div class="err" id="err"></div>
+</div>
+
+<div id="app" hidden>
+<header>
+  <img src="logo.png" alt="Kerma Games">
+  <h1>Estado de los <span>PCs</span></h1>
+  <div class="spacer"></div>
+  <div class="meta" id="updated"></div>
+  <button id="refresh">Actualizar</button>
+  <button id="logout">Salir</button>
+</header>
+<main>
+  <div class="summary" id="summary"></div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th>PC</th><th>Último reporte</th><th>Reloj</th><th>Apps</th><th>Disco libre</th><th>IP</th><th>Encendido</th><th>Usuario</th><th>Versión</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="note">Cada PC envía su estado cada 5 minutos. <b>Sin reportar</b> significa apagado o sin red: el panel no puede distinguirlo.
+  Reloj: desfase con la hora de internet (verde hasta 0,5 s). Apps: verde = abierta, rojo = configurada para arrancar pero cerrada, gris = instalada.</p>
+</main>
+</div>
+
+<script>
+const OFFLINE_MIN = 15;
+const TYPE_ORDER = { Table: 0, Office: 1, Staff: 2 };
+const TYPE_NAME = { Table: 'Mesas', Office: 'Oficina', Staff: 'Supervisores' };
+let data = null, open = new Set();
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const getPin = () => sessionStorage.getItem('kerma-status-pin') || '';
+
+async function api(method, path) {
+  const r = await fetch(path, { method, headers: { 'x-pin': getPin() } });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(body.msg || body.error || r.status); e.status = r.status; throw e; }
+  return body;
+}
+
+function ago(iso, now) {
+  if (!iso) return '?';
+  const m = Math.round((now - new Date(iso)) / 60000);
+  if (m < 1) return 'ahora';
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `hace ${h} h ${m % 60} min`;
+  return `hace ${Math.floor(h / 24)} días`;
+}
+function uptime(iso, now) {
+  if (!iso) return '?';
+  const h = (now - new Date(iso)) / 3600000;
+  return h < 48 ? `${Math.floor(h)} h` : `${Math.floor(h / 24)} días`;
+}
+function clockCls(off) {
+  if (off === null || off === undefined) return 'mut';
+  const a = Math.abs(off);
+  return a <= 0.5 ? 'ok' : a <= 2 ? 'warn' : 'bad';
+}
+function health(pc, now) {
+  const age = (now - new Date(pc.received_at)) / 60000;
+  if (age > OFFLINE_MIN) return 'off';
+  const c = clockCls(pc.clock && pc.clock.offset_s);
+  const appsDown = (pc.apps || []).some((a) => a.autostart && a.installed && a.running === false) && pc.user;
+  const disk = pc.disk && pc.disk.free_gb !== undefined && pc.disk.free_gb < 10;
+  if (c === 'bad' || appsDown) return 'bad';
+  if (c === 'warn' || disk || c === 'mut') return 'warn';
+  return 'ok';
+}
+const H_DOT = { ok: 'bg-ok', warn: 'bg-warn', bad: 'bg-bad', off: 'bg-off' };
+const H_TXT = { ok: 'Bien', warn: 'Revisar', bad: 'Problema', off: 'Sin reportar' };
+
+function render() {
+  const now = new Date(data.now);
+  const pcs = data.pcs.slice().sort((a, b) =>
+    (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9) || String(a.label || a.id).localeCompare(String(b.label || b.id)));
+  const count = { ok: 0, warn: 0, bad: 0, off: 0 };
+  pcs.forEach((p) => count[(p._h = health(p, now))]++);
+  $('summary').innerHTML = ['ok', 'warn', 'bad', 'off'].map((k) =>
+    `<div class="pill"><b><span class="dot ${H_DOT[k]}"></span>${count[k]}</b><small>${H_TXT[k]}</small></div>`).join('') +
+    `<div class="pill"><b>${pcs.length}</b><small>PCs en total</small></div>`;
+  $('updated').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+  let html = '', lastType = null;
+  for (const p of pcs) {
+    if (p.type !== lastType) { lastType = p.type; html += `<tr class="group"><td colspan="9">${esc(TYPE_NAME[p.type] || p.type || 'Otros')}</td></tr>`; }
+    const off = p.clock ? p.clock.offset_s : null;
+    const ip = (p.network || []).filter((n) => n.ip).map((n) => n.ip).join(', ');
+    const apps = (p.apps || []).map((a) => {
+      const cls = !a.installed ? 'bad' : a.running ? 'ok' : (a.autostart && p.user ? 'bad' : 'mut');
+      const sym = !a.installed ? '✗' : a.running ? '●' : '○';
+      return `<span class="chip ${cls}" title="${esc(a.version || '')}">${sym} ${esc(a.name)}</span>`;
+    }).join('');
+    const free = p.disk && p.disk.free_gb !== undefined ? `${p.disk.free_gb} GB` : '?';
+    html += `<tr class="row" data-id="${esc(p.id)}">
+      <td class="name"><span class="dot ${H_DOT[p._h]}" title="${H_TXT[p._h]}"></span><b>${esc(p.label || p.id)}</b><small class="mono">${esc(p.hostname || '')}</small></td>
+      <td class="${p._h === 'off' ? 'bad' : ''}">${ago(p.received_at, now)}</td>
+      <td class="mono ${clockCls(off)}">${off === null || off === undefined ? 'sin dato' : (off >= 0 ? '+' : '') + off.toFixed(3) + ' s'}</td>
+      <td style="white-space:normal">${apps || '<span class="mut">-</span>'}</td>
+      <td class="mono ${p.disk && p.disk.free_gb < 10 ? 'warn' : ''}">${free}</td>
+      <td class="mono">${esc(ip || '?')}</td>
+      <td>${uptime(p.windows && p.windows.boot_time, now)}</td>
+      <td>${esc(p.user || '—')}</td>
+      <td class="mono">${esc(p.script_version || '?')}</td></tr>`;
+    if (open.has(p.id)) html += detail(p);
+  }
+  $('rows').innerHTML = html || '<tr><td colspan="9" class="mut">Todavía no ha reportado ningún PC.</td></tr>';
+}
+
+function kv(k, v) { return `<div><span class="k">${esc(k)}</span>${esc(v ?? '?')}</div>`; }
+function detail(p) {
+  const w = p.windows || {}, hw = p.hardware || {}, c = p.clock || {};
+  const net = (p.network || []).map((n) => `<div><b>${esc(n.name)}</b> <span class="mut">${esc(n.status)}</span></div>` +
+    kv('IP', `${n.ip || '-'} ${n.dhcp ? '(DHCP)' : '(fija)'}`) + kv('MAC', n.mac) + kv('Puerta enlace', n.gateway) + kv('DNS', (n.dns || []).join(', '))).join('<br>');
+  const tasks = (p.tasks || []).map((t) => `<div>${esc(t.name)} <span class="${t.last_result === 0 || t.last_result == null ? 'mut' : 'warn'}">· ${esc(t.state || '-')} · resultado ${esc(t.last_result ?? '-')}</span></div>`).join('');
+  const apps = (p.apps || []).map((a) => kv(a.name, `${a.installed ? 'instalada' : 'NO instalada'}${a.version ? ' ' + a.version : ''}${a.running ? ' · abierta' : ''}`)).join('');
+  return `<tr class="detail"><td colspan="9"><div class="grid">
+    <div class="box"><h4>Equipo</h4>${kv('Nombre', p.hostname)}${kv('Clave', p.id)}${kv('Tipo', p.type)}${kv('Juego', p.game)}
+      ${kv('Fabricante', hw.manufacturer)}${kv('Modelo', hw.model)}${kv('Nº de serie', hw.serial)}${kv('CPU', hw.cpu)}${kv('RAM', hw.ram_gb ? hw.ram_gb + ' GB' : null)}</div>
+    <div class="box"><h4>Windows</h4>${kv('Edición', w.caption)}${kv('Versión', `${w.display_version || ''} (build ${w.build || '?'})`)}
+      ${kv('Arrancó', w.boot_time ? new Date(w.boot_time).toLocaleString('es-MX') : null)}${kv('Disco C:', p.disk ? `${p.disk.free_gb} GB libres de ${p.disk.total_gb} GB` : null)}
+      ${kv('Hora', `${c.offset_s ?? '?'} s · ${c.server || ''} · servicio ${c.service || '?'}`)}${kv('Zona horaria', c.timezone)}
+      ${kv('Focusrite', (p.focusrite || []).join(', ') || 'no conectada')}${kv('Micrófono', p.audio && p.audio.default_recording)}${kv('Salida', p.audio && p.audio.default_playback)}</div>
+    <div class="box"><h4>Red</h4>${net || '<div class="mut">sin datos</div>'}</div>
+    <div class="box"><h4>Apps</h4>${apps || '<div class="mut">-</div>'}<h4 style="margin-top:12px">Tareas</h4>${tasks || '<div class="mut">-</div>'}</div>
+  </div>
+  ${(p.warnings || []).length ? `<p class="warn">${p.warnings.map(esc).join('<br>')}</p>` : ''}
+  <p><button data-raw="${esc(p.id)}">Ver datos completos</button> <button class="danger" data-forget="${esc(p.id)}">Olvidar este PC</button></p>
+  <pre id="raw-${esc(p.id)}" hidden>${esc(JSON.stringify(p, null, 2))}</pre></td></tr>`;
+}
+
+async function load() {
+  try { data = await api('GET', '/api/status'); $('login').hidden = true; $('app').hidden = false; render(); }
+  catch (e) {
+    if (e.status === 401 || e.status === 429) { sessionStorage.removeItem('kerma-status-pin'); showLogin(e.status === 429 ? 'Demasiados intentos: espera 15 minutos.' : (getPin() ? 'PIN incorrecto.' : '')); }
+    else $('updated').textContent = 'Error al cargar: ' + e.message;
+  }
+}
+function showLogin(msg) { $('app').hidden = true; $('login').hidden = false; $('err').textContent = msg || ''; $('pin').focus(); }
+
+$('enter').onclick = () => { sessionStorage.setItem('kerma-status-pin', $('pin').value.trim()); $('err').textContent = 'Comprobando...'; load(); };
+$('pin').onkeydown = (e) => { if (e.key === 'Enter') $('enter').click(); };
+$('refresh').onclick = load;
+$('logout').onclick = () => { sessionStorage.removeItem('kerma-status-pin'); showLogin(''); };
+$('rows').onclick = async (e) => {
+  const raw = e.target.closest('[data-raw]'), forget = e.target.closest('[data-forget]');
+  if (raw) { const pre = $('raw-' + raw.dataset.raw); pre.hidden = !pre.hidden; return; }
+  if (forget) {
+    if (!confirm('¿Olvidar ' + forget.dataset.forget + '? Si sigue encendido volverá a aparecer en 5 minutos.')) return;
+    await api('DELETE', '/api/status?id=' + encodeURIComponent(forget.dataset.forget)); open.delete(forget.dataset.forget); load(); return;
+  }
+  const tr = e.target.closest('tr.row'); if (!tr) return;
+  open.has(tr.dataset.id) ? open.delete(tr.dataset.id) : open.add(tr.dataset.id); render();
+};
+setInterval(() => { if (!$('app').hidden) load(); }, 60000);
+getPin() ? load() : showLogin('');
+</script>
+</body>
+</html>
