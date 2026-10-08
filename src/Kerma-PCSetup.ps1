@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.4.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.5.0 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -29,6 +29,9 @@
        (all from assets\)
    10) App autostart: one scheduled task per app at logon
    10b) Audio: Windows sounds off, Scarlett as default microphone
+       and speakers
+   10d) Wallpaper: the table's Kerma template + computer name, IP
+       and script version (assets\wallpaper)
    10c) Status panel: this PC reports every 5 min to
        https://kermasetup.netlify.app/estado
    11) Summary + optional restart
@@ -73,7 +76,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.4.0'
+$ScriptVersion = '4.5.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -186,7 +189,7 @@ $NeverRemove = @(
 # =====================================================================
 #  CONFIG: AUDIO + STATUS PANEL
 # =====================================================================
-$ScarlettAsDefaultPlayback = $false   # $true = also use the Scarlett as the default speakers
+$ScarlettAsDefaultPlayback = $true    # the Scarlett is also the default speakers ($false = microphone only)
 $PanelBase = 'https://kermasetup.netlify.app'
 
 # =====================================================================
@@ -1745,7 +1748,7 @@ function Initialize-AudioModule {
 function Invoke-AudioSetup($pc) {
     Write-Section 'AUDIO  (Windows sounds, Scarlett)'
     Write-Host '  - Windows sounds off (no beeps or chimes on the stream), no startup sound'
-    Write-Host '  - Focusrite Scarlett as the default microphone, if one is connected'
+    Write-Host '  - Focusrite Scarlett as the default microphone and speakers, if one is connected'
     Write-Host ''
     if (-not (Ask-YesNo '  Apply these audio settings?' $true)) { Write-Skip 'Audio left unchanged.'; return }
 
@@ -1782,6 +1785,91 @@ function Invoke-AudioSetup($pc) {
         Set-AudioDevice -ID $play.ID | Out-Null
         Write-Ok "Default speakers: $($play.Name)"
         Add-Change "Audio: default speakers $($play.Name)"
+    }
+}
+
+# =========================== 10d) WALLPAPER ===========================
+# assets\wallpaper\<PC key>.jpg = the table's template (name already in
+# the picture). Otherwise default.jpg + the PC label drawn by the script.
+# Under it: computer name, IP and script version, so anyone connecting
+# with RustDesk sees at once which PC it is.
+function New-KermaWallpaper([string]$template, [string]$label, [string]$info, [string]$out) {
+    Add-Type -AssemblyName System.Drawing
+    $src = [System.Drawing.Image]::FromFile($template)
+    $bmp = New-Object System.Drawing.Bitmap 1920, 1080
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    try {
+        $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+        $g.SmoothingMode     = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+        $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+        $g.DrawImage($src, 0, 0, 1920, 1080)
+        $px = [System.Drawing.GraphicsUnit]::Pixel
+        if ($label) {
+            $family = 'Segoe UI'
+            try { [void](New-Object System.Drawing.FontFamily 'Bahnschrift'); $family = 'Bahnschrift' } catch { }
+            $f1 = New-Object System.Drawing.Font($family, 32, [System.Drawing.FontStyle]::Bold, $px)
+            $g.DrawString($label.ToUpper(), $f1, [System.Drawing.Brushes]::White, 146, 826)
+            $f1.Dispose()
+        }
+        $f2 = New-Object System.Drawing.Font('Segoe UI', 21, [System.Drawing.FontStyle]::Regular, $px)
+        $br = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(215, 196, 186, 236))
+        $g.DrawString($info, $f2, $br, 146, 905)
+        $f2.Dispose()
+        $br.Dispose()
+    } finally { $g.Dispose(); $src.Dispose() }
+    $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
+    $ep = New-Object System.Drawing.Imaging.EncoderParameters 1
+    $ep.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.Drawing.Imaging.Encoder]::Quality), 95L
+    $bmp.Save($out, $codec, $ep)
+    $bmp.Dispose()
+}
+
+function Invoke-Wallpaper($pc) {
+    Write-Section 'WALLPAPER'
+    $assets = Get-AssetsDir
+    $own = if ($assets) { Join-Path $assets "wallpaper\$($pc.Key).jpg" } else { '' }
+    $def = if ($assets) { Join-Path $assets 'wallpaper\default.jpg' } else { '' }
+    if ($own -and (Test-Path -LiteralPath $own)) { $template = $own; $label = '' }
+    elseif ($def -and (Test-Path -LiteralPath $def)) { $template = $def; $label = $pc.FullName }
+    else { Write-Skip 'No wallpaper templates in assets\wallpaper.'; return }
+    $host_ = if ($State.HostRenamed) { $pc.Hostname } else { $env:COMPUTERNAME }
+    $ip = ''
+    try {
+        $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction Stop | Sort-Object -Property RouteMetric | Select-Object -First 1
+        $ip = (Get-NetIPAddress -InterfaceIndex $route.InterfaceIndex -AddressFamily IPv4 -ErrorAction Stop | Select-Object -First 1).IPAddress
+    } catch { }
+    $info = "$host_    $(if ($ip) { $ip } else { 'no IP' })    Kerma PC Setup v$ScriptVersion"
+    Write-Host "  Template : $(Split-Path -Path $template -Leaf)$(if ($label) { "  + label '$label'" })"
+    Write-Host "  Text     : $info"
+    Write-Host ''
+    if (-not (Ask-YesNo '  Set this wallpaper?' $true)) { Write-Skip 'Wallpaper left unchanged.'; return }
+
+    $dir = Join-Path $env:ProgramData 'Kerma'
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $out = Join-Path $dir 'wallpaper.jpg'
+    New-KermaWallpaper $template $label $info $out
+
+    $desk = 'HKCU:\Control Panel\Desktop'
+    Set-ItemProperty -Path $desk -Name WallpaperStyle -Value '10' -Type String   # fill
+    Set-ItemProperty -Path $desk -Name TileWallpaper -Value '0' -Type String
+    if (-not ('KermaWallpaperApi' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System.Runtime.InteropServices;
+public static class KermaWallpaperApi {
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool SystemParametersInfo(int action, int param, string value, int flags);
+}
+'@
+    }
+    # SPI_SETDESKWALLPAPER = 20, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE = 3
+    if ([KermaWallpaperApi]::SystemParametersInfo(20, 0, $out, 3)) {
+        Write-Ok "Wallpaper set for user '$env:USERNAME' ($out)."
+        Add-Change "Wallpaper: $(Split-Path -Path $template -Leaf) + $info"
+    } else {
+        Write-Warn "Windows did not accept the wallpaper. The picture is ready in $out."
+    }
+    if ($State.HostRenamed -and $pc.Hostname -ne $env:COMPUTERNAME) {
+        Write-Note '  The wallpaper already shows the new computer name, which applies after the restart.'
     }
 }
 
@@ -1958,7 +2046,7 @@ try {
     # Each section is isolated: if one fails, it is reported and the rest still runs
     $sections = @('Invoke-TimeSetup', 'Invoke-Rename', 'Invoke-LoginSetup', 'Invoke-WindowsUpdateSetup',
                   'Invoke-NetworkSetup', 'Invoke-PcTuning', 'Invoke-RemoveJunk', 'Invoke-InstallPrograms',
-                  'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-AppAutostart', 'Invoke-StatusPanel')
+                  'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-AppAutostart', 'Invoke-Wallpaper', 'Invoke-StatusPanel')
     foreach ($sec in $sections) {
         try { & $sec $selected }
         catch {

@@ -8,6 +8,7 @@ Todo lo que pongas aquí viaja dentro de la release y el script lo aplica en la 
 | `obs/` | Escenas, perfil y ajustes de OBS | `%APPDATA%\obs-studio\` del usuario de la mesa |
 | `streamdeck/` | Un perfil de Stream Deck por juego | Se abre con la app de Stream Deck para importarlo |
 | `vst3/` | Plugins VST3 para OBS | `C:\Program Files\Common Files\VST3\` |
+| `wallpaper/` | Plantilla del fondo de pantalla de cada mesa | Fondo de escritorio del usuario de la mesa |
 
 Cada carpeta tiene su propio README con los nombres de archivo exactos.
 

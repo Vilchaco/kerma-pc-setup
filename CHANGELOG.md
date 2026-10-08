@@ -2,6 +2,15 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.5.0] - 2026-10-07 - Fondo de pantalla de cada mesa
+
+### Añadido
+- Nueva sección **Fondo de pantalla**: pone la plantilla de Kerma de cada mesa y, debajo del nombre de la mesa, el nombre del equipo, la IP y la versión del script. Quien entra por RustDesk sabe al momento en qué PC está.
+- Plantillas de Blackjack 01 a 04, Blackjack Unlimited 01 y Roulette 01 en `assets/wallpaper`. Los PCs sin plantilla propia, como Craps, supervisores y oficina, usan la plantilla sin texto y el script escribe su nombre.
+
+### Cambiado
+- La Scarlett es también la salida de audio predeterminada, no solo el micrófono.
+
 ## [4.4.0] - 2026-10-07 - Panel de estado, modo revisión, audio y red
 
 ### Añadido
