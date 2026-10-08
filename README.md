@@ -58,8 +58,8 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Ajustes del PC | Pantalla siempre encendida, sin suspensión, USB sin ahorro de energía, sin notificaciones ni salvapantallas. Barra de tareas sin búsqueda, Vista de tareas, Widgets ni Reanudar. |
 | Quitar apps preinstaladas | Quita Solitario, Xbox, Teams, apps de Bing, Candy Crush y similares, Microsoft 365 de prueba y OneDrive, en todos los tipos de PC. |
 | Instalar programas | Instala o actualiza los programas de ese tipo de PC. |
-| Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck. |
-| Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. |
+| Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck, y el tema Kerma de OBS. |
+| Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. OBS arranca sin el aviso de modo seguro aunque se haya cerrado mal, y sin el aviso de actualizaciones. |
 | Resumen | Lista todo lo que ha cambiado y ofrece reiniciar. |
 
 ## Tipos de PC

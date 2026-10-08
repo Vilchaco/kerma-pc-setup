@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.2.2 - PowerShell)
+  Kerma Games - PC Setup  (v4.3.0 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -64,7 +64,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.2.2'
+$ScriptVersion = '4.3.0'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -81,7 +81,15 @@ $Apps = [ordered]@{
     StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';  Delay = 15; Maximize = $false; SelfStarts = $true }
     DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '';                                                 Delay = 30; Maximize = $true  }
     HdmiMirror = @{ Name = 'HDMI Mirror';  Id = '04_hdmimirror'; Path = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';               Delay = 45; Maximize = $false; Replaces = 'Mirror App' }
-    OBS        = @{ Name = 'OBS';          Id = '05_obs';        Path = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Delay = 60; Maximize = $false }
+    # OBS: if it was not closed cleanly (crash, power cut, forced restart) it
+    # leaves %APPDATA%\obs-studio\.sentinel\run_* behind and the next start
+    # stops on the "Launch normally / Safe Mode" dialog. The autostart deletes
+    # those files first (what a clean exit does), so the table starts alone.
+    # Opened by hand from the Start menu, OBS still offers Safe Mode.
+    # (--disable-shutdown-check did this up to OBS 31; it no longer exists.)
+    OBS        = @{ Name = 'OBS';          Id = '05_obs';        Path = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Delay = 60; Maximize = $false
+                    Args = '--disable-updater'
+                    PreLaunch = @('del /q "%APPDATA%\obs-studio\.sentinel\run_*" >nul 2>&1') }
     # Deskflow: no longer used (was a test on Hector's office PC); kept for reference
     Deskflow   = @{ Name = 'Deskflow';     Id = '01_deskflow';   Path = 'C:\Program Files\Deskflow\deskflow.exe';          Delay = 10; Maximize = $false
                     Note = 'If "start Deskflow on login" is already enabled inside Deskflow, answer N here so it is not launched twice.' }
@@ -94,6 +102,9 @@ $Apps = [ordered]@{
 $TableApps            = @('StreamDeck', 'DealerApp', 'HdmiMirror', 'OBS')
 $TableAppsWithScanner = @('Scanner') + $TableApps
 $OfficeApps = @('Cameras')
+# OBS theme shipped in assets\obs\themes\ (id must match the @OBSThemeMeta id)
+$ObsThemeFile = 'Kerma.ovt'
+$ObsThemeId   = 'com.kerma.Yami.Kerma'
 
 # =====================================================================
 #  CONFIG: PROGRAMS TO INSTALL
@@ -1358,6 +1369,58 @@ function Get-AssetsDir {
     return $null
 }
 
+# Sets [Appearance] Theme=<id> in OBS's user.ini (OBS 31+ keeps the theme
+# there), leaving every other line as it is. Returns $true if it was set.
+function Set-ObsTheme([string]$obsDir, [string]$themeId) {
+    $userIni   = Join-Path $obsDir 'user.ini'
+    $globalIni = Join-Path $obsDir 'global.ini'
+    if (-not (Test-Path -LiteralPath $userIni) -and (Test-Path -LiteralPath $globalIni)) {
+        # OBS older than 31 kept everything in global.ini and copies it to
+        # user.ini on its first start after updating; if user.ini already
+        # exists at that moment the copy fails with an error box. So only
+        # create user.ini when that copy is already done or not needed.
+        $g = Get-Content -LiteralPath $globalIni -ErrorAction SilentlyContinue
+        $last = 0L
+        $m = $g | Select-String -Pattern '^\s*LastVersion\s*=\s*(\d+)' | Select-Object -First 1
+        if ($m) { $last = [long]$m.Matches[0].Groups[1].Value }
+        $migrated = [bool]($g | Select-String -Pattern '^\s*Pre31Migrated\s*=\s*true' -Quiet)
+        if ($last -gt 0 -and $last -lt (31L * 16777216) -and -not $migrated) { return $false }
+    }
+    $lines = @()
+    $bom = $true
+    $nl = "`r`n"
+    if (Test-Path -LiteralPath $userIni) {
+        $bytes = [IO.File]::ReadAllBytes($userIni)
+        $bom = ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
+        $text = [Text.Encoding]::UTF8.GetString($bytes)
+        if ($bom) { $text = $text.Substring(1) }
+        if ($text -notmatch "`r`n") { $nl = "`n" }
+        $lines = @($text -split "`r?`n")
+        if ($lines.Count -gt 0 -and $lines[-1] -eq '') { $lines = @($lines[0..($lines.Count - 2)]) }
+    }
+    $out = New-Object System.Collections.Generic.List[string]
+    $inSection = $false; $done = $false
+    foreach ($l in $lines) {
+        if ($l -match '^\s*\[(.+)\]\s*$') {
+            if ($inSection -and -not $done) { $out.Add("Theme=$themeId"); $done = $true }
+            $inSection = ($Matches[1] -eq 'Appearance')
+        } elseif ($inSection -and $l -match '^\s*Theme\s*=') {
+            if (-not $done) { $out.Add("Theme=$themeId"); $done = $true }
+            continue
+        }
+        $out.Add($l)
+    }
+    if (-not $done) {
+        if ($inSection) { $out.Add("Theme=$themeId") }
+        else {
+            if ($out.Count -gt 0 -and $out[$out.Count - 1] -ne '') { $out.Add('') }
+            $out.Add('[Appearance]'); $out.Add("Theme=$themeId")
+        }
+    }
+    [IO.File]::WriteAllText($userIni, (($out -join $nl) + $nl), (New-Object System.Text.UTF8Encoding($bom)))
+    return $true
+}
+
 function Invoke-ProgramSettings($pc) {
     Write-Section 'PROGRAM SETTINGS  (HDMI Mirror, OBS, Stream Deck)'
     if ($pc.Type -eq 'Staff') { Write-Skip 'Does not apply to supervisor PCs.'; return }
@@ -1419,7 +1482,20 @@ function Invoke-ProgramSettings($pc) {
                 Copy-Item -LiteralPath $f.FullName -Destination $to -Force
             }
             Write-Ok "OBS: $($obsFiles.Count) settings files copied to $obsDst (backup: obs-studio.bak-$stamp)."
-            Add-Change 'Settings: OBS scenes / profile'
+            Add-Change 'Settings: OBS scenes / profile / theme'
+            # Kerma look: themes\Kerma.ovt was just copied; make it the active theme
+            if (Test-Path -LiteralPath (Join-Path $obsDst "themes\$ObsThemeFile")) {
+                if (Ask-YesNo '  Use the Kerma theme (colors) in OBS?' $true) {
+                    try {
+                        if (Set-ObsTheme $obsDst $ObsThemeId) {
+                            Write-Ok 'OBS: Kerma theme selected.'
+                            Add-Change 'Settings: OBS Kerma theme'
+                        } else {
+                            Write-Warn 'OBS: settings from an older OBS not migrated yet. Open OBS once, close it and run this again (or pick Settings > Appearance > Kerma).'
+                        }
+                    } catch { Write-Fail "OBS theme: $($_.Exception.Message)" }
+                } else { Write-Skip 'OBS: theme left as it was (Kerma is still available in Settings > Appearance).' }
+            }
         }
     }
 
@@ -1558,7 +1634,10 @@ function Invoke-AppAutostart($pc) {
 
         $lines = @('@echo off', "timeout /t $($app.Delay) /nobreak >nul")
         $lines += "cd /d `"$(Split-Path -Path $path -Parent)`""
-        $lines += "start $flag `"`" `"$path`""
+        if ($app.PreLaunch) { $lines += $app.PreLaunch }
+        $start = "start $flag `"`" `"$path`""
+        if ($app.Args) { $start += " $($app.Args)" }
+        $lines += $start
         $bat = Join-Path $dir "$($app.Id).bat"
         Set-Content -LiteralPath $bat -Value $lines -Encoding Ascii
 

@@ -2,6 +2,15 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.3.0] - 2026-10-07 - OBS arranca solo tras un cierre inesperado, y con el tema Kerma
+
+### Corregido
+- Si OBS se cerraba mal (un fallo, un corte de luz o un reinicio forzado), al volver a arrancar se quedaba parado en el aviso *Iniciar normalmente / Modo seguro* y la mesa no terminaba de arrancar sola. Ahora el autoarranque borra antes la marca que deja OBS al cerrarse mal, igual que hace OBS al cerrarse bien, y abre directamente. Si alguien abre OBS a mano desde el menú Inicio, sí sigue ofreciendo el modo seguro. Hay que volver a pasar el script en las mesas ya montadas para que se rehaga la tarea de OBS.
+- OBS ya no muestra al arrancar el aviso de versión nueva, que también paraba el autoarranque. Las actualizaciones siguen llegando con winget.
+
+### Añadido
+- **Tema Kerma para OBS**: los colores de Kerma Shifts (fondo casi negro y dorado). El script lo instala y pregunta si dejarlo elegido; siempre se puede cambiar en *Ajustes › Apariencia*. Si OBS no pudiera cargarlo, abre con su tema normal.
+
 ## [4.2.2] - 2026-10-07 - Arreglos de la primera prueba real
 
 ### Corregido

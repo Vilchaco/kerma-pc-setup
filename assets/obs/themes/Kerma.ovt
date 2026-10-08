@@ -1,0 +1,74 @@
+@OBSThemeMeta {
+    name: 'Kerma';
+    id: 'com.kerma.Yami.Kerma';
+    extends: 'com.obsproject.Yami';
+    author: 'Kerma Games';
+    dark: 'true';
+}
+
+/*
+  Kerma Games look for OBS (same palette as Kerma Shifts).
+  A variant of OBS's default theme (Yami): only the colors change, the
+  layout stays the stock one, so it keeps working across OBS updates.
+  If OBS cannot load it, it simply falls back to its default theme.
+*/
+
+@OBSThemeVars {
+    /* Kerma backgrounds: --bg #0a0a0f, --surface #12121a, --surface2 #181824, --border #1e1e2e */
+    --grey1: #5a5870;
+    --grey2: #4a485e;
+    --grey3: #3a394d;
+    --grey4: #2a2a3c;
+    --grey5: #1e1e2e;
+    --grey6: #181824;
+    --grey7: #12121a;
+    --grey8: #0a0a0f;
+
+    /* Kerma gold (#c8a96e). Selected rows/tabs carry light text, so they use
+       a darker gold; the real gold is kept for borders and highlights. */
+    --primary: #7d6638;
+    --primary_light: #957a46;
+    --primary_lighter: #c8a96e;
+    --primary_dark: #64512c;
+    --primary_darker: #4a3c21;
+
+    --text: #e8e4dc;
+    --text_light: #ffffff;
+    --text_muted: #8a88a0;
+
+    --border_color: var(--grey5);
+
+    --input_bg: var(--grey5);
+    --input_bg_hover: var(--grey7);
+    --input_bg_focus: var(--grey7);
+    --input_border: var(--grey3);
+    --input_border_hover: var(--grey1);
+    --input_border_focus: var(--primary_lighter);
+
+    --button_bg: var(--grey4);
+    --button_bg_hover: var(--grey3);
+    --button_border: var(--grey4);
+    --button_border_hover: var(--primary_lighter);
+    --button_border_focus: var(--primary_lighter);
+
+    --tab_border_hover: var(--primary_light);
+    --tab_border_focus: var(--primary_lighter);
+
+    --scrollbar_handle: var(--grey4);
+    --scrollbar_hover: var(--primary_dark);
+    --scrollbar_down: var(--primary);
+    --scrollbar_border: var(--grey5);
+}
+
+QDockWidget::title {
+    background-color: var(--grey6);
+}
+
+OBSQTDisplay {
+    qproperty-displayBackgroundColor: var(--grey8);
+}
+
+idian--ToggleSwitch {
+    qproperty-background_checked: var(--primary);
+    qproperty-background_checked_hover: var(--primary_light);
+}
