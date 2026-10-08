@@ -1,12 +1,8 @@
-# Fondos de pantalla
+# Fondo de pantalla
 
-Plantillas de 1920x1080 en JPG. El script añade debajo del nombre de la mesa el nombre del equipo, la IP y la versión del script.
+`base.jpg` es la plantilla de todos los PCs: 1920x1080, con el logo de Kerma y los personajes. El script dibuja debajo del logo una tarjeta con el tipo de PC en su color, el nombre del PC, la IP y el nombre de equipo, usando las fuentes de `assets/fonts`.
 
-| Archivo | PC |
-|---|---|
-| `BJ01.jpg` a `BJ04.jpg` | Blackjack 01 a 04 |
-| `BJUNL01.jpg` | Blackjack Unlimited 01 |
-| `RL01.jpg` | Roulette 01 |
-| `default.jpg` | Cualquier PC sin plantilla propia. Es la plantilla sin texto: el script escribe encima el nombre del PC. |
+- **Textos y colores de cada tipo:** `src/config/ajustes.psd1`, en `Wallpaper.Tags`.
+- **Nombre de cada PC:** el `Label` del inventario, o `WallpaperText` si se quiere otro. Con `|` se parte en dos líneas.
 
-Para añadir una mesa, guarda su plantilla con la clave de la tabla de PCs del script, por ejemplo `CR01.jpg`. Deja libre la zona de abajo a la izquierda, a partir de unos 900 píxeles de altura, porque ahí va el texto.
+Si se cambia `base.jpg`, deja libre la zona de la izquierda bajo el logo, a partir de unos 520 píxeles de altura, porque ahí va la tarjeta.

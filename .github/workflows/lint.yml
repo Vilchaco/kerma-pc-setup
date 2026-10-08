@@ -56,8 +56,17 @@ jobs:
       - name: Configuration check (inventory, profiles, programs, assets)
         shell: powershell
         run: |
+          $env:KERMA_WALLPAPER_OUT = Join-Path $env:RUNNER_TEMP 'wallpapers'
           powershell -NoProfile -ExecutionPolicy Bypass -File src/Kerma-PCSetup.ps1 -ValidateConfig
           if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Test wallpapers (rendered on Windows)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wallpapers
+          path: ${{ runner.temp }}/wallpapers
+          if-no-files-found: ignore
 
       - name: PSScriptAnalyzer (errors only)
         shell: powershell

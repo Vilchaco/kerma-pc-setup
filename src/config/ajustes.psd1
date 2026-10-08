@@ -35,6 +35,21 @@
     # Panel de estado
     Panel = @{ Base = 'https://kermasetup.netlify.app' }
 
+    # Fondo de pantalla: una plantilla (assets\wallpaper\base.jpg) para todos.
+    # Tags: texto y color de la tarjeta, por juego del inventario (Game) y,
+    # si no tiene, por perfil (Supervisor, MCR, Office). Color en #RRGGBB.
+    Wallpaper = @{
+        Tags = @{
+            'blackjack'           = @{ Text = 'Blackjack';           Color = '#C8A96E' }
+            'blackjack-unlimited' = @{ Text = 'Blackjack Unlimited'; Color = '#C8A96E' }
+            'roulette'            = @{ Text = 'Roulette';            Color = '#5FB878' }
+            'craps'               = @{ Text = 'Craps';               Color = '#E05555' }
+            'Supervisor'          = @{ Text = 'Supervisor';          Color = '#8A88A0' }
+            'MCR'                 = @{ Text = 'Control room';        Color = '#4FA3E0' }
+            'Office'              = @{ Text = 'Office';              Color = '#968CC8' }
+        }
+    }
+
     # Tema de OBS: Id debe ser EXACTAMENTE el id de @OBSThemeMeta en assets\obs\themes\<ThemeFile>
     Obs = @{ ThemeFile = 'Kerma.ovt'; ThemeId = 'com.kerma.Yami.Kerma' }
 }

@@ -121,7 +121,7 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck, y el tema Kerma de OBS. |
 | Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. OBS arranca sin el aviso de modo seguro aunque se haya cerrado mal, y sin el aviso de actualizaciones. |
 | Audio | Quita los sonidos de Windows y pone la Scarlett como micrófono y salida predeterminados. |
-| Fondo de pantalla | Pone la plantilla de Kerma de la mesa con el nombre del equipo, la IP y la versión. |
+| Fondo de pantalla | El mismo fondo de Kerma en todos los PCs, con una tarjeta: tipo de PC en su color, nombre, IP y nombre de equipo. |
 | Panel de estado | Registra el PC en el panel web y envía su estado cada 5 minutos. |
 | Resumen | Lista todo lo que ha cambiado y ofrece reiniciar. |
 

@@ -30,6 +30,7 @@ function Import-KermaConfig {
     $script:PanelBase    = $aj.Panel.Base
     $script:ObsThemeFile = $aj.Obs.ThemeFile
     $script:ObsThemeId   = $aj.Obs.ThemeId
+    $script:WallpaperTags = $aj.Wallpaper.Tags
 
     # Filas de PC con lo que necesitan las secciones
     $script:PCs = @()
@@ -169,8 +170,11 @@ function Test-KermaConfig {
     # Archivos que el script necesita
     $assets = Get-AssetsDir
     if (-not $assets) { $errors.Add('no se encuentra la carpeta assets') } else {
-        $def = Test-Path -LiteralPath (Join-Path $assets 'wallpaper\default.jpg')
-        if (-not $def) { $errors.Add('falta assets\wallpaper\default.jpg') }
+        $def = Test-Path -LiteralPath (Join-Path $assets 'wallpaper\base.jpg')
+        if (-not $def) { $errors.Add('falta assets\wallpaper\base.jpg') }
+        foreach ($k in $WallpaperTags.Keys) {
+            if ([string]$WallpaperTags[$k].Color -notmatch '^#[0-9A-Fa-f]{6}$') { $errors.Add("Wallpaper.Tags.${k}: color '$($WallpaperTags[$k].Color)' no valido (#RRGGBB)") }
+        }
         foreach ($f in @('Orbitron-Black.ttf', 'Sora-Regular.ttf')) {
             if (-not (Test-Path -LiteralPath (Join-Path $assets "fonts\$f"))) { $errors.Add("falta la fuente assets\fonts\$f") }
         }
@@ -182,13 +186,23 @@ function Test-KermaConfig {
                 if (-not $wf.Title) { $errors.Add('Windows no carga assets\fonts\Orbitron-Black.ttf') }
                 if (-not $wf.Info)  { $errors.Add('Windows no carga assets\fonts\Sora-Regular.ttf') }
                 if ($wf.Pfc) { $wf.Pfc.Dispose() }
-                $tmp = Join-Path ([IO.Path]::GetTempPath()) 'kerma-wallpaper-test.jpg'
-                New-KermaWallpaper (Join-Path $assets 'wallpaper\default.jpg') 'Office | Manager' 'KG-TEST    192.168.0.1    test' $tmp
-                $img = [System.Drawing.Image]::FromFile($tmp)
-                if ($img.Width -ne 1920 -or $img.Height -ne 1080) { $errors.Add("el fondo de prueba sale de $($img.Width)x$($img.Height)") }
-                $img.Dispose()
-                Write-Host "Fondo de prueba: OK ($((Get-Item $tmp).Length) bytes, fuentes $($wf.Title.Name) / $($wf.Info.Name))"
-                Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+                # Fondos de prueba de unos PCs reales y uno escrito a mano. Si existe
+                # KERMA_WALLPAPER_OUT se guardan ahi (GitHub los adjunta al resultado).
+                $outDir = if ($env:KERMA_WALLPAPER_OUT) { $env:KERMA_WALLPAPER_OUT } else { [IO.Path]::GetTempPath() }
+                New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+                $samples = @($PCs | Where-Object { @('BJ01', 'BJUNL01', 'CR01', 'MCR', 'SUP01') -contains $_.Key })
+                $samples += @{ Key = 'MANUAL'; Label = 'Office | Manager'; Game = ''; Profile = 'Office'; Hostname = 'KG-OFC-MANAGER'; Net = @{ IP = '192.168.1.120' } }
+                foreach ($sp in $samples) {
+                    $tg = Get-WallpaperTag $sp
+                    $ipS = if ($sp.Net.IP) { $sp.Net.IP } else { '192.168.0.0' }
+                    $tmp = Join-Path $outDir "wallpaper-$($sp.Key).jpg"
+                    New-KermaWallpaper (Join-Path $assets 'wallpaper\base.jpg') $sp.Label $tg.Text $tg.Color $ipS $sp.Hostname $tmp
+                    $img = [System.Drawing.Image]::FromFile($tmp)
+                    if ($img.Width -ne 1920 -or $img.Height -ne 1080) { $errors.Add("el fondo de prueba de $($sp.Key) sale de $($img.Width)x$($img.Height)") }
+                    $img.Dispose()
+                    if (-not $env:KERMA_WALLPAPER_OUT) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+                }
+                Write-Host "Fondos de prueba: OK ($($samples.Count), fuentes $($wf.Title.Name) / $($wf.Info.Name))"
             } catch { $errors.Add("no se pudo generar un fondo de prueba: $($_.Exception.Message)") }
         }
         $theme = Join-Path $assets "obs\themes\$ObsThemeFile"

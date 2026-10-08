@@ -2,6 +2,24 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.3.0] - 2026-10-08 - Nuevo diseño del fondo de pantalla
+
+### Cambiado
+- **El mismo fondo para todos los PCs.** Una sola plantilla, `assets/wallpaper/base.jpg`, con el logo de Kerma más pequeño y alineado a la izquierda, y los personajes como estaban.
+- Debajo del logo, el script dibuja una **tarjeta** con:
+  - El tipo de PC en su color: blackjack en dorado, ruleta en verde, craps en rojo, y supervisor, Master Control Room y oficina en sus colores.
+  - El nombre del PC en grande. Si no cabe, se parte en dos líneas o se reduce la letra.
+  - La IP, bien visible, y el nombre de equipo.
+- La versión del script ya no aparece en el fondo.
+- Los colores y textos de cada tipo están en `src/config/ajustes.psd1`, en `Wallpaper.Tags`.
+- El nombre de la tarjeta es el `Label` del inventario, o `WallpaperText` si se define. En modo Manual se puede escribir otro.
+
+### Eliminado
+- Las plantillas con el nombre de cada mesa ya dibujado y la plantilla sin texto: las sustituye `base.jpg`. Siguen en el historial del repositorio.
+
+### Añadido
+- La comprobación de GitHub genera en Windows los fondos de varios PCs reales y de un nombre escrito a mano, y los adjunta al resultado para poder revisarlos.
+
 ## [5.2.0] - 2026-10-08 - Fuentes del MCR en el fondo
 
 ### Cambiado

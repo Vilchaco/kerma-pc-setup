@@ -1,11 +1,11 @@
 ﻿# =====================================================================
-#  FONDO DE PANTALLA: plantilla de Kerma de la mesa + nombre de equipo,
-#  IP y version. assets\wallpaper\<clave>.jpg; si no, default.jpg con el
-#  nombre del PC escrito por el script.
+#  FONDO DE PANTALLA: el mismo diseno en todos los PCs. La plantilla
+#  assets\wallpaper\base.jpg lleva el logo y los personajes; el script
+#  dibuja debajo del logo una tarjeta con el tipo de PC en su color, el
+#  nombre, la IP y el nombre de equipo. Colores y textos del tipo en
+#  config\ajustes.psd1 (Wallpaper.Tags).
 # =====================================================================
 
-# Fuentes de assets\fonts (las del MCR): se cargan solo para dibujar, sin instalarlas.
-# Si no se pueden cargar, se usan Bahnschrift / Segoe UI de Windows.
 function Get-WallpaperFonts {
     $r = @{ Title = $null; Info = $null; Pfc = $null }
     $assets = Get-AssetsDir
@@ -25,39 +25,105 @@ function Get-WallpaperFonts {
     return $r
 }
 
-function New-KermaWallpaper([string]$template, [string]$label, [string]$info, [string]$out) {
+# Rectangulo redondeado para System.Drawing
+function New-RoundedRect([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) {
+    $p = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $d = $r * 2
+    $p.AddArc($x, $y, $d, $d, 180, 90)
+    $p.AddArc($x + $w - $d, $y, $d, $d, 270, 90)
+    $p.AddArc($x + $w - $d, $y + $h - $d, $d, $d, 0, 90)
+    $p.AddArc($x, $y + $h - $d, $d, $d, 90, 90)
+    $p.CloseFigure()
+    return $p
+}
+
+# Tipo de PC y color de la tarjeta: por juego y, si no, por perfil
+function Get-WallpaperTag($pc) {
+    foreach ($k in @($pc.Game, $pc.Profile)) {
+        if ($k -and $WallpaperTags.ContainsKey($k)) { return $WallpaperTags[$k] }
+    }
+    return @{ Text = ''; Color = '#C8A96E' }
+}
+
+# Dibuja el fondo: plantilla + tarjeta. $name admite '|' para dos lineas;
+# si es demasiado largo se parte solo o se reduce la letra.
+function New-KermaWallpaper([string]$template, [string]$name, [string]$tag, [string]$color, [string]$ip, [string]$hostname, [string]$out) {
     Add-Type -AssemblyName System.Drawing
     $fonts = Get-WallpaperFonts
+    $px = [System.Drawing.GraphicsUnit]::Pixel
+    $fmt = [System.Drawing.StringFormat]::GenericTypographic
     $src = [System.Drawing.Image]::FromFile($template)
     $bmp = New-Object System.Drawing.Bitmap 1920, 1080
     $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $made = @()
     try {
         $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
         $g.SmoothingMode     = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-        $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+        $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAlias
         $g.DrawImage($src, 0, 0, 1920, 1080)
-        $px = [System.Drawing.GraphicsUnit]::Pixel
-        if ($label) {
-            if ($fonts.Title) {
-                $f1 = New-Object System.Drawing.Font($fonts.Title, 34, [System.Drawing.FontStyle]::Regular, $px)
-            } else {
-                $family = 'Segoe UI'
-                try { [void](New-Object System.Drawing.FontFamily 'Bahnschrift'); $family = 'Bahnschrift' } catch { }
-                $f1 = New-Object System.Drawing.Font($family, 32, [System.Drawing.FontStyle]::Bold, $px)
+
+        $titleFam = if ($fonts.Title) { $fonts.Title } else { New-Object System.Drawing.FontFamily 'Segoe UI' }
+        $infoFam  = if ($fonts.Info)  { $fonts.Info }  else { New-Object System.Drawing.FontFamily 'Segoe UI' }
+        $titleStyle = if ($fonts.Title) { [System.Drawing.FontStyle]::Regular } else { [System.Drawing.FontStyle]::Bold }
+        function NewFont($fam, [float]$size, $style) { $f = New-Object System.Drawing.Font($fam, $size, $style, $px); $script:madeFonts += $f; return $f }
+        $script:madeFonts = @()
+        $X = 150; $Y = 530; $pad = 40; $minW = 600; $maxW = 760; $textMax = $maxW - $pad - 36
+
+        # nombre: lineas por '|'; si una linea no cabe, partirla por el espacio central
+        $lines = @($name.Split('|') | ForEach-Object { $_.Trim().ToUpperInvariant() } | Where-Object { $_ } | Select-Object -First 2)
+        if (-not $lines.Count) { $lines = @(' ') }
+        $size = 54.0
+        $fTitle = NewFont $titleFam $size $titleStyle
+        if ($lines.Count -eq 1 -and $g.MeasureString($lines[0], $fTitle, 4000, $fmt).Width -gt $textMax -and $lines[0].Contains(' ')) {
+            $words = $lines[0].Split(' '); $best = $null; $bestW = 1e9
+            for ($i = 1; $i -lt $words.Count; $i++) {
+                $a = ($words[0..($i - 1)] -join ' '); $b = ($words[$i..($words.Count - 1)] -join ' ')
+                $w = [Math]::Max($g.MeasureString($a, $fTitle, 4000, $fmt).Width, $g.MeasureString($b, $fTitle, 4000, $fmt).Width)
+                if ($w -lt $bestW) { $bestW = $w; $best = @($a, $b) }
             }
-            # "|" parte el nombre en dos lineas, como en las plantillas de las mesas
-            $lines = @($label.Split('|') | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -First 2)
-            $y = if ($lines.Count -gt 1) { 800 } else { 826 }
-            foreach ($ln in $lines) { $g.DrawString($ln.ToUpper(), $f1, [System.Drawing.Brushes]::White, 146, $y); $y += 54 }
-            $f1.Dispose()
+            $lines = $best
         }
-        $f2 = if ($fonts.Info) { New-Object System.Drawing.Font($fonts.Info, 21, [System.Drawing.FontStyle]::Regular, $px) }
-              else { New-Object System.Drawing.Font('Segoe UI', 21, [System.Drawing.FontStyle]::Regular, $px) }
-        $br = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(215, 196, 186, 236))
-        $g.DrawString($info, $f2, $br, 146, 918)
-        $f2.Dispose()
-        $br.Dispose()
-    } finally { $g.Dispose(); $src.Dispose(); if ($fonts.Pfc) { $fonts.Pfc.Dispose() } }
+        while ($size -gt 30 -and ($lines | ForEach-Object { $g.MeasureString($_, $fTitle, 4000, $fmt).Width } | Measure-Object -Maximum).Maximum -gt $textMax) {
+            $size -= 2; $fTitle = NewFont $titleFam $size $titleStyle
+        }
+        $fTag  = NewFont $titleFam 21 $titleStyle
+        $fIp   = NewFont $infoFam 30 ([System.Drawing.FontStyle]::Regular)
+        $fHost = NewFont $infoFam 22 ([System.Drawing.FontStyle]::Regular)
+
+        $lineH = [Math]::Round($size * 1.3)
+        $wTitle = ($lines | ForEach-Object { $g.MeasureString($_, $fTitle, 4000, $fmt).Width } | Measure-Object -Maximum).Maximum
+        $wIp = $g.MeasureString($ip, $fIp, 4000, $fmt).Width
+        $wInfo = $wIp + 26 + $g.MeasureString($hostname, $fHost, 4000, $fmt).Width
+        $wTag = $g.MeasureString($tag, $fTag, 4000, $fmt).Width
+        $W = [Math]::Min($maxW, [Math]::Max($minW, [Math]::Max([Math]::Max($wTitle, $wInfo), $wTag) + $pad + 36))
+        $hasTag = [bool]$tag
+        $H = 28 + $(if ($hasTag) { 42 } else { 0 }) + $lines.Count * $lineH + 14 + 16 + 40 + 24
+
+        # tarjeta semitransparente y barra de color
+        $accent = [System.Drawing.ColorTranslator]::FromHtml($color)
+        $card = New-RoundedRect $X $Y $W $H 20
+        $fill = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(150, 12, 8, 40))
+        $edge = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(40, 255, 255, 255)), 1
+        $g.FillPath($fill, $card); $g.DrawPath($edge, $card)
+        $bar = New-RoundedRect $X $Y 9 $H 4
+        $barBrush = New-Object System.Drawing.SolidBrush $accent
+        $g.FillPath($barBrush, $bar)
+
+        $white = [System.Drawing.Brushes]::White
+        $lav = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(215, 196, 186, 236))
+        $tx = $X + $pad; $ty = $Y + 28
+        if ($hasTag) { $g.DrawString($tag.ToUpperInvariant(), $fTag, $barBrush, $tx, $ty, $fmt); $ty += 42 }
+        foreach ($l in $lines) { $g.DrawString($l, $fTitle, $white, $tx, $ty, $fmt); $ty += $lineH }
+        $ty += 14
+        $g.DrawLine($edge, $tx, $ty, $X + $W - 36, $ty)
+        $ty += 16
+        $g.DrawString($ip, $fIp, $white, $tx, $ty, $fmt)
+        $g.DrawString($hostname, $fHost, $lav, ($tx + $wIp + 26), ($ty + 6), $fmt)
+        foreach ($o in @($card, $fill, $edge, $bar, $barBrush, $lav)) { $o.Dispose() }
+    } finally {
+        foreach ($f in $script:madeFonts) { $f.Dispose() }
+        $g.Dispose(); $src.Dispose(); if ($fonts.Pfc) { $fonts.Pfc.Dispose() }
+    }
     $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq 'image/jpeg' }
     $ep = New-Object System.Drawing.Imaging.EncoderParameters 1
     $ep.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.Drawing.Imaging.Encoder]::Quality), 95L
@@ -68,38 +134,28 @@ function New-KermaWallpaper([string]$template, [string]$label, [string]$info, [s
 function Invoke-Wallpaper($pc) {
     Write-Section (L 'WALLPAPER' 'FONDO DE PANTALLA')
     $assets = Get-AssetsDir
-    $own = if ($assets) { Join-Path $assets "wallpaper\$($pc.Key).jpg" } else { '' }
-    $def = if ($assets) { Join-Path $assets 'wallpaper\default.jpg' } else { '' }
-    $hasOwn = $own -and (Test-Path -LiteralPath $own)
-    $hasDef = $def -and (Test-Path -LiteralPath $def)
-    if (-not $hasOwn -and -not $hasDef) { Write-Skip (L 'No wallpaper templates in assets\wallpaper.' 'No hay plantillas de fondo en assets\wallpaper.'); return }
+    $template = if ($assets) { Join-Path $assets 'wallpaper\base.jpg' } else { '' }
+    if (-not $template -or -not (Test-Path -LiteralPath $template)) { Write-Skip (L 'No wallpaper template (assets\wallpaper\base.jpg).' 'No hay plantilla de fondo (assets\wallpaper\base.jpg).'); return }
 
-    # Nombre del fondo: el de la plantilla de la mesa, el del inventario
-    # (WallpaperText) o el nombre completo. En Manual se puede escribir otro.
-    $suggest = if ($pc.WallpaperText) { $pc.WallpaperText } else { $pc.FullName }
-    $custom = ''
+    $name = if ($pc.WallpaperText) { $pc.WallpaperText } else { $pc.Label }
     if (-not $script:Auto) {
-        $shown = if ($hasOwn -and -not $pc.WallpaperText) { L "the one in the table's template" 'el de la plantilla de la mesa' } else { $suggest }
-        Write-Host ((L '  Name on the wallpaper: {0}' '  Nombre en el fondo: {0}') -f $shown)
+        Write-Host ((L '  Name on the wallpaper: {0}' '  Nombre en el fondo: {0}') -f $name)
         $custom = (Read-Host (L '  Enter = keep it, or type another (use | for two lines)' '  Enter = mantenerlo, o escribe otro (usa | para dos líneas)')).Trim()
+        if ($custom) { $name = $custom }
     }
-    if ($custom) { $template = $(if ($hasDef) { $def } else { $own }); $label = $custom }
-    elseif ($pc.WallpaperText -and $hasDef) { $template = $def; $label = $pc.WallpaperText }
-    elseif ($hasOwn) { $template = $own; $label = '' }
-    else { $template = $def; $label = $suggest }
-    $host_ = if ($State.HostRenamed) { $pc.Hostname } else { $env:COMPUTERNAME }
+    $tagInfo = Get-WallpaperTag $pc
+    $hostname = if ($State.HostRenamed) { $pc.Hostname } else { $env:COMPUTERNAME }
     $ip = Get-PrimaryIPv4
-    $info = "$host_    $(if ($ip) { $ip } else { L 'no IP' 'sin IP' })    Kerma PC Setup v$ScriptVersion"
-    $lab = if ($label) { (L "  + label '{0}'" "  + nombre '{0}'") -f $label } else { '' }
-    Write-Host ((L '  Template : {0}{1}' '  Plantilla : {0}{1}') -f (Split-Path -Path $template -Leaf), $lab)
-    Write-Host ((L '  Text     : {0}' '  Texto     : {0}') -f $info)
+    if ($pc.Net.IP -and $State.Changes -match [regex]::Escape($pc.Net.IP)) { $ip = $pc.Net.IP }
+    if (-not $ip) { $ip = L 'no IP' 'sin IP' }
+    Write-Host ((L '  Card: {0} / {1} / {2}  {3}' '  Tarjeta: {0} / {1} / {2}  {3}') -f $tagInfo.Text, ($name -replace '\s*\|\s*', ' '), $ip, $hostname)
     Write-Host ''
     if (-not (Ask-YesNo (L '  Set this wallpaper?' '  ¿Poner este fondo?') ([bool]$Prof.Wallpaper))) { Write-Skip (L 'Wallpaper left unchanged.' 'Fondo sin cambios.'); return }
 
     $dir = Join-Path $env:ProgramData 'Kerma'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $out = Join-Path $dir 'wallpaper.jpg'
-    New-KermaWallpaper $template $label $info $out
+    New-KermaWallpaper $template $name $tagInfo.Text $tagInfo.Color $ip $hostname $out
 
     $desk = 'HKCU:\Control Panel\Desktop'
     Set-ItemProperty -Path $desk -Name WallpaperStyle -Value '10' -Type String   # rellenar
@@ -116,7 +172,7 @@ public static class KermaWallpaperApi {
     # SPI_SETDESKWALLPAPER = 20, SPIF_UPDATEINIFILE | SPIF_SENDCHANGE = 3
     if ([KermaWallpaperApi]::SystemParametersInfo(20, 0, $out, 3)) {
         Write-Ok ((L "Wallpaper set for user '{0}' ({1})." "Fondo puesto para '{0}' ({1}).") -f $env:USERNAME, $out)
-        Add-Change ((L 'Wallpaper: {0}' 'Fondo: {0}') -f $info)
+        Add-Change ((L 'Wallpaper: {0} ({1})' 'Fondo: {0} ({1})') -f ($name -replace '\s*\|\s*', ' '), $ip)
     } else {
         Write-Warn ((L 'Windows did not accept the wallpaper. The picture is ready in {0}.' 'Windows no aceptó el fondo. La imagen está lista en {0}.') -f $out)
     }
