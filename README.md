@@ -43,7 +43,7 @@ Los PCs se conectan entre sí con RustDesk por **IP directa** dentro de la red d
 
 > **La contraseña común es la única llave de las mesas.** Con ella, cualquiera dentro de la red puede tomar el control de una mesa en juego sin aviso previo. Usa una contraseña larga, que la conozcan pocas personas, y cámbiala cuando alguien deje el equipo. Para cambiarla, vuelve a pasar el script con la nueva contraseña en todos los PCs.
 
-La lista de equipos del MASTER se mantiene en el repositorio de David, en `Equipos.ejemplo.csv`. El script la lee al configurar cada MASTER, así que basta con actualizarla allí y volver a pasar el script en los MASTER. Para eso su repositorio tiene que ser público: solo contiene nombres e IPs, sin contraseñas. Mientras sea privado, el script usa los PCs de la tabla `$PCs` que tienen IP, más `$RustDeskExtraPeers`.
+La lista de equipos del MASTER se mantiene en el repositorio de David, en `Equipos.ejemplo.csv`. El script la lee al configurar cada MASTER, así que basta con actualizarla allí y volver a pasar el script en los MASTER. Para eso su repositorio tiene que ser público: solo contiene nombres e IPs, sin contraseñas. Mientras sea privado, el script usa las IPs de `src/config/inventario.psd1`, más `ExtraPeers` de `src/config/ajustes.psd1`.
 
 ## Panel de estado
 
@@ -74,7 +74,31 @@ También puedes descargar la **[última versión](https://github.com/Vilchaco/ke
 2. Clic derecho en el zip, **Propiedades**, marca **Desbloquear** y acepta. Sin esto Windows puede bloquear el script por venir de internet.
 3. Clic derecho en el zip y **Extraer todo**. No lo ejecutes desde dentro del zip, porque así no puede recordar las rutas de las apps.
 4. Doble clic en `Kerma-PCSetup.bat`. Acepta el aviso de permisos de administrador.
-5. Elige qué PC es y responde a cada sección. Todas se pueden saltar.
+
+## Al empezar: idioma, modo y PC
+
+El script pregunta tres cosas:
+
+1. **Idioma:** español o English.
+2. **Modo:**
+   - **Automático.** Aplica el perfil del PC sin preguntar. Al principio pide solo lo que no puede saber: la contraseña de RustDesk, el PIN del panel, la IP si no la conoce y dónde están los programas que no instala, como la Dealer App o el scanner. Después puedes dejar el PC trabajando y volver al final para reiniciar.
+   - **Manual.** Pregunta en cada sección. El valor que se ofrece por defecto es el del perfil.
+   - **Revisión.** Muestra el estado del PC y no cambia nada.
+3. **Qué PC es,** de la lista del inventario.
+
+El script trabaja por fases y termina con una comprobación del estado real del PC y un resumen de lo que ha cambiado:
+
+| Fase | Contenido |
+|---|---|
+| 0. Comprobaciones | Permisos, internet y lista de IPs de David |
+| 1. Sistema base | Hora, nombres, inicio de sesión, red, Windows Update |
+| 2. Limpieza y ajustes | Ajustes del PC, apps preinstaladas |
+| 3. Programas | Instalar y actualizar |
+| 4. Configuración | RustDesk, audio, programas, arranque de apps, fondo |
+| 5. Vigilancia | Panel de estado |
+| 6. Final | Comprobación, resumen y reinicio |
+
+Si una sección falla, lo avisa en rojo, lo anota en el resumen y sigue con la siguiente.
 
 Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que elijas en la primera se ofrecen solas en las siguientes.
 
@@ -122,31 +146,38 @@ En cualquier PC con una Focusrite conectada se instala también Focusrite Contro
 | Focusrite Control 2 | winget, `FocusriteAudioEngineeringLtd.FocusriteControl2`. Para las Scarlett Solo de tercera generación. |
 | Plugins VST3 | Carpeta [assets/vst3](assets/vst3/README.md) |
 
-Las listas por tipo de PC están en `$InstallByType`, en la cabecera del script.
+Los programas de cada tipo de PC están en `src/config/perfiles.psd1`.
 
-## Modo desatendido
+## Desde la línea de comandos
 
-Para reinstalar un PC sin responder preguntas. Abre una consola en la carpeta del script:
+Abre una consola en la carpeta del script:
 
 ```bat
-Kerma-PCSetup.bat -PC RL01 -Unattended
-Kerma-PCSetup.bat -PC HECTOR -Unattended -Restart
+Kerma-PCSetup.bat -Lang es -Mode Auto -PC BJ01
+Kerma-PCSetup.bat -PC BJ01 -Unattended -RustDeskPassword ... -PanelPin ... -Restart
+Kerma-PCSetup.bat -Check
+Kerma-PCSetup.bat -ValidateConfig
 ```
 
-Las claves de cada PC están en la tabla de la cabecera del script. En este modo solo se configuran las apps con una ruta ya recordada, y la red solo si ese PC tiene IP en la tabla.
+- `-Lang` y `-Mode` saltan los menús de idioma y de modo. `-PC` salta el de elegir PC.
+- `-Unattended` no pregunta nada. Las contraseñas van como parámetros y la red solo se configura si se conoce la IP.
+- `-Check` es el modo revisión.
+- `-ValidateConfig` comprueba la configuración y muestra el plan de cada PC. GitHub lo ejecuta en cada cambio.
 
 ## Configuración
 
-Todo se edita en los bloques `CONFIG` del principio de `Kerma-PCSetup.ps1`:
+No hace falta tocar código. Todo está en `src/config`:
 
-- **Añadir un PC:** copia una línea de la tabla `$PCs` y cambia sus datos.
-- **IPs fijas:** rellena `IP` en la línea de cada PC. La máscara, la puerta de enlace y las DNS se toman de `$NetDefaults`.
-- **Apps:** el retardo y si se abren maximizadas, en la tabla `$Apps`. Las rutas no hace falta ponerlas: se piden al configurar.
-- **Hora:** zona horaria, servidores de hora y hora de la sincronización diaria.
-- **Programas:** la tabla `$Packages` y las listas `$InstallByType`.
-- **Configuración de los programas:** se guarda en la carpeta [assets](assets/README.md), no en el script.
+| Archivo | Qué contiene |
+|---|---|
+| `inventario.psd1` | Cada PC: clave, grupo, nombre, perfil, nombre de equipo y de usuario, juego, si usa scanner e IP de respaldo. **Para añadir un PC, copia un bloque y cambia sus datos.** |
+| `perfiles.psd1` | Qué se hace en cada tipo de PC: inicio de sesión, Windows Update, ajustes, limpieza, programas, modo de RustDesk, apps que arrancan, fondo y panel. |
+| `programas.psd1` | De dónde sale cada programa, cómo arranca cada app y qué apps preinstaladas se quitan. |
+| `ajustes.psd1` | Hora, valores de red, RustDesk, audio, panel y tema de OBS. |
 
-El script debe seguir siendo **solo ASCII**, sin tildes ni eñes. La comprobación automática de GitHub rechaza cualquier otro carácter.
+La configuración de los propios programas, como escenas de OBS, perfiles de Stream Deck o fondos, va en la carpeta [assets](assets/README.md).
+
+El código está en `src/Kerma-PCSetup.ps1`, que organiza las fases, en `src/sections`, una sección por archivo, y en `src/lib`, las funciones comunes. Los scripts con tildes se guardan como UTF-8 con BOM, para que Windows PowerShell 5.1 los lea bien. La comprobación de GitHub rechaza tildes sin BOM.
 
 ## Qué deja en cada PC
 

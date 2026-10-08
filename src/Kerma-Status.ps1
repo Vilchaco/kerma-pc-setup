@@ -10,12 +10,14 @@
 
     -Print   show the report on screen (review mode)
     -NoSend  do not send it to the panel
+    -Lang    es / en for the screen report
+    -Config  pc.json to use (default: next to this script)
 
   Plain ASCII on purpose (Windows PowerShell 5.1).
 =====================================================================
 #>
 [CmdletBinding()]
-param([switch]$Print, [switch]$NoSend)
+param([switch]$Print, [switch]$NoSend, [string]$Lang = 'es', [string]$Config)
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -30,7 +32,7 @@ function Get-Safe([scriptblock]$sb) { try { & $sb } catch { $null } }
 
 # ------------------------------------------------------------- config
 $cfg = $null
-foreach ($f in @((Join-Path $Here 'pc.json'), 'C:\ProgramData\Kerma\pc.json')) {
+foreach ($f in @($Config, (Join-Path $Here 'pc.json'), 'C:\ProgramData\Kerma\pc.json') | Where-Object { $_ }) {
     if (Test-Path -LiteralPath $f) { $cfg = Get-Safe { Get-Content -LiteralPath $f -Raw | ConvertFrom-Json }; if ($cfg) { break } }
 }
 if (-not $cfg) { [void]$Warnings.Add('pc.json not found: this PC was not configured with Kerma PC Setup 4.3 or later.') }
@@ -200,35 +202,36 @@ $status = [ordered]@{
 }
 
 if ($Print) {
+    function T([string]$en, [string]$es) { if ($Lang -eq 'es') { $es } else { $en } }
     function Show([string]$k, $v, [string]$color = 'Gray') { Write-Host ('  {0,-18} ' -f $k) -NoNewline; Write-Host ([string]$v) -ForegroundColor $color }
     Write-Host ''
     Write-Host '===============================================' -ForegroundColor Cyan
-    Write-Host "  PC REVIEW - $($status.label) ($env:COMPUTERNAME)" -ForegroundColor Cyan
+    Write-Host ("  {0} - $($status.label) ($env:COMPUTERNAME)" -f (T 'PC REVIEW' 'REVISION DEL PC')) -ForegroundColor Cyan
     Write-Host '===============================================' -ForegroundColor Cyan
-    Show 'Type / game'   "$($status.type) $($status.game)"
-    Show 'Setup version' $status.script_version
+    Show (T 'Type / game' 'Tipo / juego')   "$($status.type) $($status.game)"
+    Show (T 'Setup version' 'Version setup') $status.script_version
     Show 'Windows'       "$($windows.caption) $($windows.display_version) (build $($windows.build))"
-    Show 'Booted'        $(if ($os) { $os.LastBootUpTime } else { '?' })
-    Show 'Logged on'     $(if ($user) { $user } else { 'nobody' })
-    Show 'Hardware'      "$($hardware.manufacturer) $($hardware.model) - S/N $($hardware.serial)"
-    if ($diskInfo) { Show 'Disk C:' "$($diskInfo.free_gb) GB free of $($diskInfo.total_gb) GB" $(if ($diskInfo.free_gb -lt 10) { 'Yellow' } else { 'Green' }) }
+    Show (T 'Booted' 'Encendido')        $(if ($os) { $os.LastBootUpTime } else { '?' })
+    Show (T 'Logged on' 'Sesion de')     $(if ($user) { $user } else { T 'nobody' 'nadie' })
+    Show (T 'Hardware' 'Equipo')      "$($hardware.manufacturer) $($hardware.model) - S/N $($hardware.serial)"
+    if ($diskInfo) { Show (T 'Disk C:' 'Disco C:') "$($diskInfo.free_gb) GB free of $($diskInfo.total_gb) GB" $(if ($diskInfo.free_gb -lt 10) { 'Yellow' } else { 'Green' }) }
     if ($null -ne $clock.offset_s) {
         $c = if ([Math]::Abs($clock.offset_s) -le 0.5) { 'Green' } elseif ([Math]::Abs($clock.offset_s) -le 2) { 'Yellow' } else { 'Red' }
-        Show 'Clock offset' "$($clock.offset_s) s ($($clock.server)), service $($clock.service), $($clock.timezone)" $c
-    } else { Show 'Clock offset' 'unknown - no time server answered' 'Red' }
+        Show (T 'Clock offset' 'Desfase reloj') "$($clock.offset_s) s ($($clock.server)), service $($clock.service), $($clock.timezone)" $c
+    } else { Show (T 'Clock offset' 'Desfase reloj') 'unknown - no time server answered' 'Red' }
     foreach ($n in $network) {
         $mode = if ($n.dhcp) { 'DHCP' } else { 'static' }
         Show "Net $($n.name)" "$($n.status) $($n.ip) $mode gw $($n.gateway) dns $($n.dns -join ',') mac $($n.mac)" $(if ($n.status -eq 'Up') { 'Green' } else { 'DarkGray' })
     }
     foreach ($a in $apps) {
-        $txt = if (-not $a.installed) { 'NOT installed' } elseif ($a.running) { "running  $($a.version)" } else { "installed, not running  $($a.version)" }
+        $txt = if (-not $a.installed) { T 'NOT installed' 'NO instalada' } elseif ($a.running) { (T 'running  ' 'abierta  ') + $a.version } else { (T 'installed, not running  ' 'instalada, cerrada  ') + $a.version }
         $col = if (-not $a.installed) { 'Red' } elseif ($a.running) { 'Green' } elseif ($a.autostart -and $user) { 'Red' } else { 'Gray' }
         Show "App $($a.name)" $txt $col
     }
     foreach ($t in $tasks) { Show 'Task' "$($t.name): $($t.state), last result $($t.last_result)" $(if ($t.last_result -eq 0 -or $null -eq $t.last_result) { 'Gray' } else { 'Yellow' }) }
-    Show 'Focusrite' $(if ($focusrite.Count) { $focusrite -join ', ' } else { 'not connected' })
-    if ($audio.default_recording) { Show 'Microphone' $audio.default_recording }
-    if ($audio.default_playback) { Show 'Speakers' $audio.default_playback }
+    Show 'Focusrite' $(if ($focusrite.Count) { $focusrite -join ', ' } else { T 'not connected' 'no conectada' })
+    if ($audio.default_recording) { Show (T 'Microphone' 'Micro') $audio.default_recording }
+    if ($audio.default_playback) { Show (T 'Speakers' 'Salida') $audio.default_playback }
     if ($remote) { Show 'RustDesk' "service $($remote.rustdesk_service) ($($remote.rustdesk_start)), port $($remote.port) $(if ($remote.listening) { 'listening' } else { 'NOT listening' })" $(if ($remote.listening) { 'Green' } else { 'Yellow' }) }
     foreach ($w in $Warnings) { Write-Host "  [WARN] $w" -ForegroundColor Yellow }
     Write-Host ''

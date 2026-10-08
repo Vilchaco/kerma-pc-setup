@@ -2,6 +2,31 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.0.0] - 2026-10-08 - Reorganización: perfiles, idioma y modos
+
+El script deja de ser un único archivo de 2.200 líneas. Hace lo mismo que la 4.7.1, pero organizado para crecer y para trabajar solo.
+
+### Cambiado
+- **Configuración separada del código** en `src/config`:
+  - `inventario.psd1`: cada PC, con su clave, nombres, perfil, juego, scanner e IP de respaldo.
+  - `perfiles.psd1`: qué se hace en cada tipo de PC (mesa, supervisor, oficina, MCR).
+  - `programas.psd1`: qué se instala, qué arranca y qué apps se quitan.
+  - `ajustes.psd1`: hora, red, RustDesk, audio, panel y tema de OBS.
+- **El código, por secciones** en `src/sections`, una por archivo, y las funciones comunes en `src/lib`.
+- Las secciones toman su valor por defecto del **perfil** del PC, no de reglas repartidas por el código.
+- Fases con un orden lógico: comprobaciones previas, sistema base, limpieza y ajustes, programas, configuración, vigilancia y comprobación final.
+
+### Añadido
+- **Idioma al empezar:** español o English. Todos los mensajes del script están en los dos idiomas.
+- **Modo al empezar:**
+  - **Automático:** aplica el perfil del PC sin preguntar. Al principio pide solo lo que no puede saber: la contraseña de RustDesk, el PIN del panel, la IP si no la conoce y los programas que no instala, como la Dealer App o el scanner. Después se puede dejar el PC trabajando.
+  - **Manual:** pregunta en cada sección, como hasta ahora.
+  - **Revisión:** muestra el estado del PC sin cambiar nada.
+- Las **IPs se leen de la lista de David** al empezar y ganan sobre las del inventario. Si no se puede leer, se usa el inventario y el script lo avisa.
+- **Comprobación final:** el script termina mostrando el estado real del PC, con el mismo informe del modo revisión.
+- **Validación de la configuración** con `-ValidateConfig`, que GitHub ejecuta en Windows en cada cambio. Comprueba claves, nombres e IPs repetidos, perfiles que nombran programas inexistentes, plantillas, el tema de OBS, el autoarranque de OBS y que la versión coincide con este historial. Muestra además el plan de cada PC.
+- Parámetros `-Lang` y `-Mode` para lanzarlo sin menús.
+
 ## [4.7.1] - 2026-10-07 - El MCR fuera de RustDesk
 
 ### Cambiado
