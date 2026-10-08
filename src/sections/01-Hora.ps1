@@ -190,7 +190,7 @@ function Invoke-TimeSetup($pc) {
         return
     }
     $taskName = 'Kerma - Time Sync'
-    $err = Register-SystemTask $taskName $syncScript @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Daily -At $TimeSyncDailyAt)) 10 @('/sc', 'onstart')
+    $err = Register-SystemTask $taskName $syncScript @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Daily -At $TimeSyncDailyAt)) 10 @(@('/sc', 'onstart'), @('/sc', 'daily', '/st', $TimeSyncDailyAt))
     if ($err) {
         Write-Fail ((L 'Background time sync task NOT created: {0}' 'La tarea de hora en segundo plano NO se creó: {0}') -f $err)
         return

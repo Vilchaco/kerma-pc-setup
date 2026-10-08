@@ -282,8 +282,10 @@ function Get-AppPathInteractive($app, [string]$suggested) {
 
 # ---------------------------- tareas programadas ---------------------
 # Registra una tarea que se ejecuta como SYSTEM. Con schtasks.exe de respaldo.
-# $triggers = objetos de New-ScheduledTaskTrigger; $fallback = argumentos de schtasks /sc
-function Register-SystemTask([string]$name, [string]$script, $triggers, [int]$limitMin, [string[]]$fallback) {
+# $triggers = objetos de New-ScheduledTaskTrigger. $fallbacks = una lista de
+# programaciones de schtasks (@('/sc', ...)): schtasks admite una por tarea,
+# asi que la segunda y siguientes se crean como "<nombre> (<sc>)".
+function Register-SystemTask([string]$name, [string]$script, $triggers, [int]$limitMin, [object[]]$fallbacks) {
     $psArgs = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`""
     try {
         $a  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $psArgs
@@ -293,9 +295,15 @@ function Register-SystemTask([string]$name, [string]$script, $triggers, [int]$li
         return ''
     } catch { $err1 = ($_.Exception.Message -replace '\s+', ' ').Trim() }
     $tr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $script"
-    $r = Invoke-Native 'schtasks.exe' (@('/create', '/tn', $name, '/tr', $tr) + $fallback + @('/ru', 'SYSTEM', '/rl', 'highest', '/f'))
-    if ($r.ExitCode -eq 0) { return '' }
-    return "$err1 / $($r.Text)"
+    $errs = @()
+    for ($i = 0; $i -lt $fallbacks.Count; $i++) {
+        $fb = @($fallbacks[$i])
+        $n  = if ($i -eq 0) { $name } else { "$name ($($fb[1]))" }
+        $r = Invoke-Native 'schtasks.exe' (@('/create', '/tn', $n, '/tr', $tr) + $fb + @('/ru', 'SYSTEM', '/rl', 'highest', '/f'))
+        if ($r.ExitCode -ne 0) { $errs += $r.Text }
+    }
+    if ($errs.Count -eq 0) { return '' }
+    return "$err1 / $($errs -join ' / ')"
 }
 
 # Lanza una tarea y espera a que termine. Devuelve su LastTaskResult (o $null).

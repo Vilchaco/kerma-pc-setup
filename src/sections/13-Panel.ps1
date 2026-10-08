@@ -65,7 +65,7 @@ function Invoke-StatusPanel($pc) {
     # ---- tarea: cada 5 minutos y al encender, como SYSTEM
     $taskName = 'Kerma - Status'
     $triggers = @((New-ScheduledTaskTrigger -AtStartup), (New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)))
-    $err = Register-SystemTask $taskName $collector $triggers 3 @('/sc', 'minute', '/mo', '5')
+    $err = Register-SystemTask $taskName $collector $triggers 3 @(, @('/sc', 'minute', '/mo', '5'))
     if ($err) { Write-Fail ((L 'Status task NOT created: {0}' 'La tarea del panel NO se creó: {0}') -f $err); return }
 
     # ---- primer informe ya
