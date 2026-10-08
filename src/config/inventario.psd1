@@ -14,6 +14,8 @@
 #  IP           IP fija de respaldo. La buena vive en el repositorio de David
 #               (ver ajustes.psd1, RustDesk.PeersUrl) y gana sobre esta.
 #  DavidName    nombre del PC en la lista de David, si no coincide con Key
+#  WallpaperText (opcional) nombre que se escribe en el fondo; | = dos lineas.
+#               Si falta: la plantilla de la mesa o, si no hay, FullName.
 # =====================================================================
 @{
     PCs = @(

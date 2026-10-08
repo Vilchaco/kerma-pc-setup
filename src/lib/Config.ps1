@@ -43,9 +43,46 @@ function Import-KermaConfig {
             Type = if ($prof) { $prof.Type } else { '' }
             Hostname = $row.Hostname; Username = $row.Username; FullName = $row.FullName; Game = $row.Game
             Apps = $apps; Net = @{ IP = [string]$row.IP }; IPSource = if ($row.IP) { 'inventory' } else { '' }
-            DavidName = $row.DavidName
+            DavidName = $row.DavidName; WallpaperText = $row.WallpaperText
             RustDesk = ($prof -and $prof.RustDesk -ne 'None')
         }
+    }
+}
+
+# "Otro PC": un equipo que no esta en el inventario (p. ej. el de la Office
+# Manager). Se pide su nombre y su tipo; el resto se propone a partir del nombre.
+function New-AdHocPC {
+    Write-Section (L 'OTHER PC  (not in the inventory)' 'OTRO PC  (no está en el inventario)')
+    $label = ''
+    while (-not $label) { $label = (Read-Host (L '  Name of this PC (e.g. Office Manager)' '  Nombre de este PC (p. ej. Office Manager)')).Trim() }
+    $names = @($Profiles.Keys | Sort-Object)
+    Write-Host ''
+    Write-Host (L '  What type of PC is it?' '  ¿Qué tipo de PC es?')
+    for ($i = 0; $i -lt $names.Count; $i++) { Write-Host ("  {0}. {1}" -f ($i + 1), (Get-ProfileName $Profiles[$names[$i]])) }
+    $profName = $names[(Read-MenuChoice (L '  Number' '  Número') $names.Count)]
+    $prof = $Profiles[$profName]
+
+    # nombre de equipo: KG-<NOMBRE>, solo letras, numeros y guiones, 15 caracteres como mucho
+    $slug = (($label.ToUpperInvariant() -replace '[^A-Z0-9]+', '-').Trim('-'))
+    $defHost = ('KG-' + $slug)
+    if ($defHost.Length -gt 15) { $defHost = $defHost.Substring(0, 15).TrimEnd('-') }
+    Write-Host ''
+    $h = (Read-Host ((L '  Computer name [{0}]' '  Nombre de equipo [{0}]') -f $defHost)).Trim()
+    if (-not $h) { $h = $defHost }
+    $h = ($h.ToUpperInvariant() -replace '[^A-Z0-9-]', '')
+    if ($h.Length -gt 15) { $h = $h.Substring(0, 15) }
+    $defUser = $h.ToLowerInvariant()
+    $u = (Read-Host ((L '  Windows user name [{0}]' '  Usuario de Windows [{0}]') -f $defUser)).Trim()
+    if (-not $u) { $u = $defUser }
+    $ip = (Read-Host (L '  Static IP (Enter = leave the network as it is)' '  IP fija (Enter = dejar la red como está)')).Trim()
+    if (-not (Test-IPv4 $ip)) { $ip = '' }
+
+    return @{
+        Key = $h; Group = (L 'Other PCs' 'Otros PCs'); Label = $label; Profile = $profName; Type = $prof.Type
+        Hostname = $h; Username = $u; FullName = $label; Game = ''
+        Apps = @($prof.Autostart); Net = @{ IP = $ip }; IPSource = if ($ip) { 'typed' } else { '' }
+        DavidName = ''; WallpaperText = $label
+        RustDesk = ($prof.RustDesk -ne 'None')
     }
 }
 

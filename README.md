@@ -84,7 +84,9 @@ El script pregunta tres cosas:
    - **Automático.** Aplica el perfil del PC sin preguntar. Al principio pide solo lo que no puede saber: la contraseña de RustDesk, el PIN del panel, la IP si no la conoce y dónde están los programas que no instala, como la Dealer App o el scanner. Después puedes dejar el PC trabajando y volver al final para reiniciar.
    - **Manual.** Pregunta en cada sección. El valor que se ofrece por defecto es el del perfil.
    - **Revisión.** Muestra el estado del PC y no cambia nada.
-3. **Qué PC es,** de la lista del inventario.
+3. **Qué PC es,** de la lista del inventario. Para un equipo que no está en la lista, como el de la Office Manager, elige **Otro PC**: el script pide su nombre y su tipo, y propone el resto.
+
+En modo Manual, la sección del fondo deja escribir el nombre que aparece en la imagen. Con `|` se parte en dos líneas.
 
 El script trabaja por fases y termina con una comprobación del estado real del PC y un resumen de lo que ha cambiado:
 

@@ -19,7 +19,10 @@ function New-KermaWallpaper([string]$template, [string]$label, [string]$info, [s
             $family = 'Segoe UI'
             try { [void](New-Object System.Drawing.FontFamily 'Bahnschrift'); $family = 'Bahnschrift' } catch { }
             $f1 = New-Object System.Drawing.Font($family, 32, [System.Drawing.FontStyle]::Bold, $px)
-            $g.DrawString($label.ToUpper(), $f1, [System.Drawing.Brushes]::White, 146, 826)
+            # "|" parte el nombre en dos lineas, como en las plantillas de las mesas
+            $lines = @($label.Split('|') | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -First 2)
+            $y = if ($lines.Count -gt 1) { 800 } else { 826 }
+            foreach ($ln in $lines) { $g.DrawString($ln.ToUpper(), $f1, [System.Drawing.Brushes]::White, 146, $y); $y += 54 }
             $f1.Dispose()
         }
         $f2 = New-Object System.Drawing.Font('Segoe UI', 21, [System.Drawing.FontStyle]::Regular, $px)
@@ -40,9 +43,23 @@ function Invoke-Wallpaper($pc) {
     $assets = Get-AssetsDir
     $own = if ($assets) { Join-Path $assets "wallpaper\$($pc.Key).jpg" } else { '' }
     $def = if ($assets) { Join-Path $assets 'wallpaper\default.jpg' } else { '' }
-    if ($own -and (Test-Path -LiteralPath $own)) { $template = $own; $label = '' }
-    elseif ($def -and (Test-Path -LiteralPath $def)) { $template = $def; $label = $pc.FullName }
-    else { Write-Skip (L 'No wallpaper templates in assets\wallpaper.' 'No hay plantillas de fondo en assets\wallpaper.'); return }
+    $hasOwn = $own -and (Test-Path -LiteralPath $own)
+    $hasDef = $def -and (Test-Path -LiteralPath $def)
+    if (-not $hasOwn -and -not $hasDef) { Write-Skip (L 'No wallpaper templates in assets\wallpaper.' 'No hay plantillas de fondo en assets\wallpaper.'); return }
+
+    # Nombre del fondo: el de la plantilla de la mesa, el del inventario
+    # (WallpaperText) o el nombre completo. En Manual se puede escribir otro.
+    $suggest = if ($pc.WallpaperText) { $pc.WallpaperText } else { $pc.FullName }
+    $custom = ''
+    if (-not $script:Auto) {
+        $shown = if ($hasOwn -and -not $pc.WallpaperText) { L "the one in the table's template" 'el de la plantilla de la mesa' } else { $suggest }
+        Write-Host ((L '  Name on the wallpaper: {0}' '  Nombre en el fondo: {0}') -f $shown)
+        $custom = (Read-Host (L '  Enter = keep it, or type another (use | for two lines)' '  Enter = mantenerlo, o escribe otro (usa | para dos líneas)')).Trim()
+    }
+    if ($custom) { $template = $(if ($hasDef) { $def } else { $own }); $label = $custom }
+    elseif ($pc.WallpaperText -and $hasDef) { $template = $def; $label = $pc.WallpaperText }
+    elseif ($hasOwn) { $template = $own; $label = '' }
+    else { $template = $def; $label = $suggest }
     $host_ = if ($State.HostRenamed) { $pc.Hostname } else { $env:COMPUTERNAME }
     $ip = Get-PrimaryIPv4
     $info = "$host_    $(if ($ip) { $ip } else { L 'no IP' 'sin IP' })    Kerma PC Setup v$ScriptVersion"

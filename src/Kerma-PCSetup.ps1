@@ -1,6 +1,6 @@
 ﻿<#
 =====================================================================
-  Kerma Games - PC Setup  (v5.0.2 - PowerShell)
+  Kerma Games - PC Setup  (v5.1.0 - PowerShell)
 =====================================================================
   PC nuevo, una linea en PowerShell (descarga la ultima version):
     irm https://kermasetup.netlify.app | iex
@@ -48,7 +48,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '5.0.2'
+$ScriptVersion = '5.1.0'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
 $State = @{ UserRenamed = $false; HostRenamed = $false; NeedsRestart = $false; Changes = @() }
 $Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin }
@@ -153,8 +153,11 @@ try {
             if ($PCs[$i].Group -ne $group) { $group = $PCs[$i].Group; Write-Host "  --- $group ---" -ForegroundColor DarkCyan }
             Write-Host ("  {0,2}. {1}" -f ($i + 1), $PCs[$i].Label)
         }
+        Write-Host "  --- $(L 'Other' 'Otro') ---" -ForegroundColor DarkCyan
+        Write-Host ("  {0,2}. {1}" -f ($PCs.Count + 1), (L 'Other PC (not in the list)' 'Otro PC (no está en la lista)'))
         Write-Host ''
-        $selected = $PCs[(Read-MenuChoice (L '  Number' '  Número') $PCs.Count)]
+        $n = Read-MenuChoice (L '  Number' '  Número') ($PCs.Count + 1)
+        $selected = if ($n -eq $PCs.Count) { New-AdHocPC } else { $PCs[$n] }
     }
     $script:Prof = $Profiles[$selected.Profile]
 

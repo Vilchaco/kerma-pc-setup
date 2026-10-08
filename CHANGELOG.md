@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.1.0] - 2026-10-08 - Otro PC y nombre del fondo a mano
+
+### Añadido
+- **Otro PC (no está en la lista):** nueva opción al elegir el PC, para equipos sueltos como el de la Office Manager. El script pide el nombre y el tipo de PC, y propone el nombre de equipo, el usuario y la IP, que se pueden cambiar. No hace falta añadirlo antes al inventario.
+- **Nombre del fondo a mano:** en modo Manual, la sección del fondo enseña el nombre que va a poner y deja escribir otro. Con `|` se parte en dos líneas, como en la plantilla de Blackjack Unlimited, por ejemplo `OFFICE | MANAGER`.
+- Campo opcional `WallpaperText` en el inventario, para fijar el nombre del fondo de un PC también en modo Automático.
+
 ## [5.0.2] - 2026-10-08 - Fondos de pantalla a resolución completa
 
 ### Cambiado
