@@ -24,7 +24,7 @@ function New-KermaWallpaper([string]$template, [string]$label, [string]$info, [s
         }
         $f2 = New-Object System.Drawing.Font('Segoe UI', 21, [System.Drawing.FontStyle]::Regular, $px)
         $br = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(215, 196, 186, 236))
-        $g.DrawString($info, $f2, $br, 146, 905)
+        $g.DrawString($info, $f2, $br, 146, 918)
         $f2.Dispose()
         $br.Dispose()
     } finally { $g.Dispose(); $src.Dispose() }

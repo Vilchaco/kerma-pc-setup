@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.0.2] - 2026-10-08 - Fondos de pantalla a resolución completa
+
+### Cambiado
+- Plantillas de fondo de Blackjack 01 a 04, Blackjack Unlimited 01 y Roulette 01 sustituidas por los originales de 1920x1080. Las anteriores eran copias ampliadas desde 1600x900.
+- La plantilla sin texto, que usan Craps, supervisores, oficina y MCR, se ha rehecho a partir de los originales.
+- La línea con el nombre del equipo, la IP y la versión baja unos píxeles para no quedar pegada al nombre de dos líneas de Blackjack Unlimited.
+
 ## [5.0.1] - 2026-10-08 - Kerma RustDesk actualizado
 
 ### Cambiado
