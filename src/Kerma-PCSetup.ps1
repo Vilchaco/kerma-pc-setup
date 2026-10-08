@@ -1,6 +1,6 @@
 <#
 =====================================================================
-  Kerma Games - PC Setup  (v4.7.0 - PowerShell)
+  Kerma Games - PC Setup  (v4.7.1 - PowerShell)
 =====================================================================
   Fresh PC, one line in PowerShell (downloads the latest release and
   starts it - see README):
@@ -25,8 +25,9 @@
        Candy Crush & co., Microsoft 365 trial, OneDrive
     8) Install programs for this PC type (winget / GitHub releases)
     8b) Remote access: RustDesk by direct IP on the LAN (Kerma RustDesk
-       by David). Tables = CLIENT; supervisors and the Master Control
-       Room = MASTER, with the PC list of David's repo in its Favorites
+       by David). Tables = CLIENT; supervisors = MASTER, with the PC
+       list of David's repo in its Favorites. PCs with RustDesk = $false
+       in the table (the Master Control Room) are left out of RustDesk
     9) Program settings: HDMI Mirror config, OBS scenes/profile,
        VST3 plugins, Stream Deck profile of the table's game
        (all from assets\)
@@ -80,7 +81,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '4.7.0'
+$ScriptVersion = '4.7.1'
 
 # =====================================================================
 #  CONFIG: APPS  (delays / default maximize)
@@ -193,7 +194,8 @@ $NeverRemove = @(
 # =====================================================================
 #  CONFIG: REMOTE ACCESS (RustDesk by direct IP - scripts in src\rustdesk)
 #  Tables / office = CLIENT (accept connections with the common password).
-#  Supervisors and MCR = MASTER (control the others). Their Favorites come
+#  Supervisors = MASTER (control the others). A PC row with
+#  RustDesk = $false (the MCR) gets no RustDesk and is never a Favorite. Their Favorites come
 #  from the PC list kept in David's repo ($RustDeskPeersUrl: columns
 #  Nombre, IP, Puerto). If it cannot be read (the repo is private, or no
 #  internet), the PCs of the $PCs table with an IP are used instead, plus
@@ -238,7 +240,7 @@ $PCs = @(
     @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';                             Type = 'Table';  Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Apps = $TableApps;  Game = 'craps';  Net = @{ IP = '192.168.1.86' } }
     @{ Key = 'SUP01';   Group = 'Supervisor PCs'; Label = 'Supervisor 01';                        Type = 'Staff';  Hostname = 'KG-SUP-01';       Username = 'kg-sup-01';       FullName = 'Supervisor 01';          Apps = @();         Net = @{ IP = '' } }
     @{ Key = 'SUP02';   Group = 'Supervisor PCs'; Label = 'Supervisor 02';                        Type = 'Staff';  Hostname = 'KG-SUP-02';       Username = 'kg-sup-02';       FullName = 'Supervisor 02';          Apps = @();         Net = @{ IP = '' } }
-    @{ Key = 'MCR';     Group = 'Control room';   Label = 'Master Control Room';                  Type = 'Staff';  Hostname = 'KG-MCR-01';       Username = 'kg-mcr-01';       FullName = 'Master Control Room';    Apps = @();         Net = @{ IP = '192.168.1.79' } }
+    @{ Key = 'MCR';     Group = 'Control room';   Label = 'Master Control Room';                  Type = 'Staff';  Hostname = 'KG-MCR-01';       Username = 'kg-mcr-01';       FullName = 'Master Control Room';    Apps = @();         Net = @{ IP = '192.168.1.79' }; RustDesk = $false }
     @{ Key = 'HECTOR';  Group = 'Office PCs';     Label = 'Hector office PC (cameras on TV)'; Type = 'Office'; Hostname = 'KG-OFC-HECTOR'; Username = 'kg-ofc-hector'; FullName = 'Hector Office PC';    Apps = $OfficeApps; Net = @{ IP = '' } }
 )
 
@@ -1300,6 +1302,8 @@ function Read-NewSecret([string]$what) {
 # PCs for the MASTER Favorites: David's list if readable, else the $PCs table
 function Get-RustDeskPeers($pc) {
     $own = @($pc.Net.IP) + @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | ForEach-Object { $_.IPAddress })
+    # PCs taken out of RustDesk (RustDesk = $false in the table) are never a Favorite
+    $own += @($PCs | Where-Object { $_.RustDesk -eq $false -and $_.Net -and $_.Net.IP } | ForEach-Object { $_.Net.IP })
     $peers = @()
     $source = ''
     if ($RustDeskPeersUrl) {
@@ -1332,6 +1336,7 @@ function Get-RustDeskPeers($pc) {
 
 function Invoke-RemoteAccess($pc) {
     Write-Section 'REMOTE ACCESS  (RustDesk by direct IP on the LAN)'
+    if ($pc.RustDesk -eq $false) { Write-Skip "$($pc.Label) is not part of RustDesk."; return }
     $exe = $Packages['RustDesk'].Check
     if (-not (Test-Path -LiteralPath $exe)) { Write-Skip 'RustDesk is not installed on this PC.'; return }
     $rd = Join-Path $PSScriptRoot 'rustdesk'
@@ -1526,6 +1531,7 @@ function Show-FocusriteDevices {
 function Invoke-InstallPrograms($pc) {
     Write-Section 'INSTALL PROGRAMS'
     $list = @($InstallByType[$pc.Type])
+    if ($pc.RustDesk -eq $false) { $list = @($list | Where-Object { $_ -ne 'RustDesk' }) }
     $focusrite = Show-FocusriteDevices
     if ($ScarlettPackageId -and ($focusrite -gt 0 -or ($ScarlettPcTypes -contains $pc.Type))) {
         $Packages['Focusrite'].Id = $ScarlettPackageId

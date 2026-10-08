@@ -38,7 +38,8 @@ Los PCs se conectan entre sí con RustDesk por **IP directa** dentro de la red d
 | Tipo de PC | Modo | Qué hace |
 |---|---|---|
 | Mesas y oficina | CLIENT | Acepta conexiones con la contraseña común, sin que nadie acepte en pantalla. |
-| Supervisores y Master Control Room | MASTER | Lleva en Favoritos la lista de equipos y tiene la contraseña guardada para conectarse. |
+| Supervisores | MASTER | Lleva en Favoritos la lista de equipos y tiene la contraseña guardada para conectarse. |
+| Master Control Room | Sin RustDesk | No se instala, no se configura y no aparece en los Favoritos. |
 
 > **La contraseña común es la única llave de las mesas.** Con ella, cualquiera dentro de la red puede tomar el control de una mesa en juego sin aviso previo. Usa una contraseña larga, que la conozcan pocas personas, y cámbiala cuando alguien deje el equipo. Para cambiarla, vuelve a pasar el script con la nueva contraseña en todos los PCs.
 

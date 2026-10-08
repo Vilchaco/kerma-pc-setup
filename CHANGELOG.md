@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [4.7.1] - 2026-10-07 - El MCR fuera de RustDesk
+
+### Cambiado
+- El Master Control Room queda fuera de RustDesk: no aparece en los Favoritos de los MASTER, aunque esté en la lista de David, y en el propio MCR no se instala ni se configura RustDesk. Sigue en la tabla de PCs para todo lo demás.
+
 ## [4.7.0] - 2026-10-07 - MCR y lista de equipos desde el repositorio de David
 
 ### Añadido
