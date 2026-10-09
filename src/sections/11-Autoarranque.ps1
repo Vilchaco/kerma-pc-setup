@@ -2,35 +2,6 @@
 #  AUTOARRANQUE: una tarea programada por app al iniciar sesion
 # =====================================================================
 
-# Programas que arrancan solos (Stream Deck): su entrada de inicio de Windows
-# la crea el propio programa la primera vez que se abre con cada usuario.
-# En un PC recien instalado nunca se ha abierto: se crea aqui.
-function Set-SelfStartEntry($app) {
-    $exe = Split-Path -Path $app.Path -Leaf
-    $runKeys = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run')
-    $found = $false
-    foreach ($k in $runKeys) {
-        $props = Get-ItemProperty -Path $k -ErrorAction SilentlyContinue
-        if ($props -and @($props.PSObject.Properties | Where-Object { [string]$_.Value -like "*$exe*" }).Count) { $found = $true }
-    }
-    if ($found) {
-        Write-Skip ((L '{0}: it starts by itself at logon - no task needed.' '{0}: ya arranca sola al iniciar sesión, no hace falta tarea.') -f $app.Name)
-        return
-    }
-    if (-not (Test-Path -LiteralPath $app.Path)) { Write-Warn ((L '{0}: not installed ({1}).' '{0}: no está instalado ({1}).') -f $app.Name, $app.Path); return }
-    if (-not $app.RunName) { Write-Warn ((L '{0}: has no logon entry yet - open it once.' '{0}: todavía no tiene entrada de inicio: ábrelo una vez.') -f $app.Name); return }
-    try {
-        $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-        Initialize-RegistryKey $run
-        $cmd = ('"{0}" {1}' -f $app.Path, $app.RunArgs).Trim()
-        Set-ItemProperty -Path $run -Name $app.RunName -Value $cmd -Type String -ErrorAction Stop
-        # si alguna vez se desactivo en el Administrador de tareas, volver a activarlo
-        Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run' -Name $app.RunName -ErrorAction SilentlyContinue
-        Write-Ok ((L '{0}: logon entry created (it starts by itself, no task).' '{0}: entrada de inicio creada (arranca sola, sin tarea).') -f $app.Name)
-        Add-Change ((L 'Autostart: {0} (Windows logon entry)' 'Arranque: {0} (entrada de inicio de Windows)') -f $app.Name)
-    } catch { Write-Fail ((L '{0}: could not create the logon entry: {1}' '{0}: no se pudo crear la entrada de inicio: {1}') -f $app.Name, $_.Exception.Message) }
-}
-
 # Ruta sugerida de una app: la recordada primero, luego la de programas.psd1.
 # Una ruta recordada en otra mesa puede estar en el perfil de ESE usuario
 # (C:\Users\<otro>\Desktop\...): se prueba el mismo sitio en este PC.
@@ -97,7 +68,7 @@ function Invoke-AppAutostart($pc) {
         }
         if ($app.SelfStarts) {
             Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
-            Set-SelfStartEntry $app
+            Write-Skip ((L '{0}: it starts by itself at logon - no task needed.' '{0}: ya arranca sola al iniciar sesión, no hace falta tarea.') -f $app.Name)
             continue
         }
         if (-not (Ask-YesNo ((L '  Start {0} with Windows?' '  ¿Arrancar {0} con Windows?') -f $app.Name) $true)) {

@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.6.2] - 2026-10-08 - Stream Deck con tarea de arranque, como OBS
+
+### Cambiado
+- **Stream Deck se abre con una tarea propia,** igual que OBS y HDMI Mirror: 15 s después de iniciar sesión. Tiene que estar abierta para que lleguen los comandos de los botones, y su propio arranque no es fiable en un PC recién instalado. Sustituye a la entrada de inicio de la 5.6.1. Si Stream Deck también se arranca por su cuenta no se duplica: solo admite una copia abierta.
+
 ## [5.6.1] - 2026-10-08 - Stream Deck arranca al iniciar sesión
 
 ### Corregido

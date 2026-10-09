@@ -33,16 +33,16 @@
     #  Apps: arranque al iniciar sesion (una tarea programada por app)
     #  Path       sugerencia; si esta vacia el script pide el programa
     #             (y la recuerda en app-paths.json)
-    #  SelfStarts el programa arranca solo con su propia entrada de inicio
-    #             de Windows: no se crea tarea. Si esa entrada no existe
-    #             (nunca se abrio con este usuario) se crea: RunName / RunArgs
+    #  SelfStarts el programa ya arranca solo: no se crea tarea
+    #             (Stream Deck NO: su propio inicio no es fiable en un PC
+    #             nuevo y tiene que estar abierta para recibir los botones)
     #  Replaces   app antigua cuya tarea se elimina
     #  PreLaunch  lineas del .bat antes de abrir la app. Van LITERALES:
     #             %APPDATA% lo resuelve cmd del usuario al iniciar sesion.
     # -----------------------------------------------------------------
     Apps = @{
         Scanner    = @{ Name = 'Card Scanner'; Id = '01_scanner';    Path = '';                                                 Delay = 10; Maximize = $false }
-        StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';  Delay = 15; Maximize = $false; SelfStarts = $true; RunName = 'Elgato Stream Deck'; RunArgs = '--runinbk' }
+        StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';  Delay = 15; Maximize = $false }
         DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '';                                                 Delay = 30; Maximize = $true }
         HdmiMirror = @{ Name = 'HDMI Mirror';  Id = '04_hdmimirror'; Path = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';               Delay = 45; Maximize = $false; Replaces = 'Mirror App' }
         # OBS: si se cerro mal (fallo, corte de luz, reinicio forzado) deja
