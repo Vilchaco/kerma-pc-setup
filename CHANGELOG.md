@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.5.1] - 2026-10-08 - Ver el progreso de la instalación de programas
+
+### Cambiado
+- **Progreso visible.** Antes el script guardaba en silencio lo que decía winget, y por eso no se veía su barra de descarga: con programas grandes, como Chrome o Stream Deck, parecía colgado. Ahora winget escribe directamente en la ventana, con los MB descargados y el %.
+- **Contador por programa.** Cada programa aparece como `[3/7] Stream Deck` y, al terminar, se muestra cuánto ha tardado ese programa y el total acumulado.
+- **Errores de winget.** Si una instalación falla, se muestran el código, también en hexadecimal, y las últimas líneas del log de winget, que se guarda en `C:\KermaSetup\logs`. Así el error también queda en el log del panel.
+
 ## [5.5.0] - 2026-10-08 - Arreglos de la primera prueba en una mesa
 
 ### Corregido

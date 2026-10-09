@@ -55,6 +55,23 @@ function Get-LatestReleaseAsset([string]$repo, [string]$pattern) {
     return @{ Tag = [string]$rel.tag_name; Name = [string]$asset.name; Url = [string]$asset.browser_download_url }
 }
 
+# Instala con winget dejando su salida en la consola (barra de descarga con
+# MB y %). Al capturar la salida winget no dibuja la barra y parece colgado.
+# Su log va a C:\KermaSetup\logs para poner el error en el log del setup.
+function Invoke-WingetLive([string]$key, [string[]]$arguments) {
+    $logDir = 'C:\KermaSetup\logs'
+    New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    $log = Join-Path $logDir ("winget-{0}-{1}.log" -f $key, (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    $argLine = (($arguments + @('--log', $log)) | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
+    $proc = Start-Process -FilePath $script:Winget -ArgumentList $argLine -NoNewWindow -Wait -PassThru
+    $code = $proc.ExitCode
+    $tail = ''
+    if ($code -ne 0 -and (Test-Path -LiteralPath $log)) {
+        $tail = ((Get-Content -LiteralPath $log -Tail 8 -ErrorAction SilentlyContinue) | ForEach-Object { '    ' + $_ }) -join [Environment]::NewLine
+    }
+    return @{ ExitCode = $code; Code = ('{0} (0x{1:X8})' -f $code, $code); Tail = $tail }
+}
+
 function Install-KermaPackage($key, $p) {
     $marker = if ($p.Check) { Join-Path (Split-Path -Path $p.Check -Parent) ".kerma-version-$key" } else { '' }
     if ($p.Requires -and -not (Test-Path -LiteralPath $Packages[$p.Requires].Check)) {
@@ -80,10 +97,11 @@ function Install-KermaPackage($key, $p) {
         }
         $base = @('install', '--id', $p.Id, '--exact', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
         Write-Host ((L '  Installing {0} (winget {1})...' '  Instalando {0} (winget {1})...') -f $p.Name, $p.Id)
-        $r = Invoke-Native $script:Winget ($base + @('--scope', 'machine'))
+        Write-Note (L '  (winget shows its own download bar below; big programs can take several minutes)' '  (winget enseña abajo su barra de descarga; los programas grandes pueden tardar varios minutos)')
+        $r = Invoke-WingetLive $key ($base + @('--scope', 'machine'))
         if ($r.ExitCode -ne 0 -and -not ($p.Check -and (Test-Path -LiteralPath $p.Check))) {
             # algunos paquetes no tienen instalador para todo el equipo: probar el normal
-            $r = Invoke-Native $script:Winget $base
+            $r = Invoke-WingetLive $key $base
         }
         $listed = (Invoke-Native $script:Winget @('list', '--id', $p.Id, '--exact', '--accept-source-agreements', '--disable-interactivity')).ExitCode -eq 0
         $ok = if ($p.Check) { Test-Path -LiteralPath $p.Check } else { $listed }
@@ -91,8 +109,8 @@ function Install-KermaPackage($key, $p) {
             Write-Ok ((L '{0} installed.' '{0} instalado.') -f $p.Name)
             Add-Change ((L 'Installed: {0}' 'Instalado: {0}') -f $p.Name)
         } else {
-            $tail = if ($r.Text.Length -gt 300) { $r.Text.Substring($r.Text.Length - 300) } else { $r.Text }
-            Write-Fail ((L '{0} not installed (winget code {1}): {2}' '{0} no se instaló (código de winget {1}): {2}') -f $p.Name, $r.ExitCode, $tail)
+            Write-Fail ((L '{0} not installed (winget code {1}).' '{0} no se instaló (código de winget {1}).') -f $p.Name, $r.Code)
+            if ($r.Tail) { Write-Host $r.Tail }
         }
         return
     }
@@ -184,9 +202,15 @@ function Invoke-InstallPrograms($pc) {
     }
     $script:Winget = $null
     $script:WingetBroken = $false
+    $i = 0
+    $all = [Diagnostics.Stopwatch]::StartNew()
     foreach ($k in $list) {
+        $i++
         Write-Host ''
+        Write-Host ('  [{0}/{1}] {2}' -f $i, $list.Count, $Packages[$k].Name) -ForegroundColor Cyan
+        $one = [Diagnostics.Stopwatch]::StartNew()
         try { Install-KermaPackage $k $Packages[$k] }
         catch { Write-Fail "$($Packages[$k].Name): $($_.Exception.Message)" }
+        Write-Host ('        {0}: {1:mm\:ss} min  (total {2:mm\:ss})' -f $Packages[$k].Name, $one.Elapsed, $all.Elapsed) -ForegroundColor DarkGray
     }
 }
