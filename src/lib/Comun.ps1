@@ -43,6 +43,27 @@ function Invoke-Native([string]$exe, [string[]]$arguments) {
     return @{ Output = $out; ExitCode = $code; Text = (($out -replace '\s+', ' ').Trim()) }
 }
 
+# Quita el "modo seleccion" de la consola: un clic dentro de la ventana
+# congelaba el script hasta pulsar Esc (paso en la prueba de BJ03).
+# En Windows Terminal no aplica y no hace nada.
+function Disable-ConsoleQuickEdit {
+    try {
+        if (-not ('Kerma.ConsoleMode' -as [type])) {
+            Add-Type -Namespace Kerma -Name ConsoleMode -MemberDefinition @'
+[DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr GetStdHandle(int nStdHandle);
+[DllImport("kernel32.dll", SetLastError = true)] public static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
+[DllImport("kernel32.dll", SetLastError = true)] public static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
+'@
+        }
+        $h = [Kerma.ConsoleMode]::GetStdHandle(-10)
+        $m = 0
+        if ([Kerma.ConsoleMode]::GetConsoleMode($h, [ref]$m)) {
+            # sin ENABLE_QUICK_EDIT_MODE (0x40), con ENABLE_EXTENDED_FLAGS (0x80)
+            [void][Kerma.ConsoleMode]::SetConsoleMode($h, (($m -band (-bnot [uint32]0x40)) -bor 0x80))
+        }
+    } catch { }
+}
+
 # Mata un proceso y todos sus hijos (instaladores que se quedan colgados)
 function Stop-ProcessTree([int]$id) {
     Get-CimInstance Win32_Process -Filter "ParentProcessId=$id" -ErrorAction SilentlyContinue | ForEach-Object { Stop-ProcessTree $_.ProcessId }

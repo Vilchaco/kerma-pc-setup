@@ -1,6 +1,6 @@
 ﻿<#
 =====================================================================
-  Kerma Games - PC Setup  (v5.5.2 - PowerShell)
+  Kerma Games - PC Setup  (v5.5.3 - PowerShell)
 =====================================================================
   PC nuevo, una linea en PowerShell (descarga la ultima version):
     irm https://kermasetup.netlify.app | iex
@@ -48,7 +48,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '5.5.2'
+$ScriptVersion = '5.5.3'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
 $State = @{ UserRenamed = $false; HostRenamed = $false; RenameWanted = $false; NeedsRestart = $false; Changes = @() }
 $Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin }
@@ -103,6 +103,7 @@ if (-not $isAdmin) {
 # descargas: GitHub necesita TLS 1.2; la barra de progreso hace lentisimas las descargas grandes
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $ProgressPreference = 'SilentlyContinue'
+Disable-ConsoleQuickEdit
 
 $logDir = 'C:\KermaSetup\logs'
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null

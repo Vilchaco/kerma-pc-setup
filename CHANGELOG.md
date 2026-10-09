@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.5.3] - 2026-10-08 - Un clic ya no congela el script
+
+### Corregido
+- **Modo selección de la consola.** Hacer clic dentro de la ventana de PowerShell activa el modo selección de Windows, que pausa el script hasta pulsar Esc. En Blackjack 03 pareció un cuelgue. Ahora el script desactiva ese modo al empezar.
+
 ## [5.5.2] - 2026-10-08 - Tiempo máximo para cada instalación
 
 ### Corregido
