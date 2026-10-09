@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.5.5] - 2026-10-08 - IP de Blackjack 03
+
+### Cambiado
+- **Inventario.** Blackjack 03 ya tiene su IP fija, 192.168.0.153, y no hay que escribirla al reinstalar.
+
 ## [5.5.4] - 2026-10-08 - Ajustes tras la segunda prueba en Blackjack 03
 
 ### Corregido
