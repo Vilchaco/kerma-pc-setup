@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.6.7] - 2026-10-08 - Card Scanner aparece como abierta
+
+### Corregido
+- **Apps que arrancan con un .bat** (Card Scanner). No hay ningún proceso con el nombre del .bat, así que el panel no sabía si estaba abierta. Ahora el informe busca un programa que se esté ejecutando desde la carpeta del .bat o que lo nombre al arrancar, y si lo encuentra la marca como abierta. Si no encuentra nada, sigue como "no se puede saber" en lugar de "cerrada".
+
 ## [5.6.6] - 2026-10-08 - Ventana de Stream Deck visible al arrancar
 
 ### Cambiado

@@ -171,6 +171,16 @@ if ($cfg -and $cfg.apps) {
         }
         $running = $null
         if ($app.process) { $running = [bool](Get-Safe { Get-Process -Name $app.process -ErrorAction SilentlyContinue }) }
+        elseif ($installed -and $app.check -match '\.(bat|cmd|ps1|vbs)$') {
+            # lanzador (.bat): no hay un proceso con su nombre. Se busca algo que corra
+            # desde su carpeta o que lo nombre en la linea de comandos (Card Scanner)
+            if ($null -eq $script:Procs) { $script:Procs = @(Get-Safe { Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId, ExecutablePath, CommandLine }) }
+            $dir  = Split-Path -Path $app.check -Parent
+            $stem = [IO.Path]::GetFileNameWithoutExtension($app.check)
+            $hit = $script:Procs | Where-Object { $_.ProcessId -ne $PID -and (([string]$_.ExecutablePath).StartsWith($dir, [StringComparison]::OrdinalIgnoreCase) -or ([string]$_.CommandLine).IndexOf($dir, [StringComparison]::OrdinalIgnoreCase) -ge 0 -or ([string]$_.CommandLine).IndexOf($stem, [StringComparison]::OrdinalIgnoreCase) -ge 0) } | Select-Object -First 1
+            # encontrado = abierta; si no, no se sabe (puede lanzar algo de otra carpeta)
+            if ($hit) { $running = $true }
+        }
         $apps += @{ name = [string]$app.name; installed = $installed; version = $version; running = $running; autostart = [bool]$app.autostart; path = [string]$app.check }
     }
 }
