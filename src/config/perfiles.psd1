@@ -24,7 +24,7 @@
         Type = 'Table'
         Time = $true; Rename = $true; Login = 'NoPassword'; WindowsUpdate = 'Manual'; StaticIP = $true
         Tuning = $true; RemoveApps = $true; RemoveOffice = $true; RemoveOneDrive = $true
-        Programs = @('Chrome', 'RustDesk', 'StreamDeck', 'HdmiMirror', 'OBS', 'AtkAudio')
+        Programs = @('Chrome', 'RustDesk', 'StreamDeck', 'HdmiMirror', 'OBS', 'AtkAudio', 'AltDenoiser')
         RustDesk = 'Client'
         Audio = $true; ProgramSettings = $true
         Autostart = @('StreamDeck', 'DealerApp', 'HdmiMirror', 'OBS')

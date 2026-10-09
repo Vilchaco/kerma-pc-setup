@@ -13,6 +13,9 @@
     #  Override        : (winget) argumentos del instalador en lugar de los
     #                    del paquete, si los suyos no son del todo silenciosos
     #  Restart         : $true = pide reiniciar al final si se instala
+    #  Tag             : (github) version fija en vez de la ultima
+    #  File / FileAs   : (github .zip) copiar solo ese archivo del zip (regex sobre su
+    #                    ruta dentro del zip) a InstallTo con el nombre FileAs
     # -----------------------------------------------------------------
     Packages = @{
         Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome';        Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe' }
@@ -27,6 +30,12 @@
         AtkAudio   = @{ Name = 'atkAudio (VST3 in OBS)'; Source = 'github'; Repo = 'atkAudio/PluginForObsRelease'; Asset = '^atkAudio-PluginForObs\.zip$'
                         Inner = '^portable-atkaudio-pluginforobs-[0-9.]+-Windows\.zip$'; InstallTo = 'C:\Program Files\obs-studio'
                         Check = 'C:\Program Files\obs-studio\obs-plugins\64bit\atkaudio-pluginforobs.dll'; Process = 'obs64'; Requires = 'OBS' }
+        # Alt Denoiser: cancelacion de ruido (DeepFilterNet) que usa el filtro atkAudio de OBS.
+        # Sin licencia publicada: no se sube al repositorio, se baja de su release. Version fija:
+        # la que se probo en BJ01; el filtro de OBS lo busca en VST3\Alt-Denoiser.vst3 (un archivo).
+        AltDenoiser = @{ Name = 'Alt Denoiser (VST3)'; Source = 'github'; Repo = 'Altinus/Alt-Denoiser'; Tag = 'v1.0.1'; Asset = '^Alt-Denoiser-windows\.zip$'
+                        File = 'VST3[\\/]Alt Denoiser\.vst3[\\/]Contents[\\/]x86_64-win[\\/]Alt Denoiser\.vst3$'; FileAs = 'Alt-Denoiser.vst3'
+                        InstallTo = 'C:\Program Files\Common Files\VST3'; Check = 'C:\Program Files\Common Files\VST3\Alt-Denoiser.vst3'; Process = 'obs64'; Requires = 'AtkAudio' }
         Deskflow   = @{ Name = 'Deskflow';      Source = 'winget'; Id = 'Deskflow.Deskflow';    Check = 'C:\Program Files\Deskflow\deskflow.exe' }
         # Id sale de ajustes.psd1 (Audio.ScarlettPackageId); se instala si hay una Focusrite conectada.
         # Su paquete de winget solo pasa /silent y el instalador (Inno) pregunta si reiniciar: se

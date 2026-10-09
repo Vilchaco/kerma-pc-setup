@@ -48,8 +48,10 @@ function Initialize-WingetSource([string]$w) {
     return $false
 }
 
-function Get-LatestReleaseAsset([string]$repo, [string]$pattern) {
-    $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -UseBasicParsing -Headers @{ 'User-Agent' = 'Kerma-PCSetup' }
+function Get-LatestReleaseAsset([string]$repo, [string]$pattern, [string]$tag) {
+    # Tag fija una version concreta (la probada); si no, la ultima
+    $which = if ($tag) { "tags/$tag" } else { 'latest' }
+    $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/$which" -UseBasicParsing -Headers @{ 'User-Agent' = 'Kerma-PCSetup' }
     $asset = $rel.assets | Where-Object { $_.name -match $pattern } | Select-Object -First 1
     if (-not $asset) { throw ((L "no file matching '{0}' in the latest release of {1} ({2})" "no hay ningún archivo '{0}' en la última release de {1} ({2})") -f $pattern, $repo, $rel.tag_name) }
     return @{ Tag = [string]$rel.tag_name; Name = [string]$asset.name; Url = [string]$asset.browser_download_url }
@@ -128,7 +130,7 @@ function Install-KermaPackage($key, $p) {
     }
 
     # ---- release de GitHub (.msi o .zip)
-    $rel = Get-LatestReleaseAsset $p.Repo $p.Asset
+    $rel = Get-LatestReleaseAsset $p.Repo $p.Asset $p.Tag
     $installedTag = ''
     if ($marker -and (Test-Path -LiteralPath $marker)) { $installedTag = (Get-Content -LiteralPath $marker -Raw).Trim() }
     if ($p.Check -and (Test-Path -LiteralPath $p.Check)) {
@@ -152,7 +154,14 @@ function Install-KermaPackage($key, $p) {
     } elseif ($rel.Name -match '\.zip$') {
         if ($p.Process) { Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1 }
         New-Item -ItemType Directory -Path $p.InstallTo -Force | Out-Null
-        if ($p.Inner) {
+        if ($p.File) {
+            # solo un archivo del zip, con el nombre que espera la configuracion (Alt Denoiser)
+            $tmp = Join-Path $dl "$key-$($rel.Tag)"
+            Expand-Archive -LiteralPath $file -DestinationPath $tmp -Force
+            $one = Get-ChildItem -LiteralPath $tmp -Recurse -File | Where-Object { $_.FullName.Substring($tmp.Length + 1) -match $p.File } | Select-Object -First 1
+            if (-not $one) { Write-Fail ((L "{0}: no file matching '{1}' inside {2}." "{0}: no hay ningún '{1}' dentro de {2}.") -f $p.Name, $p.File, $rel.Name); return }
+            Copy-Item -LiteralPath $one.FullName -Destination (Join-Path $p.InstallTo $p.FileAs) -Force
+        } elseif ($p.Inner) {
             # el zip trae un zip por plataforma: se usa el de Windows
             $tmp = Join-Path $dl "$key-$($rel.Tag)"
             Expand-Archive -LiteralPath $file -DestinationPath $tmp -Force

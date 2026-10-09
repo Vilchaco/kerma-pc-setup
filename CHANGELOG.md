@@ -2,6 +2,16 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.8.0] - 2026-10-09 - OBS listo en todas las mesas
+
+### Añadido
+- **Configuración de OBS de las mesas** (exportada de Blackjack 01): una fuente de audio de la Scarlett con monitorización y los filtros Compressor y atkAudio con **Alt Denoiser**, el perfil a 1920x1080 / 30 fps, y la posición de las ventanas y paneles, incluido el de Alt Denoiser. Las mesas abren OBS ya así.
+- **Alt Denoiser** se instala solo en las mesas. Se descarga de su release oficial en GitHub, en la versión probada (v1.0.1), y queda donde lo busca el filtro de OBS.
+
+### Cambiado
+- Al copiar la configuración de OBS, el micro y la salida de monitorización se cambian por el dispositivo **predeterminado** de Windows, porque el identificador de un dispositivo concreto solo existe en el PC donde se eligió. En las mesas el predeterminado es la Scarlett.
+- Los programas de una release de GitHub admiten una versión fija (`Tag`) y copiar un solo archivo del zip (`File` / `FileAs`).
+
 ## [5.7.0] - 2026-10-08 - Iconos fijos en la barra de tareas
 
 ### Añadido

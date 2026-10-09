@@ -112,6 +112,20 @@ function Invoke-ProgramSettings($pc) {
                 New-Item -ItemType Directory -Path (Split-Path -Path $to -Parent) -Force | Out-Null
                 Copy-Item -LiteralPath $f.FullName -Destination $to -Force
             }
+            # dispositivos de audio: el id de un micro / salida concreto solo existe en el PC
+            # donde se eligio. "default" = el predeterminado de Windows (la Scarlett en las mesas)
+            foreach ($f in $obsFiles) {
+                $to = Join-Path $obsDst ($f.FullName.Substring($obsSrc.Length).TrimStart('\'))
+                if ($f.Extension -eq '.json' -and $f.FullName -match '\\scenes\\') {
+                    $t = [IO.File]::ReadAllText($to)
+                    $n = [regex]::Replace($t, '"device_id"\s*:\s*"[^"]*"', '"device_id": "default"')
+                    if ($n -ne $t) { [IO.File]::WriteAllText($to, $n, (New-Object Text.UTF8Encoding $false)) }
+                } elseif ($f.Name -eq 'basic.ini') {
+                    $t = [IO.File]::ReadAllText($to)
+                    $n = [regex]::Replace([regex]::Replace($t, '(?m)^MonitoringDeviceId=[^\r\n]*', 'MonitoringDeviceId=default'), '(?m)^MonitoringDeviceName=[^\r\n]*', 'MonitoringDeviceName=Default')
+                    if ($n -ne $t) { [IO.File]::WriteAllText($to, $n, (New-Object Text.UTF8Encoding $true)) }
+                }
+            }
             Write-Ok ((L 'OBS: {0} settings files copied to {1} (backup: obs-studio.bak-{2}).' 'OBS: {0} archivos de configuración copiados a {1} (copia: obs-studio.bak-{2}).') -f $obsFiles.Count, $obsDst, $stamp)
             Add-Change (L 'Settings: OBS scenes / profile / theme' 'Configuración: escenas, perfil y tema de OBS')
             # aspecto Kerma: themes\Kerma.ovt ya esta copiado; dejarlo elegido
