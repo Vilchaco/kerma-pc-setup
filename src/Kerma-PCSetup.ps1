@@ -1,6 +1,6 @@
 ﻿<#
 =====================================================================
-  Kerma Games - PC Setup  (v5.6.7 - PowerShell)
+  Kerma Games - PC Setup  (v5.7.0 - PowerShell)
 =====================================================================
   PC nuevo, una linea en PowerShell (descarga la ultima version):
     irm https://kermasetup.netlify.app | iex
@@ -48,7 +48,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '5.6.7'
+$ScriptVersion = '5.7.0'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
 $State = @{ UserRenamed = $false; HostRenamed = $false; RenameWanted = $false; NeedsRestart = $false; Changes = @() }
 $Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin }
@@ -201,7 +201,7 @@ try {
     Write-Phase (L 'PHASE 3 - PROGRAMS' 'FASE 3 - PROGRAMAS')
     Invoke-Step 'Invoke-InstallPrograms' $selected
     Write-Phase (L 'PHASE 4 - CONFIGURATION' 'FASE 4 - CONFIGURACIÓN')
-    foreach ($s in @('Invoke-RemoteAccess', 'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-AppAutostart', 'Invoke-Wallpaper')) { Invoke-Step $s $selected }
+    foreach ($s in @('Invoke-RemoteAccess', 'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-AppAutostart', 'Invoke-TaskbarPins', 'Invoke-Wallpaper')) { Invoke-Step $s $selected }
     Write-Phase (L 'PHASE 5 - MONITORING' 'FASE 5 - VIGILANCIA')
     Invoke-Step 'Invoke-StatusPanel' $selected
     Write-Phase (L 'PHASE 6 - CHECK AND SUMMARY' 'FASE 6 - COMPROBACIÓN Y RESUMEN')

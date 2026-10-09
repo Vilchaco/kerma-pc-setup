@@ -35,6 +35,24 @@
     }
 
     # -----------------------------------------------------------------
+    #  Pins: iconos de la barra de tareas (el perfil elige cuales y el orden)
+    #  AppId  id de Windows (Explorador)
+    #  Exe    programa; se usa su acceso directo del menu Inicio y, si no
+    #         tiene, se crea uno (Inicio > Kerma)
+    #  Lnk    nombre del acceso directo del menu Inicio si no hay Exe fijo
+    #  Si el programa no esta instalado, el icono no se pone.
+    # -----------------------------------------------------------------
+    Pins = @{
+        Explorer   = @{ Name = 'Explorador';          AppId = 'Microsoft.Windows.Explorer' }
+        Chrome     = @{ Name = 'Google Chrome';       Exe = 'C:\Program Files\Google\Chrome\Application\chrome.exe'; Lnk = 'Google Chrome' }
+        RustDesk   = @{ Name = 'RustDesk';            Exe = 'C:\Program Files\RustDesk\rustdesk.exe';                   Lnk = 'RustDesk' }
+        OBS        = @{ Name = 'OBS Studio';          Exe = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe';        Lnk = 'OBS Studio*' }
+        StreamDeck = @{ Name = 'Stream Deck';         Exe = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';       Lnk = '*Stream Deck' }
+        HdmiMirror = @{ Name = 'HDMI Mirror';         Exe = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';                       Lnk = '' }
+        Focusrite  = @{ Name = 'Focusrite Control 2'; Exe = '';                                                           Lnk = 'Focusrite Control 2' }
+    }
+
+    # -----------------------------------------------------------------
     #  Apps: arranque al iniciar sesion (una tarea programada por app)
     #  Path       sugerencia; si esta vacia el script pide el programa
     #             (y la recuerda en app-paths.json)

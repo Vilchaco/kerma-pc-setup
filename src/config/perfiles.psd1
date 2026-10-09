@@ -15,6 +15,8 @@
 #  RustDesk       Client / Master / None
 #  Autostart      apps que arrancan al iniciar sesion (Apps de programas.psd1).
 #                 Las mesas con Scanner = $true en el inventario anaden el scanner.
+#  Taskbar        iconos de la barra de tareas, en orden (Pins de programas.psd1);
+#                 @() = no tocarla. TaskbarLocked = nadie puede cambiarlos.
 # =====================================================================
 @{
     Table = @{
@@ -26,6 +28,7 @@
         RustDesk = 'Client'
         Audio = $true; ProgramSettings = $true
         Autostart = @('StreamDeck', 'DealerApp', 'HdmiMirror', 'OBS')
+        Taskbar = @('Explorer', 'Chrome', 'RustDesk', 'OBS', 'StreamDeck', 'HdmiMirror', 'Focusrite'); TaskbarLocked = $true
         Wallpaper = $true; Panel = $true
     }
     Supervisor = @{

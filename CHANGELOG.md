@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.7.0] - 2026-10-08 - Iconos fijos en la barra de tareas
+
+### Añadido
+- **Barra de tareas de las mesas.** Solo lleva estos iconos, en este orden: Explorador, Chrome, RustDesk, OBS, Stream Deck, HDMI Mirror y Focusrite Control 2. Se quitan Edge, la Tienda y el resto de lo que trae Windows. La barra queda fija: nadie puede añadir ni quitar iconos en la mesa. Si un programa no está instalado (Focusrite en un PC sin Scarlett), su icono no se pone. Se usa el acceso directo del propio programa, para que su ventana se agrupe en su icono; si no tiene, el script crea uno en Inicio > Kerma (HDMI Mirror).
+- La lista y el bloqueo se eligen por tipo de PC en `perfiles.psd1` (`Taskbar`, `TaskbarLocked`), y los iconos se definen en `programas.psd1` (`Pins`). Si el perfil no lleva iconos, el script libera una barra fijada por una versión anterior.
+
 ## [5.6.7] - 2026-10-08 - Card Scanner aparece como abierta
 
 ### Corregido
