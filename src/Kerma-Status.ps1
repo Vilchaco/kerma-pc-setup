@@ -146,6 +146,7 @@ foreach ($a in @(Get-Safe { Get-NetAdapter -Physical | Sort-Object -Property ifI
     $dns = Get-Safe { (Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction Stop).ServerAddresses }
     $network += @{
         name    = [string]$a.Name
+        desc    = [string]$a.InterfaceDescription
         status  = [string]$a.Status
         mac     = [string]$a.MacAddress
         ip      = if ($ip) { [string]$ip.IPAddress } else { $null }

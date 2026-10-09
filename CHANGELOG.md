@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.6.5] - 2026-10-08 - Panel de estado renovado
+
+### Cambiado
+- **Panel nuevo** (mismo estilo de Kerma). Cada PC es una tarjeta con su estado (Bien, Revisar, Problema, Sin reportar), los avisos explicados ("OBS Studio cerrada", "Reloj desfasado"), el reloj con el botón Sincronizar, cuándo reportó, cuánto lleva encendido, el disco libre y las apps. Arriba aparece la lista "Necesitan atención" de todos los PCs; los contadores sirven de filtro y hay un buscador por PC, IP o app. Funciona en el móvil.
+- **Detalle en un panel lateral** con pestañas: Resumen, Apps y tareas (con los resultados de las tareas traducidos: OK, en marcha, aún no se ha ejecutado...), Red, Logs del setup y Datos completos.
+- **Menos falsas alarmas.** Un PC apagado ya no muestra avisos con datos viejos. En los primeros 3 minutos tras encenderse, las apps que todavía se están abriendo salen como "abriéndose", no en rojo. Card Scanner, que arranca con un .bat, sale como "no se puede saber" en vez de "cerrada". El ATEM Mini por USB sale marcado como aparato y no como la red del PC: el informe incluye ahora el nombre del adaptador.
+
 ## [5.6.4] - 2026-10-08 - El ATEM Mini ya no se confunde con la red
 
 ### Corregido
