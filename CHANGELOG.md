@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.9.1] - 2026-10-09 - Logo de Kerma en la pantalla de bloqueo
+
+### Añadido
+- **Pantalla de bloqueo con el logo de Kerma**: la misma imagen del fondo, sin la tarjeta del PC. Se quitan Windows Spotlight y los "datos curiosos" que Windows pone encima. Se aplica junto con el fondo en todos los tipos de PC.
+
 ## [5.9.0] - 2026-10-09 - Windows con el aspecto de Kerma
 
 ### Añadido

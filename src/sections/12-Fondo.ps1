@@ -165,6 +165,24 @@ function Set-KermaColors([string]$hex) {
     Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name AutoColorization -Value '0' -Type String
 }
 
+# Pantalla de bloqueo con la plantilla del fondo (logo de Kerma, sin tarjeta).
+# PersonalizationCSP: funciona en Pro (la directiva LockScreenImage es solo Enterprise).
+function Set-KermaLockScreen([string]$template) {
+    $img = Join-Path $env:ProgramData 'Kerma\lockscreen.jpg'
+    Copy-Item -LiteralPath $template -Destination $img -Force
+    $csp = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP'
+    Initialize-RegistryKey $csp
+    New-ItemProperty -Path $csp -Name LockScreenImagePath -Value $img -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $csp -Name LockScreenImageUrl -Value $img -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $csp -Name LockScreenImageStatus -Value 1 -PropertyType DWord -Force | Out-Null
+    # sin Windows Spotlight ni "datos curiosos" encima de la imagen
+    $cdm = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'
+    Initialize-RegistryKey $cdm
+    foreach ($n in @('RotatingLockScreenEnabled', 'RotatingLockScreenOverlayEnabled', 'SubscribedContent-338387Enabled')) {
+        Set-ItemProperty -Path $cdm -Name $n -Value 0 -Type DWord
+    }
+}
+
 function Invoke-Wallpaper($pc) {
     Write-Section (L 'WALLPAPER' 'FONDO DE PANTALLA')
     $assets = Get-AssetsDir
@@ -217,6 +235,11 @@ public static class KermaWallpaperApi {
             Add-Change (L 'Look: dark mode + Kerma gold' 'Aspecto: modo oscuro + dorado Kerma')
         } catch { Write-Warn ((L 'Windows colors: {0}' 'Colores de Windows: {0}') -f $_.Exception.Message) }
     }
+    try {
+        Set-KermaLockScreen $template
+        Write-Ok (L 'Lock screen: Kerma logo.' 'Pantalla de bloqueo: logo de Kerma.')
+        Add-Change (L 'Lock screen: Kerma logo' 'Pantalla de bloqueo: logo de Kerma')
+    } catch { Write-Warn ((L 'Lock screen: {0}' 'Pantalla de bloqueo: {0}') -f $_.Exception.Message) }
     if (($State.HostRenamed -or $State.RenameWanted) -and $pc.Hostname -ne $env:COMPUTERNAME) {
         Write-Note (L '  The wallpaper already shows the new computer name, which applies after the restart.' '  El fondo ya muestra el nombre nuevo del equipo, que se aplica al reiniciar.')
     }
