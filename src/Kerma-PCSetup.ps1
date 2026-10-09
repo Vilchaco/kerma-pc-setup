@@ -1,6 +1,6 @@
 ﻿<#
 =====================================================================
-  Kerma Games - PC Setup  (v5.3.1 - PowerShell)
+  Kerma Games - PC Setup  (v5.4.0 - PowerShell)
 =====================================================================
   PC nuevo, una linea en PowerShell (descarga la ultima version):
     irm https://kermasetup.netlify.app | iex
@@ -48,7 +48,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '5.3.1'
+$ScriptVersion = '5.4.0'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
 $State = @{ UserRenamed = $false; HostRenamed = $false; NeedsRestart = $false; Changes = @() }
 $Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin }
@@ -213,5 +213,7 @@ try {
     Write-Fail $_.Exception.Message
 } finally {
     try { Stop-Transcript | Out-Null } catch { }
+    # el log completo de esta ejecucion va al panel (tambien si algo fallo)
+    try { Send-SetupLog $(if ($selected) { $selected.Key } else { '' }) } catch { }
     if (-not $Unattended) { Write-Host ''; Read-Host (L '  Press Enter to close' '  Pulsa Enter para cerrar') | Out-Null }
 }

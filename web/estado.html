@@ -196,7 +196,8 @@ function detail(p) {
     <div class="box"><h4>Apps</h4>${apps || '<div class="mut">-</div>'}<h4 style="margin-top:12px">Tareas</h4>${tasks || '<div class="mut">-</div>'}</div>
   </div>
   ${(p.warnings || []).length ? `<p class="warn">${p.warnings.map(esc).join('<br>')}</p>` : ''}
-  <p><button data-raw="${esc(p.id)}">Ver datos completos</button> <button class="danger" data-forget="${esc(p.id)}">Olvidar este PC</button></p>
+  <p><button data-logs="${esc(p.id)}">Logs del setup</button> <button data-raw="${esc(p.id)}">Ver datos completos</button> <button class="danger" data-forget="${esc(p.id)}">Olvidar este PC</button></p>
+  <div id="logs-${esc(p.id)}" hidden></div>
   <pre id="raw-${esc(p.id)}" hidden>${esc(JSON.stringify(p, null, 2))}</pre></td></tr>`;
 }
 
@@ -215,6 +216,27 @@ $('refresh').onclick = load;
 $('logout').onclick = () => { sessionStorage.removeItem('kerma-status-pin'); showLogin(''); };
 $('rows').onclick = async (e) => {
   const raw = e.target.closest('[data-raw]'), forget = e.target.closest('[data-forget]');
+  const logs = e.target.closest('[data-logs]'), logAt = e.target.closest('[data-log-at]');
+  if (logs) {
+    const box = $('logs-' + logs.dataset.logs);
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false; box.innerHTML = '<p class="mut">Cargando...</p>';
+    try {
+      const r = await api('GET', '/api/log?id=' + encodeURIComponent(logs.dataset.logs));
+      box.innerHTML = r.logs.length
+        ? '<p>' + r.logs.map((l) => `<button data-log-at="${esc(l.at)}" data-log-id="${esc(logs.dataset.logs)}">${esc(new Date(l.at).toLocaleString('es-MX'))}</button>`).join(' ') + '</p><pre class="logtext" hidden></pre>'
+        : '<p class="mut">Este PC no ha subido ningún log todavía. Se sube al terminar cada ejecución del setup.</p>';
+    } catch (err) { box.innerHTML = '<p class="bad">Error: ' + esc(err.message) + '</p>'; }
+    return;
+  }
+  if (logAt) {
+    const pre = $('logs-' + logAt.dataset.logId).querySelector('.logtext');
+    pre.hidden = false; pre.textContent = 'Cargando...';
+    const r = await fetch('/api/log?id=' + encodeURIComponent(logAt.dataset.logId) + '&at=' + encodeURIComponent(logAt.dataset.logAt), { headers: { 'x-pin': getPin() } });
+    pre.textContent = r.ok ? await r.text() : 'Error ' + r.status;
+    pre.style.maxHeight = '600px';
+    return;
+  }
   if (raw) { const pre = $('raw-' + raw.dataset.raw); pre.hidden = !pre.hidden; return; }
   if (forget) {
     if (!confirm('¿Olvidar ' + forget.dataset.forget + '? Si sigue encendido volverá a aparecer en 5 minutos.')) return;

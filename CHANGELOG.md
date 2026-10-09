@@ -2,6 +2,14 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.4.0] - 2026-10-08 - Log de cada instalación en el panel
+
+### Añadido
+- Al terminar, el script sube el log completo de la ejecución al panel de estado, también si alguna sección falló. El panel guarda los 10 últimos logs de cada PC, y se leen desde el detalle del PC con el botón **Logs del setup**. Hace falta que el PC esté registrado en el panel.
+
+### Corregido
+- La sección de red decía que la IP venía "del inventario" cuando se había escrito al empezar.
+
 ## [5.3.1] - 2026-10-08 - Arreglo del modo Automático
 
 ### Corregido

@@ -3,11 +3,14 @@
 //   POST   /api/status        (x-kerma-key)  -> a PC reports its status (Kerma-Status.ps1, every 5 min)
 //   GET    /api/status        (x-pin)        -> { now, pcs: [...] }
 //   DELETE /api/status?id=... (x-pin)        -> forget a PC (renamed / retired)
+//   POST   /api/log?id=KEY    (x-kerma-key)  -> a PC uploads the log of a setup run (text, last 10 kept per PC)
+//   GET    /api/log?id=KEY    (x-pin)        -> { logs: [{ at, size }] } newest first
+//   GET    /api/log?id=KEY&at=ISO (x-pin)    -> that log as text
 // Environment: STATUS_PIN (people) and STATUS_WRITE_KEY (PCs). Never in the repo: it is public.
 // 5 wrong PINs in 15 min lock the PIN for 15 min (blob lock/fails), same as Kerma Tips.
 import { getStore } from '@netlify/blobs';
 
-export const config = { path: ['/api/status', '/api/register'] };
+export const config = { path: ['/api/status', '/api/register', '/api/log'] };
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -68,6 +71,36 @@ export default async (req) => {
         if (!id) return json({ error: 'id' }, 400);
         await store.delete('pc/' + id);
         return json({ ok: true });
+      }
+    }
+    if (path === '/api/log') {
+      const id = cleanId(url.searchParams.get('id'));
+      if (!id) return json({ error: 'id' }, 400);
+      const prefix = 'log/' + id + '/';
+      if (req.method === 'POST') {
+        const key = process.env.STATUS_WRITE_KEY;
+        if (!key || req.headers.get('x-kerma-key') !== key) { await wait(500); return json({ error: 'key' }, 401); }
+        let text = await req.text();
+        const MAX = 1500000;
+        if (text.length > MAX) text = '[... start of the log cut: it was ' + text.length + ' characters ...]\n' + text.slice(-MAX);
+        const at = new Date().toISOString();
+        await store.set(prefix + at, text, { metadata: { size: text.length } });
+        const { blobs } = await store.list({ prefix });
+        const keys = blobs.map((b) => b.key).sort();
+        for (const k of keys.slice(0, Math.max(0, keys.length - 10))) await store.delete(k);
+        return json({ ok: true, at });
+      }
+      if (req.method === 'GET') {
+        const bad = await checkPin(req, store); if (bad) return bad;
+        const at = url.searchParams.get('at');
+        if (at) {
+          const text = await store.get(prefix + at.replace(/[^0-9TZ:.\-]/g, ''), { type: 'text' });
+          if (text === null) return json({ error: 'not found' }, 404);
+          return new Response(text, { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+        }
+        const { blobs } = await store.list({ prefix });
+        const logs = blobs.map((b) => ({ at: b.key.slice(prefix.length) })).sort((a, b) => (a.at < b.at ? 1 : -1));
+        return json({ logs });
       }
     }
     return json({ error: 'not found' }, 404);

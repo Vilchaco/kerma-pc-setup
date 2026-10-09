@@ -20,7 +20,7 @@ function Invoke-NetworkSetup($pc) {
     $net     = Get-NetPlan $pc
     $hasPlan = -not [string]::IsNullOrWhiteSpace($net.IP)
     if ($hasPlan) {
-        $src = if ($pc.IPSource -eq 'david') { L "David's list" 'la lista de David' } else { L 'the inventory' 'el inventario' }
+        $src = switch ($pc.IPSource) { 'david' { L "David's list" 'la lista de David' } 'typed' { L 'typed at the start' 'escrita al empezar' } default { L 'the inventory' 'el inventario' } }
         Write-Host ((L '  IP for this PC: {0}  (from {1})' '  IP de este PC: {0}  (de {1})') -f $net.IP, $src)
     }
     if ($script:Auto -and -not $hasPlan) { Write-Skip (L 'No IP known for this PC - network left unchanged.' 'No hay IP para este PC: la red queda como está.'); return }

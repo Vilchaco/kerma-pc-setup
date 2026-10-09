@@ -27,6 +27,22 @@ function Get-StatusConfig($pc) {
     }
 }
 
+# Sube el log de esta ejecucion al panel (necesita que el PC este registrado).
+function Send-SetupLog([string]$key) {
+    $keyFile = Join-Path $env:ProgramData 'Kerma\status.key'
+    if (-not (Test-Path -LiteralPath $keyFile) -or -not $script:LogFile -or -not (Test-Path -LiteralPath $script:LogFile)) {
+        Write-Host (L '  (Log not uploaded: this PC is not registered in the status panel.)' '  (El log no se subió: este PC no está registrado en el panel.)') -ForegroundColor DarkGray
+        return
+    }
+    if (-not $key) { $key = $env:COMPUTERNAME }
+    $fs = [IO.File]::Open($script:LogFile, 'Open', 'Read', 'ReadWrite')
+    try { $sr = New-Object IO.StreamReader($fs, $true); $text = $sr.ReadToEnd(); $sr.Dispose() } finally { $fs.Dispose() }
+    $body = [Text.Encoding]::UTF8.GetBytes($text)
+    $url = "$PanelBase/api/log?id=$([uri]::EscapeDataString($key))"
+    Invoke-RestMethod -Uri $url -Method Post -Headers @{ 'x-kerma-key' = (Get-Content -LiteralPath $keyFile -Raw).Trim() } -Body $body -ContentType 'text/plain; charset=utf-8' -UseBasicParsing -TimeoutSec 30 | Out-Null
+    Write-Host ((L '  Log uploaded to the status panel ({0}).' '  Log subido al panel de estado ({0}).') -f $key) -ForegroundColor Green
+}
+
 function Test-PanelRegistered { return (Test-Path -LiteralPath (Join-Path $env:ProgramData 'Kerma\status.key')) }
 
 function Invoke-StatusPanel($pc) {
