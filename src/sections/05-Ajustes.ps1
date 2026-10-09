@@ -7,7 +7,8 @@
 # -NoRestart (se aplican al reiniciar) para no cortar la red ahora.
 function Invoke-NetworkTuning {
     $done = @()
-    $nics = @(Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.MediaType -eq '802.3' })
+    # sin el ATEM Mini por USB ni adaptadores virtuales: son aparatos, no la red del PC
+    $nics = @(Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.MediaType -eq '802.3' -and $_.InterfaceDescription -notmatch 'Blackmagic|ATEM|Virtual|Hyper-V|VMware|VirtualBox|TAP-|Bluetooth' })
     foreach ($n in $nics) {
         try { Set-NetAdapterPowerManagement -Name $n.Name -WakeOnMagicPacket Enabled -ErrorAction Stop } catch { }
         try { Set-NetAdapterPowerManagement -Name $n.Name -AllowComputerToTurnOffDevice Disabled -ErrorAction Stop } catch { }

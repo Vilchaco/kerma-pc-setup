@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.6.4] - 2026-10-08 - El ATEM Mini ya no se confunde con la red
+
+### Corregido
+- **Adaptador de red en modo Automático.** En Blackjack 01, el ATEM Mini Pro conectado por USB aparece en Windows como un Ethernet conectado, y el script lo eligió como "primer Ethernet" para ponerle la IP fija de la mesa. Windows lo rechazó porque esa IP ya estaba en el cable de red, pero el adaptador del ATEM se quedó en IP fija y sin dirección. Ahora el script elige primero el adaptador que ya tiene la IP del PC, después el que sale a internet y, por último, el primer Ethernet que no sea un aparato. El ATEM y los adaptadores virtuales no se eligen nunca solos.
+- **Sin quedarse a medias.** Si Windows rechaza la IP fija, el adaptador vuelve a DHCP si estaba así, y el log muestra el motivo que da Windows.
+- Los ajustes de energía y encendido por red ya no se aplican al ATEM ni a los adaptadores virtuales.
+
 ## [5.6.3] - 2026-10-08 - Focusrite sin preguntar por el reinicio
 
 ### Corregido

@@ -49,11 +49,22 @@ function Invoke-NetworkSetup($pc) {
     # -- adaptador
     $nic = $null
     if ($script:Auto) {
-        # el primer Ethernet conectado; si no, cualquiera conectado
-        $nic = $adapters | Where-Object { $_.Status -eq 'Up' -and $_.MediaType -eq '802.3' } | Select-Object -First 1
-        if (-not $nic) { $nic = $adapters | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1 }
-        if (-not $nic) { Write-Fail (L 'No connected adapter - network left unchanged.' 'Ningún adaptador conectado: la red queda como está.'); return }
-        Write-Host ((L '  Adapter -> {0} (automatic: first connected Ethernet)' '  Adaptador -> {0} (automático: primer Ethernet conectado)') -f $nic.Name) -ForegroundColor DarkGray
+        # 1) el que ya tiene esta IP  2) el que sale a internet (ruta por defecto)
+        # 3) el primer Ethernet conectado que no sea de un aparato. El ATEM Mini
+        # por USB aparece como Ethernet conectado con su propia red (BJ01): no se toca.
+        $devices = 'Blackmagic|ATEM|Virtual|Hyper-V|VMware|VirtualBox|TAP-|Bluetooth|Loopback'
+        $cands = @($adapters | Where-Object { $_.Status -eq 'Up' -and $_.InterfaceDescription -notmatch $devices })
+        $why = ''
+        $nic = $cands | Where-Object { Get-NetIPAddress -InterfaceIndex $_.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -eq $net.IP } } | Select-Object -First 1
+        if ($nic) { $why = L 'it already has this IP' 'ya tiene esta IP' }
+        if (-not $nic) {
+            $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object -Property RouteMetric |
+                Where-Object { $cands.ifIndex -contains $_.InterfaceIndex } | Select-Object -First 1
+            if ($route) { $nic = $cands | Where-Object { $_.ifIndex -eq $route.InterfaceIndex } | Select-Object -First 1; $why = L 'it is the one with internet' 'es el que tiene internet' }
+        }
+        if (-not $nic) { $nic = $cands | Where-Object { $_.MediaType -eq '802.3' } | Select-Object -First 1; $why = L 'first connected Ethernet' 'primer Ethernet conectado' }
+        if (-not $nic) { Write-Fail (L 'No connected network adapter (ignoring ATEM / virtual ones) - network left unchanged.' 'Ningún adaptador de red conectado (sin contar ATEM ni virtuales): la red queda como está.'); return }
+        Write-Host ((L '  Adapter -> {0} (automatic: {1})' '  Adaptador -> {0} (automático: {1})') -f $nic.Name, $why) -ForegroundColor DarkGray
     } else {
         while ($true) {
             $v = Read-Host (L '  Which adapter? (number)' '  ¿Qué adaptador? (número)')
@@ -114,8 +125,14 @@ function Invoke-NetworkSetup($pc) {
     Write-Host ''
     if (-not (Ask-YesNo (L '  Apply?' '  ¿Aplicar?') $true)) { Write-Skip (L 'Network left unchanged.' 'Red sin cambios.'); return }
 
-    netsh interface ipv4 set address name="$name" source=static address=$ip mask=$mask gateway=$gw gwmetric=1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { Write-Fail (L 'Could not set the IP address (netsh error).' 'No se pudo poner la IP (error de netsh).'); return }
+    $wasDhcp = (Get-NetIPInterface -InterfaceIndex $nic.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).Dhcp -eq 'Enabled'
+    $out = netsh interface ipv4 set address name="$name" source=static address=$ip mask=$mask gateway=$gw gwmetric=1 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail ((L 'Could not set the IP address (netsh: {0}).' 'No se pudo poner la IP (netsh: {0}).') -f (($out | Out-String) -replace '\s+', ' ').Trim())
+        # que no se quede a medias, sin IP
+        if ($wasDhcp) { netsh interface ipv4 set address name="$name" source=dhcp | Out-Null; Write-Note ((L '  {0} left on DHCP as it was.' '  {0} se deja en DHCP, como estaba.') -f $name) }
+        return
+    }
     netsh interface ipv4 set dnsservers name="$name" source=static address=$dns1 register=primary validate=no | Out-Null
     if ($LASTEXITCODE -ne 0) { Write-Fail (L 'IP applied but the primary DNS could not be set (netsh error).' 'IP puesta, pero no se pudo poner la DNS principal (error de netsh).'); return }
     if ($dns2) {
