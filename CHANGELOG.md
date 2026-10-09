@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.9.0] - 2026-10-09 - Windows con el aspecto de Kerma
+
+### Añadido
+- **Aspecto Kerma en Windows**, junto con el fondo de pantalla: modo oscuro en Windows y en las apps, y el dorado de Kerma (#C8A96E) como color de énfasis. Ese dorado aparece en las barras de título de las ventanas, los botones, las casillas y la selección. La barra de tareas y el menú Inicio se quedan oscuros. El color está en `ajustes.psd1` (`Wallpaper.Accent`); vacío deja los colores como estén.
+
 ## [5.8.0] - 2026-10-09 - OBS listo en todas las mesas
 
 ### Añadido

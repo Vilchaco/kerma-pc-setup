@@ -39,6 +39,9 @@
     # Tags: texto y color de la tarjeta, por juego del inventario (Game) y,
     # si no tiene, por perfil (Supervisor, MCR, Office). Color en #RRGGBB.
     Wallpaper = @{
+        # Aspecto de Windows con el fondo: modo oscuro y este color de enfasis
+        # (barras de titulo, botones, seleccion). Vacio = no tocar los colores.
+        Accent = '#C8A96E'
         Tags = @{
             'blackjack'           = @{ Text = 'Blackjack';           Color = '#C8A96E' }
             'blackjack-unlimited' = @{ Text = 'Blackjack Unlimited'; Color = '#C8A96E' }

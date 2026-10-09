@@ -131,6 +131,40 @@ function New-KermaWallpaper([string]$template, [string]$name, [string]$tag, [str
     $bmp.Dispose()
 }
 
+# Aspecto Kerma de Windows: modo oscuro y color de enfasis dorado (como la web
+# y OBS). Paleta de 8 tonos (mas claros -> color -> mas oscuros) que usa Windows.
+function Set-KermaColors([string]$hex) {
+    Add-Type -AssemblyName System.Drawing
+    $c = [Drawing.ColorTranslator]::FromHtml($hex)
+    $mix = { param($t, [double]$f) [byte][Math]::Round($c.$t + ($(if ($f -ge 0) { 255 } else { 0 }) - $c.$t) * [Math]::Abs($f)) }
+    $shades = @(0.6, 0.4, 0.2, 0, -0.2, -0.4, -0.6)
+    $pal = New-Object byte[] 32
+    for ($i = 0; $i -lt 7; $i++) { $pal[$i * 4] = & $mix 'R' $shades[$i]; $pal[$i * 4 + 1] = & $mix 'G' $shades[$i]; $pal[$i * 4 + 2] = & $mix 'B' $shades[$i] }
+    $pal[28] = 0x88; $pal[29] = 0x88; $pal[30] = 0x88
+    # DWORD con el color: ABGR (lo que espera Windows) o ARGB; ToInt32 base 16 admite el bit alto
+    $dw = { param([int]$a, [int]$x, [int]$y, [int]$z) [Convert]::ToInt32(('{0:X2}{1:X2}{2:X2}{3:X2}' -f $a, $x, $y, $z), 16) }
+    $abgr = { param([int]$i) & $dw 0xFF $pal[$i * 4 + 2] $pal[$i * 4 + 1] $pal[$i * 4] }
+
+    $pers = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+    Initialize-RegistryKey $pers
+    Set-ItemProperty -Path $pers -Name AppsUseLightTheme -Value 0 -Type DWord
+    Set-ItemProperty -Path $pers -Name SystemUsesLightTheme -Value 0 -Type DWord
+    Set-ItemProperty -Path $pers -Name ColorPrevalence -Value 0 -Type DWord      # barra de tareas oscura, sin dorado
+    $acc = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent'
+    Initialize-RegistryKey $acc
+    Set-ItemProperty -Path $acc -Name AccentPalette -Value $pal -Type Binary
+    Set-ItemProperty -Path $acc -Name AccentColorMenu -Value (& $abgr 4) -Type DWord
+    Set-ItemProperty -Path $acc -Name StartColorMenu -Value (& $abgr 5) -Type DWord
+    $dwm = 'HKCU:\Software\Microsoft\Windows\DWM'
+    Initialize-RegistryKey $dwm
+    $argb = & $dw 0xC4 $c.R $c.G $c.B
+    Set-ItemProperty -Path $dwm -Name AccentColor -Value (& $abgr 3) -Type DWord
+    Set-ItemProperty -Path $dwm -Name ColorizationColor -Value $argb -Type DWord
+    Set-ItemProperty -Path $dwm -Name ColorizationAfterglow -Value $argb -Type DWord
+    Set-ItemProperty -Path $dwm -Name ColorPrevalence -Value 1 -Type DWord        # barras de titulo en dorado
+    Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name AutoColorization -Value '0' -Type String
+}
+
 function Invoke-Wallpaper($pc) {
     Write-Section (L 'WALLPAPER' 'FONDO DE PANTALLA')
     $assets = Get-AssetsDir
@@ -175,6 +209,13 @@ public static class KermaWallpaperApi {
         Add-Change ((L 'Wallpaper: {0} ({1})' 'Fondo: {0} ({1})') -f ($name -replace '\s*\|\s*', ' '), $ip)
     } else {
         Write-Warn ((L 'Windows did not accept the wallpaper. The picture is ready in {0}.' 'Windows no aceptó el fondo. La imagen está lista en {0}.') -f $out)
+    }
+    if ($AccentColor) {
+        try {
+            Set-KermaColors $AccentColor
+            Write-Ok ((L 'Windows look: dark mode and Kerma gold accent ({0}). Fully applied after the restart.' 'Aspecto de Windows: modo oscuro y dorado Kerma ({0}). Queda del todo al reiniciar.') -f $AccentColor)
+            Add-Change (L 'Look: dark mode + Kerma gold' 'Aspecto: modo oscuro + dorado Kerma')
+        } catch { Write-Warn ((L 'Windows colors: {0}' 'Colores de Windows: {0}') -f $_.Exception.Message) }
     }
     if (($State.HostRenamed -or $State.RenameWanted) -and $pc.Hostname -ne $env:COMPUTERNAME) {
         Write-Note (L '  The wallpaper already shows the new computer name, which applies after the restart.' '  El fondo ya muestra el nombre nuevo del equipo, que se aplica al reiniciar.')

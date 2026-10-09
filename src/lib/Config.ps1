@@ -32,6 +32,7 @@ function Import-KermaConfig {
     $script:ObsThemeFile = $aj.Obs.ThemeFile
     $script:ObsThemeId   = $aj.Obs.ThemeId
     $script:WallpaperTags = $aj.Wallpaper.Tags
+    $script:AccentColor   = [string]$aj.Wallpaper.Accent
 
     # Filas de PC con lo que necesitan las secciones
     $script:PCs = @()
@@ -175,6 +176,7 @@ function Test-KermaConfig {
     if (-not $assets) { $errors.Add('no se encuentra la carpeta assets') } else {
         $def = Test-Path -LiteralPath (Join-Path $assets 'wallpaper\base.jpg')
         if (-not $def) { $errors.Add('falta assets\wallpaper\base.jpg') }
+        if ($AccentColor -and $AccentColor -notmatch '^#[0-9A-Fa-f]{6}$') { $errors.Add("Wallpaper.Accent: color '$AccentColor' no valido (#RRGGBB)") }
         foreach ($k in $WallpaperTags.Keys) {
             if ([string]$WallpaperTags[$k].Color -notmatch '^#[0-9A-Fa-f]{6}$') { $errors.Add("Wallpaper.Tags.${k}: color '$($WallpaperTags[$k].Color)' no valido (#RRGGBB)") }
         }
