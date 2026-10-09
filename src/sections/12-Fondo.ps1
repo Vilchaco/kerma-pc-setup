@@ -144,7 +144,7 @@ function Invoke-Wallpaper($pc) {
         if ($custom) { $name = $custom }
     }
     $tagInfo = Get-WallpaperTag $pc
-    $hostname = if ($State.HostRenamed) { $pc.Hostname } else { $env:COMPUTERNAME }
+    $hostname = if ($State.HostRenamed -or $State.RenameWanted) { $pc.Hostname } else { $env:COMPUTERNAME }
     $ip = Get-PrimaryIPv4
     if ($pc.Net.IP -and $State.Changes -match [regex]::Escape($pc.Net.IP)) { $ip = $pc.Net.IP }
     if (-not $ip) { $ip = L 'no IP' 'sin IP' }
@@ -176,7 +176,7 @@ public static class KermaWallpaperApi {
     } else {
         Write-Warn ((L 'Windows did not accept the wallpaper. The picture is ready in {0}.' 'Windows no aceptó el fondo. La imagen está lista en {0}.') -f $out)
     }
-    if ($State.HostRenamed -and $pc.Hostname -ne $env:COMPUTERNAME) {
+    if (($State.HostRenamed -or $State.RenameWanted) -and $pc.Hostname -ne $env:COMPUTERNAME) {
         Write-Note (L '  The wallpaper already shows the new computer name, which applies after the restart.' '  El fondo ya muestra el nombre nuevo del equipo, que se aplica al reiniciar.')
     }
 }

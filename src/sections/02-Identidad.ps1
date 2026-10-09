@@ -3,14 +3,29 @@
 #  inicio de sesion (sin contrasena = arranca solo tras un apagon)
 # =====================================================================
 
+# Fase 1: solo se decide. El cambio se aplica al final (Invoke-RenameApply):
+# tras renombrar la cuenta con la que corre el script, Windows deja de
+# reconocerla hasta reiniciar, y casi todo lo demas fallaria con
+# "No mapping between account names and security IDs".
 function Invoke-Rename($pc) {
     Write-Section (L 'NAMES  (computer, user, full name)' 'NOMBRES  (equipo, usuario, nombre completo)')
     Write-Host ((L '    Computer name : {0}  ->  {1}' '    Nombre de equipo : {0}  ->  {1}') -f $env:COMPUTERNAME, $pc.Hostname)
     Write-Host ((L '    Username      : {0}  ->  {1}' '    Usuario          : {0}  ->  {1}') -f $env:USERNAME, $pc.Username)
     Write-Host ((L '    Full name     : {0}' '    Nombre completo  : {0}') -f $pc.FullName)
     Write-Host ''
-    if (-not (Ask-YesNo (L '  Rename this PC now?' '  ¿Renombrar este PC ahora?') ([bool]$Prof.Rename))) { Write-Skip (L 'Names left as they are.' 'Nombres sin cambios.'); return }
-    Write-Host ''
+    if ($env:COMPUTERNAME -ieq $pc.Hostname -and $env:USERNAME -ieq $pc.Username) {
+        Write-Ok (L 'The names are already the standard ones.' 'Los nombres ya son los estándar.')
+        $State.RenameWanted = $true
+        return
+    }
+    if (-not (Ask-YesNo (L '  Rename this PC?' '  ¿Renombrar este PC?') ([bool]$Prof.Rename))) { Write-Skip (L 'Names left as they are.' 'Nombres sin cambios.'); return }
+    $State.RenameWanted = $true
+    Write-Note (L '  The names are changed at the end of the setup, together with the login: changing them now would make Windows fail in the next sections.' '  Los nombres se cambian al final del setup, junto con el inicio de sesión: cambiarlos ahora haría fallar a Windows en las secciones siguientes.')
+}
+
+function Invoke-RenameApply($pc) {
+    if (-not $State.RenameWanted) { return }
+    Write-Section (L 'NAMES  (applying)' 'NOMBRES  (aplicando)')
 
     # -- usuario (primero: mas seguro que renombrar antes el equipo)
     if ($env:USERNAME -ieq $pc.Username) {

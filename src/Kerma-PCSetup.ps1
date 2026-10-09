@@ -1,6 +1,6 @@
 ﻿<#
 =====================================================================
-  Kerma Games - PC Setup  (v5.4.1 - PowerShell)
+  Kerma Games - PC Setup  (v5.5.0 - PowerShell)
 =====================================================================
   PC nuevo, una linea en PowerShell (descarga la ultima version):
     irm https://kermasetup.netlify.app | iex
@@ -48,9 +48,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '5.4.1'
+$ScriptVersion = '5.5.0'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
-$State = @{ UserRenamed = $false; HostRenamed = $false; NeedsRestart = $false; Changes = @() }
+$State = @{ UserRenamed = $false; HostRenamed = $false; RenameWanted = $false; NeedsRestart = $false; Changes = @() }
 $Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin }
 $Auto = [bool]$Unattended -or $Mode -eq 'Auto'
 $script:Lang = if ($Lang) { $Lang } else { 'es' }
@@ -194,7 +194,7 @@ try {
 
     # ------------------------------------------- fases
     Write-Phase (L 'PHASE 1 - BASE SYSTEM' 'FASE 1 - SISTEMA BASE')
-    foreach ($s in @('Invoke-TimeSetup', 'Invoke-Rename', 'Invoke-LoginSetup', 'Invoke-NetworkSetup', 'Invoke-WindowsUpdateSetup')) { Invoke-Step $s $selected }
+    foreach ($s in @('Invoke-TimeSetup', 'Invoke-Rename', 'Invoke-NetworkSetup', 'Invoke-WindowsUpdateSetup')) { Invoke-Step $s $selected }
     Write-Phase (L 'PHASE 2 - CLEAN-UP AND SETTINGS' 'FASE 2 - LIMPIEZA Y AJUSTES')
     foreach ($s in @('Invoke-PcTuning', 'Invoke-RemoveJunk')) { Invoke-Step $s $selected }
     Write-Phase (L 'PHASE 3 - PROGRAMS' 'FASE 3 - PROGRAMAS')
@@ -205,6 +205,9 @@ try {
     Invoke-Step 'Invoke-StatusPanel' $selected
     Write-Phase (L 'PHASE 6 - CHECK AND SUMMARY' 'FASE 6 - COMPROBACIÓN Y RESUMEN')
     Invoke-Step 'Invoke-Verification' $selected
+    # nombres e inicio de sesion, lo ultimo: renombrar la cuenta en uso deja a Windows sin reconocerla hasta reiniciar
+    Write-Phase (L 'PHASE 7 - NAMES AND LOGIN' 'FASE 7 - NOMBRES E INICIO DE SESIÓN')
+    foreach ($s in @('Invoke-RenameApply', 'Invoke-LoginSetup')) { Invoke-Step $s $selected }
     $Secrets.RustDesk = $null; $Secrets.PanelPin = $null
     $script:Auto = [bool]$Unattended    # la pregunta de reiniciar se hace siempre (salvo -Unattended)
     Invoke-Finish

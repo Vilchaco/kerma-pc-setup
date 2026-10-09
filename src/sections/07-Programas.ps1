@@ -32,6 +32,22 @@ function Initialize-Winget {
     return (Get-WingetPath)
 }
 
+# El catalogo de winget puede no estar listo en un PC recien instalado
+# (error 0x8a15000f "Data required by the source is missing"). Se prueba
+# una busqueda y, si falla, se reinicia y se reinstala el catalogo.
+function Initialize-WingetSource([string]$w) {
+    $probe = @('search', '--id', 'Google.Chrome', '--exact', '--accept-source-agreements', '--disable-interactivity')
+    if ((Invoke-Native $w $probe).ExitCode -eq 0) { return $true }
+    Write-Host (L '  The winget catalog is not ready - repairing it (can take a minute)...' '  El catálogo de winget no está listo: reparándolo (puede tardar un minuto)...')
+    Invoke-Native $w @('source', 'reset', '--force', '--disable-interactivity') | Out-Null
+    try { Add-AppxPackage -Path 'https://cdn.winget.microsoft.com/cache/source.msix' -ErrorAction Stop } catch { }
+    Invoke-Native $w @('source', 'update', '--disable-interactivity') | Out-Null
+    $r = Invoke-Native $w $probe
+    if ($r.ExitCode -eq 0) { Write-Ok (L 'winget catalog repaired.' 'Catálogo de winget reparado.'); return $true }
+    Write-Fail ((L 'The winget catalog still does not work (code {0}). Programs from winget cannot be installed now.' 'El catálogo de winget sigue sin funcionar (código {0}). Ahora no se pueden instalar los programas de winget.') -f $r.ExitCode)
+    return $false
+}
+
 function Get-LatestReleaseAsset([string]$repo, [string]$pattern) {
     $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -UseBasicParsing -Headers @{ 'User-Agent' = 'Kerma-PCSetup' }
     $asset = $rel.assets | Where-Object { $_.name -match $pattern } | Select-Object -First 1
@@ -48,7 +64,11 @@ function Install-KermaPackage($key, $p) {
 
     if ($p.Source -eq 'winget') {
         if ($p.Check -and (Test-Path -LiteralPath $p.Check)) { Write-Ok ((L '{0}: already installed.' '{0}: ya estaba instalado.') -f $p.Name); return }
-        if (-not $script:Winget) { $script:Winget = Initialize-Winget }
+        if (-not $script:Winget) {
+            $script:Winget = Initialize-Winget
+            if ($script:Winget -and -not (Initialize-WingetSource $script:Winget)) { $script:WingetBroken = $true }
+        }
+        if ($script:WingetBroken) { Write-Skip ((L '{0}: winget catalog not available.' '{0}: catálogo de winget no disponible.') -f $p.Name); return }
         if (-not $script:Winget) {
             Write-Fail ((L '{0}: winget is not available on this PC, so it cannot be installed automatically.' '{0}: este PC no tiene winget, no se puede instalar solo.') -f $p.Name)
             Write-Note (L '  Windows LTSC / IoT editions do not include winget. Install it by hand.' '  Las ediciones LTSC / IoT de Windows no traen winget. Instálalo a mano.')
@@ -163,6 +183,7 @@ function Invoke-InstallPrograms($pc) {
         return
     }
     $script:Winget = $null
+    $script:WingetBroken = $false
     foreach ($k in $list) {
         Write-Host ''
         try { Install-KermaPackage $k $Packages[$k] }

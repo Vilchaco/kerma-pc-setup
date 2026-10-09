@@ -46,7 +46,7 @@ function Invoke-AppAutostart($pc) {
     Write-Host ''
     if (-not (Ask-YesNo (L '  Configure app autostart now?' '  ¿Configurar el arranque de apps ahora?') $true)) { Write-Skip (L 'Autostart tasks left untouched.' 'Tareas de arranque sin tocar.'); return }
 
-    $tableName = if ($State.HostRenamed) { $pc.Hostname } else { $env:COMPUTERNAME }
+    $tableName = if ($State.HostRenamed -or $State.RenameWanted) { $pc.Hostname } else { $env:COMPUTERNAME }
     $dir       = "C:\KermaStartup\$tableName"
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     # Las tareas van al grupo Usuarios por su SID fijo (S-1-5-32-545), no a una

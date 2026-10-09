@@ -78,6 +78,28 @@ function Invoke-RustDeskConfig([string]$rd, [string]$mode, [string]$pw, [int]$ti
     if ($p.ExitCode -ne 0) { throw (L 'RustDesk configuration failed (see the lines above).' 'La configuración de RustDesk falló (mira las líneas de arriba).') }
 }
 
+# El instalador .msi de RustDesk no siempre crea su servicio. Se crea como en
+# la documentacion oficial: --install-service SIN esperar al proceso, y se
+# comprueba cada pocos segundos si el servicio ya existe (esperar al proceso,
+# como hacia la version anterior, deja el setup colgado).
+function Initialize-RustDeskService([string]$exe) {
+    $svc = Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue
+    if (-not $svc) {
+        Write-Host (L '  Creating the RustDesk service...' '  Creando el servicio de RustDesk...')
+        $p = Start-Process -FilePath $exe -ArgumentList '--install-service' -PassThru -WindowStyle Hidden
+        for ($i = 0; $i -lt 30 -and -not $svc; $i++) { Start-Sleep -Seconds 2; $svc = Get-Service -Name 'RustDesk' -ErrorAction SilentlyContinue }
+        if ($p -and -not $p.HasExited) { Stop-ProcessTree $p.Id }
+        if (-not $svc) { throw (L 'RustDesk did not create its service. Restart the PC and run the script again.' 'RustDesk no creó su servicio. Reinicia el PC y vuelve a pasar el script.') }
+    }
+    Set-Service -Name 'RustDesk' -StartupType Automatic -ErrorAction SilentlyContinue
+    if ((Get-Service -Name 'RustDesk').Status -ne 'Running') {
+        Start-Service -Name 'RustDesk' -ErrorAction SilentlyContinue
+        for ($i = 0; $i -lt 15 -and (Get-Service -Name 'RustDesk').Status -ne 'Running'; $i++) { Start-Sleep -Seconds 2 }
+    }
+    Start-Sleep -Seconds 5   # que el servicio termine de arrancar antes de hablar con el
+    Write-Ok ((L 'RustDesk service: {0}.' 'Servicio de RustDesk: {0}.') -f (Get-Service -Name 'RustDesk').Status)
+}
+
 function Invoke-RemoteAccess($pc) {
     Write-Section (L 'REMOTE ACCESS  (RustDesk by direct IP on the LAN)' 'ACCESO REMOTO  (RustDesk por IP directa en la red)')
     $mode = $Prof.RustDesk
@@ -104,6 +126,7 @@ function Invoke-RemoteAccess($pc) {
 
     try {
         # servicio, contrasena permanente, IP directa, permisos, cortafuegos (script de David: comprueba cada opcion)
+        Initialize-RustDeskService $exe
         Invoke-RustDeskConfig $rd $mode $pw
         Write-Ok ((L 'RustDesk {0} configured: direct IP on port {1}, permanent password, service automatic.' 'RustDesk {0} configurado: IP directa en el puerto {1}, contraseña permanente, servicio automático.') -f $mode, $RustDeskPort)
         Add-Change ((L 'RustDesk: {0}, direct IP port {1}' 'RustDesk: {0}, IP directa puerto {1}') -f $mode, $RustDeskPort)

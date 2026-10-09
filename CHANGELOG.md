@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.5.0] - 2026-10-08 - Arreglos de la primera prueba en una mesa
+
+### Corregido
+- **Nombres al final.** Renombrar la cuenta con la que corre el script hacía que Windows dejara de reconocerla hasta reiniciar, y eso rompía casi todo lo que venía después con el error *No mapping between account names and security IDs*: la IP fija, los ajustes de red y la lista de apps, y probablemente también winget. Ahora el nombre del equipo y del usuario se decide al principio, pero se cambia al final, en una nueva fase 7, junto con el inicio de sesión. Las tareas de arranque y el fondo ya usan el nombre nuevo.
+- **Catálogo de winget.** En un PC recién instalado el catálogo de winget puede no estar listo (error `0x8a15000f`), y no se instalaban Chrome, Stream Deck ni OBS. El script lo comprueba antes de instalar y, si falla, lo repara.
+- **Servicio de RustDesk.** El instalador no siempre crea el servicio, y la forma de crearlo de la versión anterior dejaba el setup colgado. Ahora se crea como indica la documentación de RustDesk: sin esperar al proceso y comprobando cada pocos segundos si ya existe. Después se arranca y se espera a que esté listo antes de configurarlo.
+
 ## [5.4.1] - 2026-10-08 - RustDesk ya no puede bloquear el setup
 
 ### Corregido
