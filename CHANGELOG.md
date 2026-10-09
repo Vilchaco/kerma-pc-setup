@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.6.1] - 2026-10-08 - Stream Deck arranca al iniciar sesión
+
+### Corregido
+- **Arranque de Stream Deck.** El script daba por hecho que Stream Deck arranca solo con Windows. Pero esa entrada de inicio la crea el propio programa la primera vez que se abre con cada usuario, y en un PC recién instalado todavía no existía. Ahora el script la busca y, si no está, la crea ("Elgato Stream Deck", en segundo plano). Si se había desactivado en el Administrador de tareas, la vuelve a activar.
+
 ## [5.6.0] - 2026-10-08 - Sincronizar el reloj desde el panel
 
 ### Añadido
