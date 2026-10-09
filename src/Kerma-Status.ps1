@@ -68,11 +68,46 @@ function Get-NtpOffset([string]$server) {
     } catch { return $null } finally { if ($udp) { $udp.Close() } }
 }
 
-$clock = @{ offset_s = $null; server = $null; service = $null; timezone = (Get-Safe { (Get-TimeZone).Id }) }
-foreach ($srv in $TimeServers) {
-    $o = Get-NtpOffset $srv
-    if ($null -ne $o) { $clock.offset_s = [Math]::Round($o, 3); $clock.server = $srv; break }
+function Measure-Clock {
+    foreach ($srv in $TimeServers) {
+        $o = Get-NtpOffset $srv
+        if ($null -ne $o) { return @{ Offset = [Math]::Round($o, 3); Server = $srv } }
+    }
+    return $null
 }
+
+# Pone el reloj en hora: w32tm y, si sigue a mas de 1 s, ajuste directo con
+# el desfase medido (como el setup). No toca saltos de mas de 12 h: eso seria
+# una respuesta NTP mala, no un reloj desfasado.
+function Invoke-TimeFix([string]$reason) {
+    $before = Measure-Clock
+    $res = [ordered]@{ action = 'timesync'; reason = $reason; at = (Get-Date).ToUniversalTime().ToString('o'); before_s = $null; after_s = $null; ok = $false; msg = '' }
+    if ($before) { $res.before_s = $before.Offset }
+    try { if ((Get-Service -Name w32time).Status -ne 'Running') { Start-Service -Name w32time } } catch { }
+    & w32tm.exe /resync /force 2>&1 | Out-Null
+    Start-Sleep -Seconds 2
+    $after = Measure-Clock
+    if ($after -and [Math]::Abs($after.Offset) -gt 1 -and [Math]::Abs($after.Offset) -lt 43200) {
+        try {
+            Set-Date -Adjust ([TimeSpan]::FromSeconds($after.Offset)) | Out-Null
+            $res.msg = 'adjusted directly'
+            Start-Sleep -Seconds 1
+            $after = Measure-Clock
+        } catch { $res.msg = 'Set-Date failed: ' + $_.Exception.Message }
+    }
+    if ($after) { $res.after_s = $after.Offset; $res.ok = ([Math]::Abs($after.Offset) -le 1) }
+    else { $res.msg = 'no time server answered' }
+    return $res
+}
+
+$clock = @{ offset_s = $null; server = $null; service = $null; timezone = (Get-Safe { (Get-TimeZone).Id }) }
+$m = Measure-Clock
+# Si se ha ido mas de 1 s, se corrige solo (las cuentas atras de la Dealer App dependen de ello)
+if ($m -and [Math]::Abs($m.Offset) -gt 1 -and -not $NoSend) {
+    $clock.auto_fix = Invoke-TimeFix 'auto'
+    $m = Measure-Clock
+}
+if ($m) { $clock.offset_s = $m.Offset; $clock.server = $m.Server }
 if ($null -eq $clock.offset_s) { [void]$Warnings.Add('No internet time server answered (UDP 123 blocked or no network).') }
 $clock.service = [string](Get-Safe { (Get-Service -Name w32time).Status })
 
@@ -177,6 +212,7 @@ if ($rsvc) {
 }
 
 # ------------------------------------------------------------- report
+$lastCmd = Get-Safe { Get-Content -LiteralPath (Join-Path $Here 'last_command.json') -Raw -ErrorAction Stop | ConvertFrom-Json }
 $status = [ordered]@{
     schema         = 1
     key            = if ($cfg) { [string]$cfg.key } else { $null }
@@ -198,6 +234,7 @@ $status = [ordered]@{
     focusrite      = $focusrite
     audio          = $audio
     remote         = $remote
+    last_command   = $lastCmd
     warnings       = @($Warnings)
 }
 
@@ -244,12 +281,36 @@ if (-not (Test-Path -LiteralPath $keyFile)) {
     return
 }
 $log = Join-Path $Here 'status.log'
-try {
-    $key = (Get-Content -LiteralPath $keyFile -Raw).Trim()
+function Send-Report($key) {
     $json = $status | ConvertTo-Json -Depth 6 -Compress
     $body = [Text.Encoding]::UTF8.GetBytes($json)
-    Invoke-RestMethod -Uri $PanelUrl -Method Post -Headers @{ 'x-kerma-key' = $key } -Body $body -ContentType 'application/json; charset=utf-8' -TimeoutSec 20 -UseBasicParsing | Out-Null
+    return (Invoke-RestMethod -Uri $PanelUrl -Method Post -Headers @{ 'x-kerma-key' = $key } -Body $body -ContentType 'application/json; charset=utf-8' -TimeoutSec 20 -UseBasicParsing)
+}
+try {
+    $key = (Get-Content -LiteralPath $keyFile -Raw).Trim()
+    $resp = Send-Report $key
     if ($Print) { Write-Host '  Sent to the status panel.' -ForegroundColor Green }
+    # Ordenes del panel (vuelven en la respuesta). Solo acciones conocidas:
+    # el repositorio es publico y nada de aqui ejecuta texto que venga de fuera.
+    $done = @()
+    foreach ($c in @($resp.commands | Where-Object { $_ })) {
+        switch ([string]$c.action) {
+            'timesync' {
+                $r = Invoke-TimeFix 'panel'
+                $r.id = [string]$c.id
+                $done += $r
+                $m = Measure-Clock
+                if ($m) { $status.clock.offset_s = $m.Offset; $status.clock.server = $m.Server }
+            }
+        }
+    }
+    if ($done.Count) {
+        $status.last_command = $done[-1]
+        $status.collected_at = (Get-Date).ToUniversalTime().ToString('o')
+        $state = Join-Path $Here 'last_command.json'
+        try { $done[-1] | ConvertTo-Json -Compress | Set-Content -LiteralPath $state -Encoding UTF8 } catch { }
+        $resp = Send-Report $key
+    }
 } catch {
     Add-Content -LiteralPath $log -Value ('{0}  send failed: {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $_.Exception.Message)
     try {

@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.6.0] - 2026-10-08 - Sincronizar el reloj desde el panel
+
+### Añadido
+- **Botón Sincronizar en el panel.** En la columna Reloj de cada PC. Los PCs están en la red del casino y el panel no puede llamarlos, así que la orden queda pendiente ("sincronizando…", con ✕ para cancelar). El PC la recoge en su siguiente reporte, como mucho a los 5 minutos: sincroniza con la hora de internet y, si sigue a más de 1 s, ajusta el reloj directamente. Después vuelve a reportar enseguida, así que el panel muestra el desfase nuevo al momento.
+- **Corrección automática.** Si en un reporte el reloj se ha desviado más de 1 s, el PC lo corrige solo sin esperar a nadie. La última sincronización, automática o desde el panel, con el desfase antes y después, sale al pasar el ratón por el reloj y en el detalle del PC.
+- Solo se aceptan acciones conocidas; el PC nunca ejecuta texto que venga del panel. Los PCs con un setup anterior muestran "setup antiguo" en lugar del botón: hay que pasarles el setup una vez.
+
 ## [5.5.5] - 2026-10-08 - IP de Blackjack 03
 
 ### Cambiado

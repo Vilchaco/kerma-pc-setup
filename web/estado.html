@@ -22,6 +22,8 @@ button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line
 button:hover{border-color:var(--acc)}
 button.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
 button.danger{color:var(--bad)}
+button.mini{padding:2px 8px;font-size:12px;margin-left:8px;border-radius:6px}
+.pend{font-size:11.5px;color:var(--warn);margin-left:8px}
 main{padding:20px 24px 60px;max-width:1500px;margin:0 auto}
 .summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .pill{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 16px;min-width:120px}
@@ -86,7 +88,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
     </table>
   </div>
   <p class="note">Cada PC envía su estado cada 5 minutos. <b>Sin reportar</b> significa apagado o sin red: el panel no puede distinguirlo.
-  Reloj: desfase con la hora de internet (verde hasta 0,5 s). Apps: verde = abierta, rojo = configurada para arrancar pero cerrada, gris = instalada.</p>
+  Reloj: desfase con la hora de internet (verde hasta 0,5 s). Si pasa de 1 s el PC lo corrige solo en su siguiente reporte; <b>Sincronizar</b> lo fuerza en el próximo reporte (como mucho 5 min: los PCs están en la red del casino y el panel no puede llamarlos, son ellos los que preguntan). Apps: verde = abierta, rojo = configurada para arrancar pero cerrada, gris = instalada.</p>
 </main>
 </div>
 
@@ -101,11 +103,13 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const getPin = () => sessionStorage.getItem('kerma-status-pin') || '';
 
-async function api(method, path) {
-  const r = await fetch(path, { method, headers: { 'x-pin': getPin() } });
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error(body.msg || body.error || r.status); e.status = r.status; throw e; }
-  return body;
+async function api(method, path, body) {
+  const headers = { 'x-pin': getPin() };
+  if (body) headers['content-type'] = 'application/json';
+  const r = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const res = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(res.msg || res.error || r.status); e.status = r.status; throw e; }
+  return res;
 }
 
 function ago(iso, now) {
@@ -166,7 +170,10 @@ function render() {
     html += `<tr class="row" data-id="${esc(p.id)}">
       <td class="name"><span class="dot ${H_DOT[p._h]}" title="${H_TXT[p._h]}"></span><b>${esc(p.label || p.id)}</b><small class="mono">${esc(p.hostname || '')}</small></td>
       <td class="${p._h === 'off' ? 'bad' : ''}">${ago(p.received_at, now)}</td>
-      <td class="mono ${clockCls(off)}">${off === null || off === undefined ? 'sin dato' : (off >= 0 ? '+' : '') + off.toFixed(3) + ' s'}</td>
+      <td><span class="mono ${clockCls(off)}" title="${esc(lastFix(p))}">${off === null || off === undefined ? 'sin dato' : (off >= 0 ? '+' : '') + off.toFixed(3) + ' s'}</span>${p.pending
+        ? `<span class="pend" title="Pedido ${esc(new Date(p.pending.at).toLocaleTimeString('es-MX'))}. El PC lo recoge en su próximo reporte (como mucho 5 min).">⏳ sincronizando…</span> <button class="mini" data-cancel="${esc(p.id)}" title="Cancelar">✕</button>`
+        : canSync(p) ? `<button class="mini" data-sync="${esc(p.id)}" title="Sincronizar el reloj de este PC con la hora de internet">Sincronizar</button>`
+        : `<span class="pend mut" title="Este PC tiene el setup ${esc(p.script_version || '?')}: pasa el setup otra vez (modo Automático) para poder sincronizarlo desde aquí.">setup antiguo</span>`}</td>
       <td style="white-space:normal">${apps || '<span class="mut">-</span>'}</td>
       <td class="mono ${p.disk && p.disk.free_gb < 10 ? 'warn' : ''}">${free}</td>
       <td class="mono">${esc(ip || '?')}</td>
@@ -178,6 +185,15 @@ function render() {
   $('rows').innerHTML = html || '<tr><td colspan="9" class="mut">Todavía no ha reportado ningún PC.</td></tr>';
 }
 
+// el boton necesita el recolector de la 5.6.0 o posterior (los anteriores ignoran la orden)
+const canSync = (p) => { const v = String(p.script_version || '0').split('.').map(Number); return v[0] > 5 || (v[0] === 5 && (v[1] || 0) >= 6); };
+const fmtOff = (v) => v === null || v === undefined ? '?' : (v >= 0 ? '+' : '') + Number(v).toFixed(3) + ' s';
+function lastFix(p) {
+  const f = [p.last_command, p.clock && p.clock.auto_fix].filter(Boolean).sort((a, b) => (a.at < b.at ? 1 : -1))[0];
+  if (!f) return '';
+  const who = f.reason === 'auto' ? 'automática' : 'desde el panel';
+  return `Última sincronización (${who}): ${new Date(f.at).toLocaleString('es-MX')} · antes ${fmtOff(f.before_s)} → después ${fmtOff(f.after_s)}${f.ok ? '' : ' · NO quedó en hora' + (f.msg ? ' (' + f.msg + ')' : '')}`;
+}
 function kv(k, v) { return `<div><span class="k">${esc(k)}</span>${esc(v ?? '?')}</div>`; }
 function detail(p) {
   const w = p.windows || {}, hw = p.hardware || {}, c = p.clock || {};
@@ -190,7 +206,7 @@ function detail(p) {
       ${kv('Fabricante', hw.manufacturer)}${kv('Modelo', hw.model)}${kv('Nº de serie', hw.serial)}${kv('CPU', hw.cpu)}${kv('RAM', hw.ram_gb ? hw.ram_gb + ' GB' : null)}</div>
     <div class="box"><h4>Windows</h4>${kv('Edición', w.caption)}${kv('Versión', `${w.display_version || ''} (build ${w.build || '?'})`)}
       ${kv('Arrancó', w.boot_time ? new Date(w.boot_time).toLocaleString('es-MX') : null)}${kv('Disco C:', p.disk ? `${p.disk.free_gb} GB libres de ${p.disk.total_gb} GB` : null)}
-      ${kv('Hora', `${c.offset_s ?? '?'} s · ${c.server || ''} · servicio ${c.service || '?'}`)}${kv('Zona horaria', c.timezone)}
+      ${kv('Hora', `${c.offset_s ?? '?'} s · ${c.server || ''} · servicio ${c.service || '?'}`)}${kv('Zona horaria', c.timezone)}${lastFix(p) ? kv('Sincronización', lastFix(p).replace(/^Última sincronización /, '')) : ''}
       ${kv('Focusrite', (p.focusrite || []).join(', ') || 'no conectada')}${kv('RustDesk', p.remote ? `${p.remote.rustdesk_service} · puerto ${p.remote.port} ${p.remote.listening ? 'abierto' : 'CERRADO'}` : 'no instalado')}${kv('Micrófono', p.audio && p.audio.default_recording)}${kv('Salida', p.audio && p.audio.default_playback)}</div>
     <div class="box"><h4>Red</h4>${net || '<div class="mut">sin datos</div>'}</div>
     <div class="box"><h4>Apps</h4>${apps || '<div class="mut">-</div>'}<h4 style="margin-top:12px">Tareas</h4>${tasks || '<div class="mut">-</div>'}</div>
@@ -217,6 +233,16 @@ $('logout').onclick = () => { sessionStorage.removeItem('kerma-status-pin'); sho
 $('rows').onclick = async (e) => {
   const raw = e.target.closest('[data-raw]'), forget = e.target.closest('[data-forget]');
   const logs = e.target.closest('[data-logs]'), logAt = e.target.closest('[data-log-at]');
+  const sync = e.target.closest('[data-sync]'), cancel = e.target.closest('[data-cancel]');
+  if (sync || cancel) {
+    const id = (sync || cancel).dataset.sync || (sync || cancel).dataset.cancel;
+    (sync || cancel).disabled = true;
+    try {
+      if (sync) await api('POST', '/api/command?id=' + encodeURIComponent(id), { action: 'timesync' });
+      else await api('DELETE', '/api/command?id=' + encodeURIComponent(id));
+    } catch (err) { alert('No se pudo: ' + err.message); }
+    load(); return;
+  }
   if (logs) {
     const box = $('logs-' + logs.dataset.logs);
     if (!box.hidden) { box.hidden = true; return; }

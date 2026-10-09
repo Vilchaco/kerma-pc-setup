@@ -6,11 +6,17 @@
 //   POST   /api/log?id=KEY    (x-kerma-key)  -> a PC uploads the log of a setup run (text, last 10 kept per PC)
 //   GET    /api/log?id=KEY    (x-pin)        -> { logs: [{ at, size }] } newest first
 //   GET    /api/log?id=KEY&at=ISO (x-pin)    -> that log as text
+//   POST   /api/command?id=KEY (x-pin)       -> queue an action for that PC, body { action } (only ACTIONS)
+//   DELETE /api/command?id=KEY (x-pin)       -> cancel it
+// The PCs cannot be reached from here (casino LAN): a queued action goes back in the answer
+// to the next POST /api/status of that PC (every 5 min) and is deleted then.
 // Environment: STATUS_PIN (people) and STATUS_WRITE_KEY (PCs). Never in the repo: it is public.
 // 5 wrong PINs in 15 min lock the PIN for 15 min (blob lock/fails), same as Kerma Tips.
 import { getStore } from '@netlify/blobs';
 
-export const config = { path: ['/api/status', '/api/register', '/api/log'] };
+export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command'] };
+
+const ACTIONS = ['timesync'];
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -57,12 +63,18 @@ export default async (req) => {
         s.id = id;
         s.received_at = new Date().toISOString();
         await store.setJSON('pc/' + id, s);
-        return json({ ok: true, id });
+        const cmd = await store.get('cmd/' + id, { type: 'json' });
+        if (cmd) await store.delete('cmd/' + id);
+        return json({ ok: true, id, commands: cmd ? [cmd] : [] });
       }
       if (req.method === 'GET') {
         const bad = await checkPin(req, store); if (bad) return bad;
         const { blobs } = await store.list({ prefix: 'pc/' });
         const pcs = (await Promise.all(blobs.map((b) => store.get(b.key, { type: 'json' })))).filter(Boolean);
+        const { blobs: cmds } = await store.list({ prefix: 'cmd/' });
+        const pending = {};
+        for (const b of cmds) pending[b.key.slice(4)] = await store.get(b.key, { type: 'json' });
+        for (const p of pcs) if (pending[p.id]) p.pending = pending[p.id];
         return json({ now: new Date().toISOString(), pcs });
       }
       if (req.method === 'DELETE') {
@@ -102,6 +114,19 @@ export default async (req) => {
         const logs = blobs.map((b) => ({ at: b.key.slice(prefix.length) })).sort((a, b) => (a.at < b.at ? 1 : -1));
         return json({ logs });
       }
+    }
+    if (path === '/api/command') {
+      const bad = await checkPin(req, store); if (bad) return bad;
+      const id = cleanId(url.searchParams.get('id'));
+      if (!id) return json({ error: 'id' }, 400);
+      if (req.method === 'POST') {
+        const body = await req.json().catch(() => ({}));
+        if (!ACTIONS.includes(body.action)) return json({ error: 'action' }, 400);
+        const cmd = { action: body.action, id: Math.random().toString(36).slice(2, 10), at: new Date().toISOString() };
+        await store.setJSON('cmd/' + id, cmd);
+        return json({ ok: true, pending: cmd });
+      }
+      if (req.method === 'DELETE') { await store.delete('cmd/' + id); return json({ ok: true }); }
     }
     return json({ error: 'not found' }, 404);
   } catch (e) {
