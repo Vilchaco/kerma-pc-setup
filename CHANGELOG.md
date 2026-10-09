@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.5.2] - 2026-10-08 - Tiempo máximo para cada instalación
+
+### Corregido
+- **Instalaciones colgadas.** En la prueba de Blackjack 03, el instalador de Stream Deck pasó más de 30 minutos sin terminar y dejó el setup parado, sin que Ctrl+C pudiera cortarlo. Ahora cada instalación con winget tiene un máximo de 15 minutos. Si se pasa, el script cierra winget y su instalador, lo avisa y sigue con el siguiente programa. Si al final el programa sí quedó instalado, cuenta como instalado.
+
 ## [5.5.1] - 2026-10-08 - Ver el progreso de la instalación de programas
 
 ### Cambiado

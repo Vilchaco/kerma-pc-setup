@@ -43,6 +43,12 @@ function Invoke-Native([string]$exe, [string[]]$arguments) {
     return @{ Output = $out; ExitCode = $code; Text = (($out -replace '\s+', ' ').Trim()) }
 }
 
+# Mata un proceso y todos sus hijos (instaladores que se quedan colgados)
+function Stop-ProcessTree([int]$id) {
+    Get-CimInstance Win32_Process -Filter "ParentProcessId=$id" -ErrorAction SilentlyContinue | ForEach-Object { Stop-ProcessTree $_.ProcessId }
+    Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+}
+
 # Crea una clave del registro solo si falta. (New-Item -Force sobre una
 # clave existente la BORRA con todos sus valores.)
 function Initialize-RegistryKey([string]$path) {

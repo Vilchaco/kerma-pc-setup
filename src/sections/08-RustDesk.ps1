@@ -36,12 +36,6 @@ function Get-RustDeskPeers($pc) {
     return @{ Peers = $peers; Source = $source }
 }
 
-# Cierra un proceso y todos los que ha abierto (p. ej. un rustdesk.exe colgado)
-function Stop-ProcessTree([int]$id) {
-    Get-CimInstance Win32_Process -Filter "ParentProcessId=$id" -ErrorAction SilentlyContinue | ForEach-Object { Stop-ProcessTree $_.ProcessId }
-    Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
-}
-
 # Ejecuta Configurar-Esta-PC.ps1 (David) en un PowerShell aparte con tiempo
 # maximo: si rustdesk.exe se queda esperando a su servicio, el script
 # principal no se bloquea (Ctrl+C no puede cortar un programa externo).

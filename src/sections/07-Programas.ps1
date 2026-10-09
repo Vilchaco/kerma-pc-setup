@@ -58,12 +58,22 @@ function Get-LatestReleaseAsset([string]$repo, [string]$pattern) {
 # Instala con winget dejando su salida en la consola (barra de descarga con
 # MB y %). Al capturar la salida winget no dibuja la barra y parece colgado.
 # Su log va a C:\KermaSetup\logs para poner el error en el log del setup.
+$WingetTimeoutMin = 15
 function Invoke-WingetLive([string]$key, [string[]]$arguments) {
     $logDir = 'C:\KermaSetup\logs'
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
     $log = Join-Path $logDir ("winget-{0}-{1}.log" -f $key, (Get-Date -Format 'yyyyMMdd-HHmmss'))
     $argLine = (($arguments + @('--log', $log)) | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
-    $proc = Start-Process -FilePath $script:Winget -ArgumentList $argLine -NoNewWindow -Wait -PassThru
+    $proc = Start-Process -FilePath $script:Winget -ArgumentList $argLine -NoNewWindow -PassThru
+    # tiempo maximo: un instalador colgado (Stream Deck tardo mas de 30 min)
+    # no puede parar el setup, y Ctrl+C no corta un programa externo
+    if (-not $proc.WaitForExit($WingetTimeoutMin * 60 * 1000)) {
+        Stop-ProcessTree $proc.Id
+        Get-Process -Name 'msiexec' -ErrorAction SilentlyContinue | Where-Object { try { $_.StartTime -gt $proc.StartTime } catch { $false } } | Stop-Process -Force -ErrorAction SilentlyContinue
+        Write-Host ''
+        Write-Warn ((L 'winget took more than {0} min - stopped.' 'winget tardó más de {0} min: cortado.') -f $WingetTimeoutMin)
+        return @{ ExitCode = -1; Code = (L 'timeout' 'tiempo agotado'); Tail = ''; TimedOut = $true }
+    }
     $code = $proc.ExitCode
     $tail = ''
     if ($code -ne 0 -and (Test-Path -LiteralPath $log)) {
@@ -99,7 +109,7 @@ function Install-KermaPackage($key, $p) {
         Write-Host ((L '  Installing {0} (winget {1})...' '  Instalando {0} (winget {1})...') -f $p.Name, $p.Id)
         Write-Note (L '  (winget shows its own download bar below; big programs can take several minutes)' '  (winget enseña abajo su barra de descarga; los programas grandes pueden tardar varios minutos)')
         $r = Invoke-WingetLive $key ($base + @('--scope', 'machine'))
-        if ($r.ExitCode -ne 0 -and -not ($p.Check -and (Test-Path -LiteralPath $p.Check))) {
+        if ($r.ExitCode -ne 0 -and -not $r.TimedOut -and -not ($p.Check -and (Test-Path -LiteralPath $p.Check))) {
             # algunos paquetes no tienen instalador para todo el equipo: probar el normal
             $r = Invoke-WingetLive $key $base
         }
