@@ -10,6 +10,9 @@
     #                    instalacion silenciosa; .zip = se extrae en
     #                    InstallTo (y se actualiza si hay version nueva).
     #  Check           : archivo que existe una vez instalado
+    #  Override        : (winget) argumentos del instalador en lugar de los
+    #                    del paquete, si los suyos no son del todo silenciosos
+    #  Restart         : $true = pide reiniciar al final si se instala
     # -----------------------------------------------------------------
     Packages = @{
         Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome';        Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe' }
@@ -25,8 +28,10 @@
                         Inner = '^portable-atkaudio-pluginforobs-[0-9.]+-Windows\.zip$'; InstallTo = 'C:\Program Files\obs-studio'
                         Check = 'C:\Program Files\obs-studio\obs-plugins\64bit\atkaudio-pluginforobs.dll'; Process = 'obs64'; Requires = 'OBS' }
         Deskflow   = @{ Name = 'Deskflow';      Source = 'winget'; Id = 'Deskflow.Deskflow';    Check = 'C:\Program Files\Deskflow\deskflow.exe' }
-        # Id sale de ajustes.psd1 (Audio.ScarlettPackageId); se instala si hay una Focusrite conectada
-        Focusrite  = @{ Name = 'Focusrite Control 2 (Scarlett)'; Source = 'winget'; Id = ''; Check = '' }
+        # Id sale de ajustes.psd1 (Audio.ScarlettPackageId); se instala si hay una Focusrite conectada.
+        # Su paquete de winget solo pasa /silent y el instalador (Inno) pregunta si reiniciar: se
+        # sustituye por el modo totalmente silencioso y el script reinicia al final.
+        Focusrite  = @{ Name = 'Focusrite Control 2 (Scarlett)'; Source = 'winget'; Id = ''; Check = ''; Override = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-'; Restart = $true }
     }
 
     # -----------------------------------------------------------------

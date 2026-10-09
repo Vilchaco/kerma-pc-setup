@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.6.3] - 2026-10-08 - Focusrite sin preguntar por el reinicio
+
+### Corregido
+- **Focusrite Control 2.** Al terminar de instalarse, su instalador preguntaba "Would you like to restart now?" y el setup se quedaba esperando a que alguien pulsara. Su paquete de winget solo lo instala en modo /silent, así que el script ahora lo instala en modo totalmente silencioso y sin reinicio. Ya no sale la ventana, y el PC se reinicia al final del setup, como con el cambio de nombre.
+- El informe del panel ya no deja en el log un error rojo cuando todavía no se ha sincronizado nunca el reloj desde el panel.
+
 ## [5.6.2] - 2026-10-08 - Stream Deck con tarea de arranque, como OBS
 
 ### Cambiado

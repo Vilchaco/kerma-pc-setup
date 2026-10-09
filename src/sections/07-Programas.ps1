@@ -106,6 +106,7 @@ function Install-KermaPackage($key, $p) {
             if ($pre.ExitCode -eq 0) { Write-Ok ((L '{0}: already installed.' '{0}: ya estaba instalado.') -f $p.Name); return }
         }
         $base = @('install', '--id', $p.Id, '--exact', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
+        if ($p.Override) { $base += @('--override', $p.Override) }
         Write-Host ((L '  Installing {0} (winget {1})...' '  Instalando {0} (winget {1})...') -f $p.Name, $p.Id)
         Write-Note (L '  (winget shows its own download bar below; big programs can take several minutes)' '  (winget enseña abajo su barra de descarga; los programas grandes pueden tardar varios minutos)')
         $r = Invoke-WingetLive $key ($base + @('--scope', 'machine'))
@@ -117,6 +118,7 @@ function Install-KermaPackage($key, $p) {
         $ok = if ($p.Check) { Test-Path -LiteralPath $p.Check } else { $listed }
         if ($ok -or $listed) {
             Write-Ok ((L '{0} installed.' '{0} instalado.') -f $p.Name)
+            if ($p.Restart) { $State.NeedsRestart = $true }
             Add-Change ((L 'Installed: {0}' 'Instalado: {0}') -f $p.Name)
         } else {
             Write-Fail ((L '{0} not installed (winget code {1}).' '{0} no se instaló (código de winget {1}).') -f $p.Name, $r.Code)

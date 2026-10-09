@@ -212,7 +212,8 @@ if ($rsvc) {
 }
 
 # ------------------------------------------------------------- report
-$lastCmd = Get-Safe { Get-Content -LiteralPath (Join-Path $Here 'last_command.json') -Raw -ErrorAction Stop | ConvertFrom-Json }
+$lastFile = Join-Path $Here 'last_command.json'
+$lastCmd = if (Test-Path -LiteralPath $lastFile) { Get-Safe { Get-Content -LiteralPath $lastFile -Raw | ConvertFrom-Json } } else { $null }
 $status = [ordered]@{
     schema         = 1
     key            = if ($cfg) { [string]$cfg.key } else { $null }
