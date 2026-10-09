@@ -42,12 +42,15 @@
     #             (Stream Deck NO: su propio inicio no es fiable en un PC
     #             nuevo y tiene que estar abierta para recibir los botones)
     #  Replaces   app antigua cuya tarea se elimina
+    #  ShowAfter  segundos tras abrirla para abrirla otra vez: las apps que
+    #             arrancan escondidas en la bandeja (Stream Deck) muestran
+    #             asi su ventana
     #  PreLaunch  lineas del .bat antes de abrir la app. Van LITERALES:
     #             %APPDATA% lo resuelve cmd del usuario al iniciar sesion.
     # -----------------------------------------------------------------
     Apps = @{
         Scanner    = @{ Name = 'Card Scanner'; Id = '01_scanner';    Path = '';                                                 Delay = 10; Maximize = $false }
-        StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';  Delay = 15; Maximize = $false }
+        StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';  Delay = 15; Maximize = $false; ShowAfter = 20 }
         DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '';                                                 Delay = 30; Maximize = $true }
         HdmiMirror = @{ Name = 'HDMI Mirror';  Id = '04_hdmimirror'; Path = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';               Delay = 45; Maximize = $false; Replaces = 'Mirror App' }
         # OBS: si se cerro mal (fallo, corte de luz, reinicio forzado) deja

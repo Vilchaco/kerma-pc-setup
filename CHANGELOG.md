@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.6.6] - 2026-10-08 - Ventana de Stream Deck visible al arrancar
+
+### Cambiado
+- **Stream Deck se ve al encender.** Al arrancar con Windows, Stream Deck se queda escondido en la bandeja del sistema. Ahora la tarea de arranque lo abre y, 20 s después, lo abre otra vez, lo que trae su ventana delante. Como solo admite una copia abierta, no se duplica.
+
 ## [5.6.5] - 2026-10-08 - Panel de estado renovado
 
 ### Cambiado

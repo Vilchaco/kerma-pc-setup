@@ -120,6 +120,11 @@ function Invoke-AppAutostart($pc) {
         $start = "start $flag `"`" `"$path`""
         if ($app.Args) { $start += " $($app.Args)" }
         $lines += $start
+        if ($app.ShowAfter) {
+            # arranca en la bandeja: abrirla otra vez trae su ventana delante (solo admite una copia)
+            $lines += "timeout /t $($app.ShowAfter) /nobreak >nul"
+            $lines += $start
+        }
         $bat = Join-Path $dir "$($app.Id).bat"
         Set-Content -LiteralPath $bat -Value $lines -Encoding Ascii
 
