@@ -143,7 +143,7 @@ function Test-KermaConfig {
         foreach ($f in $flags) { if ($p[$f] -isnot [bool]) { $errors.Add("perfil ${pn}: $f debe ser `$true o `$false") } }
         foreach ($k in @($p.Programs))  { if (-not $Packages.ContainsKey($k)) { $errors.Add("perfil ${pn}: el programa '$k' no existe en programas.psd1") } }
         foreach ($k in @($p.Autostart)) { if (-not $Apps.ContainsKey($k))     { $errors.Add("perfil ${pn}: la app '$k' no existe en programas.psd1 (Apps)") } }
-        foreach ($k in @($p.Taskbar))   { if (-not $Pins.ContainsKey($k))     { $errors.Add("perfil ${pn}: el icono '$k' no existe en programas.psd1 (Pins)") } }
+        foreach ($k in @($p.Taskbar | Where-Object { $_ })) { if (-not $Pins.ContainsKey($k))     { $errors.Add("perfil ${pn}: el icono '$k' no existe en programas.psd1 (Pins)") } }
         if ($null -ne $p.TaskbarLocked -and $p.TaskbarLocked -isnot [bool]) { $errors.Add("perfil ${pn}: TaskbarLocked debe ser `$true o `$false") }
         if ($p.RustDesk -ne 'None' -and @($p.Programs) -notcontains 'RustDesk') { $errors.Add("perfil ${pn}: RustDesk '$($p.RustDesk)' pero RustDesk no esta en Programs") }
     }
