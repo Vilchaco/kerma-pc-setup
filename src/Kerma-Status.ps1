@@ -1,4 +1,4 @@
-<#
+﻿<#
 =====================================================================
   Kerma Games - PC status (installed by Kerma-PCSetup.ps1)
 =====================================================================
@@ -106,7 +106,7 @@ $network = @()
 foreach ($a in @(Get-Safe { Get-NetAdapter -Physical | Sort-Object -Property ifIndex })) {
     if (-not $a) { continue }
     $ip  = Get-Safe { Get-NetIPAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction Stop | Where-Object { $_.IPAddress -notlike '169.254.*' } | Select-Object -First 1 }
-    $gw  = Get-Safe { Get-NetRoute -InterfaceIndex $a.ifIndex -DestinationPrefix '0.0.0.0/0' -ErrorAction Stop | Select-Object -First 1 }
+    $gw  = Get-Safe { Get-NetRoute -InterfaceIndex $a.ifIndex -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Select-Object -First 1 }
     $ipi = Get-Safe { Get-NetIPInterface -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction Stop }
     $dns = Get-Safe { (Get-DnsClientServerAddress -InterfaceIndex $a.ifIndex -AddressFamily IPv4 -ErrorAction Stop).ServerAddresses }
     $network += @{
@@ -134,7 +134,7 @@ if ($cfg -and $cfg.apps) {
             if ($installed -and $app.check -match '\.exe$') { $version = Get-Safe { ([string](Get-Item -LiteralPath $app.check).VersionInfo.ProductVersion).Trim() } }
         }
         $running = $null
-        if ($app.process) { $running = [bool](Get-Safe { Get-Process -Name $app.process -ErrorAction Stop }) }
+        if ($app.process) { $running = [bool](Get-Safe { Get-Process -Name $app.process -ErrorAction SilentlyContinue }) }
         $apps += @{ name = [string]$app.name; installed = $installed; version = $version; running = $running; autostart = [bool]$app.autostart; path = [string]$app.check }
     }
 }

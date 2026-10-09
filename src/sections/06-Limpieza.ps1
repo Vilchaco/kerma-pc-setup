@@ -58,6 +58,11 @@ function Invoke-RemoveJunk($pc) {
                 foreach ($pp in @($provisioned | Where-Object { $_.DisplayName -eq $n })) {
                     try { Remove-AppxProvisionedPackage -Online -PackageName $pp.PackageName -ErrorAction Stop | Out-Null } catch { $ok = $false }
                 }
+                # "no se encuentra la ruta" = ya no estaba: cuenta lo que queda de verdad
+                if (-not $ok) {
+                    $left = @(Get-AppxPackage -AllUsers -Name $n -ErrorAction SilentlyContinue) + @(Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq $n })
+                    if ($left.Count -eq 0) { $ok = $true }
+                }
                 if ($ok) { $removed++ } else { $failed += $n }
             }
             Write-Ok ((L '{0} apps removed.' '{0} apps quitadas.') -f $removed)

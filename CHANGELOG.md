@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.5.4] - 2026-10-08 - Ajustes tras la segunda prueba en Blackjack 03
+
+### Corregido
+- **Apps preinstaladas.** Si Windows responde que no encuentra una app al quitarla, es que ya no estaba. Antes contaba como fallo y salía "0 apps quitadas"; ahora el script comprueba si queda algo de verdad.
+- **Log más limpio.** La comprobación final ya no llena el log de errores rojos por cada programa cerrado o por un adaptador sin puerta de enlace.
+
 ## [5.5.3] - 2026-10-08 - Un clic ya no congela el script
 
 ### Corregido
