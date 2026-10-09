@@ -36,6 +36,48 @@ function Get-RustDeskPeers($pc) {
     return @{ Peers = $peers; Source = $source }
 }
 
+# Cierra un proceso y todos los que ha abierto (p. ej. un rustdesk.exe colgado)
+function Stop-ProcessTree([int]$id) {
+    Get-CimInstance Win32_Process -Filter "ParentProcessId=$id" -ErrorAction SilentlyContinue | ForEach-Object { Stop-ProcessTree $_.ProcessId }
+    Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+}
+
+# Ejecuta Configurar-Esta-PC.ps1 (David) en un PowerShell aparte con tiempo
+# maximo: si rustdesk.exe se queda esperando a su servicio, el script
+# principal no se bloquea (Ctrl+C no puede cortar un programa externo).
+# La contrasena va por una variable de entorno que hereda el proceso hijo:
+# no aparece en la linea de comandos ni se escribe en disco.
+function Invoke-RustDeskConfig([string]$rd, [string]$mode, [string]$pw, [int]$timeoutSec = 180) {
+    $script = Join-Path $rd 'Configurar-Esta-PC.ps1'
+    $allowed = ($RustDeskAllowedFrom -join ',')
+    $cmd = "`$ErrorActionPreference = 'Stop'; try { & '$script' -Modo '$mode' -Contrasena `$env:KERMA_RD_PW -Puerto $RustDeskPort -OrigenesPermitidos ('$allowed' -split ','); exit 0 } catch { Write-Host ('ERROR: ' + `$_.Exception.Message); exit 1 }"
+    $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+    $outFile = Join-Path $env:TEMP 'kerma-rustdesk-out.txt'
+    $errFile = Join-Path $env:TEMP 'kerma-rustdesk-err.txt'
+    $env:KERMA_RD_PW = $pw
+    try {
+        $p = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-OutputFormat', 'Text', '-EncodedCommand', $enc) `
+            -NoNewWindow -PassThru -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        $null = $p.Handle   # necesario en PowerShell 5.1 para leer luego el codigo de salida
+    } finally { Remove-Item Env:\KERMA_RD_PW -ErrorAction SilentlyContinue }
+    Write-Host ((L '  Configuring RustDesk (up to {0} s)...' '  Configurando RustDesk (como mucho {0} s)...') -f $timeoutSec)
+    $finished = $p.WaitForExit($timeoutSec * 1000)
+    if (-not $finished) { Stop-ProcessTree $p.Id }
+    foreach ($f in @($outFile, $errFile)) {
+        if (Test-Path -LiteralPath $f) {
+            # sin la contrasena ni el formato interno (CLIXML) que PowerShell usa para los errores
+            Get-Content -LiteralPath $f -ErrorAction SilentlyContinue |
+                Where-Object { $_ -and $_ -notmatch [regex]::Escape($pw) -and $_ -notmatch '^#< CLIXML' -and $_ -notmatch '^<Objs ' } |
+                ForEach-Object { Write-Host "    $_" }
+            Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if (-not $finished) {
+        throw ((L 'RustDesk did not answer in {0} s (its service is probably not ready). It was stopped so the setup can go on. Restart the PC and run the script again.' 'RustDesk no respondió en {0} s (seguramente su servicio aún no estaba listo). Se cortó para que el setup siga. Reinicia el PC y vuelve a pasar el script.') -f $timeoutSec)
+    }
+    if ($p.ExitCode -ne 0) { throw (L 'RustDesk configuration failed (see the lines above).' 'La configuración de RustDesk falló (mira las líneas de arriba).') }
+}
+
 function Invoke-RemoteAccess($pc) {
     Write-Section (L 'REMOTE ACCESS  (RustDesk by direct IP on the LAN)' 'ACCESO REMOTO  (RustDesk por IP directa en la red)')
     $mode = $Prof.RustDesk
@@ -62,7 +104,7 @@ function Invoke-RemoteAccess($pc) {
 
     try {
         # servicio, contrasena permanente, IP directa, permisos, cortafuegos (script de David: comprueba cada opcion)
-        & (Join-Path $rd 'Configurar-Esta-PC.ps1') -Modo $mode -Contrasena $pw -Puerto $RustDeskPort -OrigenesPermitidos $RustDeskAllowedFrom
+        Invoke-RustDeskConfig $rd $mode $pw
         Write-Ok ((L 'RustDesk {0} configured: direct IP on port {1}, permanent password, service automatic.' 'RustDesk {0} configurado: IP directa en el puerto {1}, contraseña permanente, servicio automático.') -f $mode, $RustDeskPort)
         Add-Change ((L 'RustDesk: {0}, direct IP port {1}' 'RustDesk: {0}, IP directa puerto {1}') -f $mode, $RustDeskPort)
 

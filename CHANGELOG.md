@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.4.1] - 2026-10-08 - RustDesk ya no puede bloquear el setup
+
+### Corregido
+- En la primera prueba en una mesa, el setup se quedó colgado en la sección de RustDesk y no respondía ni a Ctrl+C. La configuración de RustDesk se ejecuta ahora en un proceso aparte con un tiempo máximo de 3 minutos. Si RustDesk no responde, el script lo corta, lo avisa y sigue con las demás secciones. La contraseña pasa al proceso aparte sin aparecer en la línea de comandos ni escribirse en disco.
+
 ## [5.4.0] - 2026-10-08 - Log de cada instalación en el panel
 
 ### Añadido
