@@ -64,6 +64,16 @@ function Disable-ConsoleQuickEdit {
     } catch { }
 }
 
+# Carpeta temporal propia. %TEMP% puede venir en nombre corto (C:\Users\BJUNL~1\...
+# si el usuario tiene espacios) y Remove-Item -LiteralPath falla con esas rutas
+# aunque lleve -ErrorAction SilentlyContinue (paso en BJUNL01).
+function Get-KermaTemp([string]$name) {
+    $dir = 'C:\KermaSetup\tmp'
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    return (Join-Path $dir $name)
+}
+function Remove-FileQuiet([string]$path) { try { [IO.File]::Delete($path) } catch { } }
+
 # Mata un proceso y todos sus hijos (instaladores que se quedan colgados)
 function Stop-ProcessTree([int]$id) {
     Get-CimInstance Win32_Process -Filter "ParentProcessId=$id" -ErrorAction SilentlyContinue | ForEach-Object { Stop-ProcessTree $_.ProcessId }

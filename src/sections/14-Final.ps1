@@ -9,10 +9,10 @@ function Invoke-Verification($pc) {
     $cfgFile = Join-Path $env:ProgramData 'Kerma\pc.json'
     if (-not (Test-Path -LiteralPath $cfgFile)) {
         # sin panel no hay pc.json: se crea uno temporal para poder comprobar
-        $tmp = Join-Path $env:TEMP 'kerma-pc.json'
+        $tmp = Get-KermaTemp 'kerma-pc.json'
         (Get-StatusConfig $pc) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $tmp -Encoding UTF8
         & $collector -Print -NoSend -Lang $script:Lang -Config $tmp
-        Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        Remove-FileQuiet $tmp
     } else {
         & $collector -Print -NoSend -Lang $script:Lang -Config $cfgFile
     }

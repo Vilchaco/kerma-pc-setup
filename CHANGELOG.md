@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.9.2] - 2026-10-10 - Usuarios con espacios en el nombre de su carpeta
+
+### Corregido
+- **RustDesk en Blackjack Unlimited 01.** La configuración de RustDesk se aplicaba bien, pero la sección acababa con el error *An object at the specified path C:\Users\BJUNL~1 does not exist*. Cuando el nombre de la carpeta del usuario tiene espacios ("BJ UNL"), Windows da su carpeta temporal en formato corto, y PowerShell no podía borrar los archivos temporales con esa ruta. Ahora el script usa su propia carpeta temporal (`C:\KermaSetup\tmp`) y los borra sin pasar por PowerShell.
+
 ## [5.9.1] - 2026-10-09 - Logo de Kerma en la pantalla de bloqueo
 
 ### Añadido

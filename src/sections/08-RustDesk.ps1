@@ -46,8 +46,8 @@ function Invoke-RustDeskConfig([string]$rd, [string]$mode, [string]$pw, [int]$ti
     $allowed = ($RustDeskAllowedFrom -join ',')
     $cmd = "`$ErrorActionPreference = 'Stop'; try { & '$script' -Modo '$mode' -Contrasena `$env:KERMA_RD_PW -Puerto $RustDeskPort -OrigenesPermitidos ('$allowed' -split ','); exit 0 } catch { Write-Host ('ERROR: ' + `$_.Exception.Message); exit 1 }"
     $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
-    $outFile = Join-Path $env:TEMP 'kerma-rustdesk-out.txt'
-    $errFile = Join-Path $env:TEMP 'kerma-rustdesk-err.txt'
+    $outFile = Get-KermaTemp 'kerma-rustdesk-out.txt'
+    $errFile = Get-KermaTemp 'kerma-rustdesk-err.txt'
     $env:KERMA_RD_PW = $pw
     try {
         $p = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-OutputFormat', 'Text', '-EncodedCommand', $enc) `
@@ -63,7 +63,7 @@ function Invoke-RustDeskConfig([string]$rd, [string]$mode, [string]$pw, [int]$ti
             Get-Content -LiteralPath $f -ErrorAction SilentlyContinue |
                 Where-Object { $_ -and $_ -notmatch [regex]::Escape($pw) -and $_ -notmatch '^#< CLIXML' -and $_ -notmatch '^<Objs ' } |
                 ForEach-Object { Write-Host "    $_" }
-            Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue
+            Remove-FileQuiet $f
         }
     }
     if (-not $finished) {
