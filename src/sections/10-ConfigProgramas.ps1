@@ -55,6 +55,30 @@ function Set-ObsTheme([string]$obsDir, [string]$themeId) {
     return $true
 }
 
+# Nombre del perfil dentro de un .streamDeckProfile (zip: Profiles\<UUID>.sdProfile\manifest.json)
+function Get-StreamDeckProfileName([string]$file) {
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $zip = [IO.Compression.ZipFile]::OpenRead($file)
+        try {
+            $e = $zip.Entries | Where-Object { $_.FullName -match '^Profiles/[^/]+\.sdProfile/manifest\.json$' } | Select-Object -First 1
+            if (-not $e) { return '' }
+            $r = New-Object IO.StreamReader($e.Open())
+            try { return [string]($r.ReadToEnd() | ConvertFrom-Json).Name } finally { $r.Dispose() }
+        } finally { $zip.Dispose() }
+    } catch { return '' }
+}
+# Si la app de Stream Deck de este usuario ya tiene un perfil con ese nombre
+function Test-StreamDeckProfileInstalled([string]$name) {
+    foreach ($v in @('ProfilesV3', 'ProfilesV2')) {
+        $dir = Join-Path $env:APPDATA "Elgato\StreamDeck\$v"
+        foreach ($m in @(Get-ChildItem -LiteralPath $dir -Filter 'manifest.json' -Recurse -Depth 1 -ErrorAction SilentlyContinue)) {
+            try { if ((Get-Content -LiteralPath $m.FullName -Raw | ConvertFrom-Json).Name -eq $name) { return $true } } catch { }
+        }
+    }
+    return $false
+}
+
 function Invoke-ProgramSettings($pc) {
     Write-Section (L 'PROGRAM SETTINGS  (HDMI Mirror, OBS, VST3, Stream Deck)' 'CONFIGURACIÓN DE PROGRAMAS  (HDMI Mirror, OBS, VST3, Stream Deck)')
     $assets = Get-AssetsDir
@@ -169,6 +193,10 @@ function Invoke-ProgramSettings($pc) {
         Write-Skip (L 'Stream Deck: no game set for this PC.' 'Stream Deck: este PC no tiene juego asignado.')
     } elseif (-not (Test-Path -LiteralPath $sdProfile)) {
         Write-Skip ((L 'Stream Deck: no saved profile (assets\streamdeck\{0}.streamDeckProfile).' 'Stream Deck: no hay perfil guardado (assets\streamdeck\{0}.streamDeckProfile).') -f $pc.Game)
+    } elseif (($sdName = Get-StreamDeckProfileName $sdProfile) -and (Test-StreamDeckProfileInstalled $sdName)) {
+        # importarlo otra vez crearia un duplicado ("Craps 2")
+        Write-Ok ((L "Stream Deck: profile '{0}' is already in the app." "Stream Deck: el perfil '{0}' ya está en la app.") -f $sdName)
+        Write-Note (L '  To load a new version, delete that profile in the Stream Deck app and run this again.' '  Para cargar una versión nueva, borra ese perfil en la app de Stream Deck y vuelve a pasar esto.')
     } else {
         # al abrir el archivo, la app de Stream Deck lo importa
         Start-Process -FilePath $sdProfile
