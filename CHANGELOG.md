@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.8] - 2026-10-14 - Perfil de Stream Deck en Ruleta
+
+### Corregido
+- **En Ruleta 01 no se cargó el perfil** y la sección acabó con *Cannot find path 'C'*. Si la app tenía un solo perfil con ese nombre y no había "Default Profile", PowerShell devolvía la ruta como texto suelto en vez de como lista, y el script tomaba su primera letra ("C") como carpeta. No se llegó a tocar nada de la app.
+
 ## [5.10.7] - 2026-10-14 - El perfil de la mesa pisa el Default Profile
 
 ### Cambiado

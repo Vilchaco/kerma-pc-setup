@@ -265,7 +265,8 @@ function Invoke-ProgramSettings($pc) {
         $hash    = (Get-FileHash -LiteralPath $sdProfile -Algorithm SHA256).Hash
         $hashFile = Join-Path (Initialize-KermaDataDir) "streamdeck-$($pc.Game).sha256"
         $oldHash = if (Test-Path -LiteralPath $hashFile) { (Get-Content -LiteralPath $hashFile -Raw).Trim() } else { '' }
-        $existing = if ($sdName) { @(Get-StreamDeckProfileDirs $sdName) } else { @() }
+        # @(...) por fuera: un "if" con un solo resultado lo devuelve suelto (texto), y [0] seria la "C"
+        $existing = @(if ($sdName) { Get-StreamDeckProfileDirs $sdName })
         # "Default Profile" es el que muestra el Stream Deck si no se elige otro: mientras
         # exista, el perfil de la mesa se escribe encima de el (decision de Fran, BJ01)
         $defaults = @(Get-StreamDeckProfileDirs 'Default Profile')
