@@ -36,6 +36,7 @@
         AltDenoiser = @{ Name = 'Alt Denoiser (VST3)'; Source = 'github'; Repo = 'Altinus/Alt-Denoiser'; Tag = 'v1.0.1'; Asset = '^Alt-Denoiser-windows\.zip$'
                         File = 'VST3[\\/]Alt Denoiser\.vst3[\\/]Contents[\\/]x86_64-win[\\/]Alt Denoiser\.vst3$'; FileAs = 'Alt-Denoiser.vst3'
                         InstallTo = 'C:\Program Files\Common Files\VST3'; Check = 'C:\Program Files\Common Files\VST3\Alt-Denoiser.vst3'; Process = 'obs64'; Requires = 'AtkAudio' }
+        Companion  = @{ Name = 'Bitfocus Companion'; Source = 'winget'; Id = 'Bitfocus.Companion'; Check = 'C:\Program Files\Companion\Companion.exe' }
         Deskflow   = @{ Name = 'Deskflow';      Source = 'winget'; Id = 'Deskflow.Deskflow';    Check = 'C:\Program Files\Deskflow\deskflow.exe' }
         # Id sale de ajustes.psd1 (Audio.ScarlettPackageId); se instala si hay una Focusrite conectada.
         # Su paquete de winget solo pasa /silent y el instalador (Inno) pregunta si reiniciar: se
@@ -92,6 +93,7 @@
         Cameras    = @{ Name = 'Cameras';      Id = '02_cameras';    Path = '';                                                 Delay = 25; Maximize = $true }
         # Deskflow: ya no se usa (fue una prueba en el PC de Hector)
         Deskflow   = @{ Name = 'Deskflow';     Id = '01_deskflow';   Path = 'C:\Program Files\Deskflow\deskflow.exe';          Delay = 10; Maximize = $false }
+        Companion  = @{ Name = 'Companion';    Id = '06_companion';  Path = 'C:\Program Files\Companion\Companion.exe';         Delay = 10; Maximize = $false }
     }
 
     # -----------------------------------------------------------------

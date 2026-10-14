@@ -2,6 +2,17 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.0] - 2026-10-14 - Stream Deck definitivos y Kerma Remote
+
+### Añadido
+- **Perfiles de Stream Deck definitivos** de Craps, Ruleta, Blackjack y Blackjack Unlimited (el mismo que Blackjack), cerrados con los supervisores. Pegan el comando sin Enter y llevan EMERGENCY, PIT MANAGER y SIGN (teclado del PIN) en la última columna.
+- **Kerma Remote en las mesas.** Recibe en el puerto 10010 las órdenes de los Stream Deck de los supervisores (Companion) y las pega en la Dealer App: pausar, reanudar, abrir y cerrar apuestas, recuperar la ronda y, en Craps y Ruleta, las cámaras. Solo acepta las órdenes de la lista de su juego, desde la red del casino y con la clave común. En modo Automático la clave se pide al empezar y solo se guarda en el PC. Programa: Kerma Remote v0.1.2.
+- **Bitfocus Companion en los PCs de supervisor.** Se instala y arranca con Windows, para los Stream Deck de supervisor.
+
+### Cambiado
+- **El perfil de Stream Deck se sustituye si ha cambiado.** Antes, si la app ya tenía un perfil con ese nombre, no se tocaba, y las mesas se quedaban con el viejo. Ahora se compara su huella: si es otro, se cierra la app, se guarda una copia del anterior en `C:\KermaSetup\backup` y se importa el nuevo. Si es el mismo, no se vuelve a importar.
+- Blackjack 04 tiene su IP en el inventario (192.168.0.154).
+
 ## [5.9.2] - 2026-10-10 - Usuarios con espacios en el nombre de su carpeta
 
 ### Corregido

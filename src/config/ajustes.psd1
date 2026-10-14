@@ -53,6 +53,23 @@
         }
     }
 
+    # Kerma Remote en las mesas (Remote = $true en el perfil): ordenes desde Companion.
+    # Por la red solo llega el NOMBRE de la orden; el texto que se pega en la Dealer App
+    # sale de aqui, segun el juego. Nada de ordenes de resultado ni del dealer (dados,
+    # numeros, SUBMIT, CLEAR, SIGN, escaneo, BURN, SHUFFLE): el lint las rechaza.
+    # Allow: IPs o rangos que pueden mandar (ademas hace falta la clave, remote.key).
+    Remote = @{
+        Port          = 10010
+        Allow         = @('192.168.0.0/22')
+        TargetProcess = 'dealer-control'
+        Commands = @{
+            'craps'               = @{ atem_auto = '{ATEM_AUTO}'; pause = '{PAUSE}'; resume = '{RESUME}'; timer_start = '{TIMER_START}'; close_betting = '{CLOSE_BETTING}'; refresh_table = '{REFRESH_TABLE}' }
+            'roulette'            = @{ atem_auto = '{ATEM_AUTO}'; make_cut = '{MAKE_CUT}'; pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; close_betting = '{CLOSE_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
+            'blackjack'           = @{ pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
+            'blackjack-unlimited' = @{ pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
+        }
+    }
+
     # Tema de OBS: Id debe ser EXACTAMENTE el id de @OBSThemeMeta en assets\obs\themes\<ThemeFile>
     Obs = @{ ThemeFile = 'Kerma.ovt'; ThemeId = 'com.kerma.Yami.Kerma' }
 }

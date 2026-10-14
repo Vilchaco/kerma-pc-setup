@@ -68,15 +68,21 @@ function Get-StreamDeckProfileName([string]$file) {
         } finally { $zip.Dispose() }
     } catch { return '' }
 }
-# Si la app de Stream Deck de este usuario ya tiene un perfil con ese nombre
-function Test-StreamDeckProfileInstalled([string]$name) {
+# Carpetas de los perfiles de la app de Stream Deck de este usuario que se llaman asi.
+# Solo el primer nivel (<UUID>.sdProfile\manifest.json): las paginas de dentro
+# (carpeta del PIN) tienen su propio manifest y no cuentan.
+function Get-StreamDeckProfileDirs([string]$name) {
+    $dirs = @()
     foreach ($v in @('ProfilesV3', 'ProfilesV2')) {
-        $dir = Join-Path $env:APPDATA "Elgato\StreamDeck\$v"
-        foreach ($m in @(Get-ChildItem -LiteralPath $dir -Filter 'manifest.json' -Recurse -Depth 1 -ErrorAction SilentlyContinue)) {
-            try { if ((Get-Content -LiteralPath $m.FullName -Raw | ConvertFrom-Json).Name -eq $name) { return $true } } catch { }
+        $root = Join-Path $env:APPDATA "Elgato\StreamDeck\$v"
+        if (-not (Test-Path -LiteralPath $root)) { continue }
+        foreach ($d in @(Get-ChildItem -LiteralPath $root -Directory -Filter '*.sdProfile' -ErrorAction SilentlyContinue)) {
+            $m = Join-Path $d.FullName 'manifest.json'
+            if (-not (Test-Path -LiteralPath $m)) { continue }
+            try { if ((Get-Content -LiteralPath $m -Raw | ConvertFrom-Json).Name -eq $name) { $dirs += $d.FullName } } catch { }
         }
     }
-    return $false
+    return $dirs
 }
 
 function Invoke-ProgramSettings($pc) {
@@ -193,15 +199,41 @@ function Invoke-ProgramSettings($pc) {
         Write-Skip (L 'Stream Deck: no game set for this PC.' 'Stream Deck: este PC no tiene juego asignado.')
     } elseif (-not (Test-Path -LiteralPath $sdProfile)) {
         Write-Skip ((L 'Stream Deck: no saved profile (assets\streamdeck\{0}.streamDeckProfile).' 'Stream Deck: no hay perfil guardado (assets\streamdeck\{0}.streamDeckProfile).') -f $pc.Game)
-    } elseif (($sdName = Get-StreamDeckProfileName $sdProfile) -and (Test-StreamDeckProfileInstalled $sdName)) {
-        # importarlo otra vez crearia un duplicado ("Craps 2")
-        Write-Ok ((L "Stream Deck: profile '{0}' is already in the app." "Stream Deck: el perfil '{0}' ya está en la app.") -f $sdName)
-        Write-Note (L '  To load a new version, delete that profile in the Stream Deck app and run this again.' '  Para cargar una versión nueva, borra ese perfil en la app de Stream Deck y vuelve a pasar esto.')
     } else {
-        # al abrir el archivo, la app de Stream Deck lo importa
-        Start-Process -FilePath $sdProfile
-        Write-Ok ((L "Stream Deck: profile '{0}' sent to the Stream Deck app." "Stream Deck: perfil '{0}' enviado a la app de Stream Deck.") -f $pc.Game)
-        Write-Note (L '  If the Stream Deck app asks to import the profile, accept it.' '  Si la app de Stream Deck pregunta si importar el perfil, acepta.')
-        Add-Change ((L 'Settings: Stream Deck profile {0}' 'Configuración: perfil de Stream Deck {0}') -f $pc.Game)
+        # Se sustituye por huella: si el perfil del repositorio cambia, el de la app se
+        # cambia (con copia); si no, no se toca. Volver a importar el mismo crearia "Craps 2".
+        $sdName  = Get-StreamDeckProfileName $sdProfile
+        $hash    = (Get-FileHash -LiteralPath $sdProfile -Algorithm SHA256).Hash
+        $hashFile = Join-Path (Initialize-KermaDataDir) "streamdeck-$($pc.Game).sha256"
+        $oldHash = if (Test-Path -LiteralPath $hashFile) { (Get-Content -LiteralPath $hashFile -Raw).Trim() } else { '' }
+        $existing = if ($sdName) { @(Get-StreamDeckProfileDirs $sdName) } else { @() }
+        if ($existing.Count -and $oldHash -eq $hash) {
+            Write-Ok ((L "Stream Deck: profile '{0}' is already the current one." "Stream Deck: el perfil '{0}' ya es el actual.") -f $sdName)
+        } else {
+            $go = $true
+            if ($existing.Count) {
+                Write-Note ((L "  The Stream Deck app has an older '{0}' profile: it is replaced (a copy is kept)." "  La app de Stream Deck tiene otro perfil '{0}': se sustituye (se guarda copia).") -f $sdName)
+                $go = Ask-YesNo (L '  Replace it with the new one?' '  ¿Sustituirlo por el nuevo?') $true
+            }
+            if ($go) {
+                if ($existing.Count) {
+                    Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+                    Start-Sleep -Seconds 3
+                    $bak = "C:\KermaSetup\backup\streamdeck-$stamp"
+                    New-Item -ItemType Directory -Path $bak -Force | Out-Null
+                    foreach ($d in $existing) {
+                        Copy-Item -LiteralPath $d -Destination $bak -Recurse -Force
+                        Remove-Item -LiteralPath $d -Recurse -Force
+                    }
+                    Write-Ok ((L 'Stream Deck: old profile saved in {0}.' 'Stream Deck: perfil anterior guardado en {0}.') -f $bak)
+                }
+                # al abrir el archivo, la app de Stream Deck lo importa (y se abre si estaba cerrada)
+                Start-Process -FilePath $sdProfile
+                Set-Content -LiteralPath $hashFile -Value $hash -Encoding Ascii
+                Write-Ok ((L "Stream Deck: profile '{0}' sent to the Stream Deck app." "Stream Deck: perfil '{0}' enviado a la app de Stream Deck.") -f $pc.Game)
+                Write-Note (L '  If the app asks to import it, accept. If the Stream Deck still shows another profile, pick it in the app.' '  Si la app pregunta si importarlo, acepta. Si el Stream Deck sigue mostrando otro perfil, elígelo en la app.')
+                Add-Change ((L 'Settings: Stream Deck profile {0}' 'Configuración: perfil de Stream Deck {0}') -f $pc.Game)
+            } else { Write-Skip (L 'Stream Deck: profile kept.' 'Stream Deck: se conserva el perfil.') }
+        }
     }
 }

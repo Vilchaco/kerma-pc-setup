@@ -1,6 +1,6 @@
 ﻿<#
 =====================================================================
-  Kerma Games - PC Setup  (v5.9.2 - PowerShell)
+  Kerma Games - PC Setup  (v5.10.0 - PowerShell)
 =====================================================================
   PC nuevo, una linea en PowerShell (descarga la ultima version):
     irm https://kermasetup.netlify.app | iex
@@ -44,14 +44,15 @@ param(
     [switch]$Check,             # modo revision: muestra el estado, no cambia nada
     [switch]$ValidateConfig,    # comprueba config\ y muestra el plan de cada PC
     [string]$PanelPin,          # PIN del panel (para registrar el PC sin preguntar)
-    [string]$RustDeskPassword   # contrasena comun de RustDesk (nunca se guarda)
+    [string]$RustDeskPassword,  # contrasena comun de RustDesk (nunca se guarda)
+    [string]$RemoteKey          # clave de Kerma Remote, la de Companion (solo en el PC: remote.key)
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '5.9.2'
+$ScriptVersion = '5.10.0'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
 $State = @{ UserRenamed = $false; HostRenamed = $false; RenameWanted = $false; NeedsRestart = $false; Changes = @() }
-$Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin }
+$Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin; RemoteKey = $RemoteKey }
 $Auto = [bool]$Unattended -or $Mode -eq 'Auto'
 $script:Lang = if ($Lang) { $Lang } else { 'es' }
 
@@ -184,6 +185,11 @@ try {
         if ($Prof.Panel -and -not (Test-PanelRegistered) -and -not $Secrets.PanelPin) {
             $Secrets.PanelPin = Read-Secret ('  ' + (L 'Status panel PIN (input is hidden; Enter to skip)' 'PIN del panel de estado (no se ve al escribir; Enter para saltar)'))
         }
+        $rc = Get-RemoteCommands $selected
+        if ($Prof.Remote -and $rc -and $rc.Count -and -not (Get-RemoteKeyOnPC) -and -not $Secrets.RemoteKey) {
+            Write-Host (L '  Kerma Remote: the key is the same on every table and in Companion (12+ characters).' '  Kerma Remote: la clave es la misma en todas las mesas y en Companion (12 caracteres o más).')
+            $Secrets.RemoteKey = Read-NewSecret (L 'Kerma Remote key' 'Clave de Kerma Remote')
+        }
         if (-not $selected.Net.IP -and $Prof.StaticIP) {
             $ipNew = Read-Host (L '  Static IP for this PC (Enter = leave the network as it is)' '  IP fija para este PC (Enter = dejar la red como está)')
             if (Test-IPv4 $ipNew) { $selected.Net.IP = $ipNew.Trim(); $selected.IPSource = 'typed' }
@@ -201,7 +207,7 @@ try {
     Write-Phase (L 'PHASE 3 - PROGRAMS' 'FASE 3 - PROGRAMAS')
     Invoke-Step 'Invoke-InstallPrograms' $selected
     Write-Phase (L 'PHASE 4 - CONFIGURATION' 'FASE 4 - CONFIGURACIÓN')
-    foreach ($s in @('Invoke-RemoteAccess', 'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-AppAutostart', 'Invoke-TaskbarPins', 'Invoke-Wallpaper')) { Invoke-Step $s $selected }
+    foreach ($s in @('Invoke-RemoteAccess', 'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-KermaRemote', 'Invoke-AppAutostart', 'Invoke-TaskbarPins', 'Invoke-Wallpaper')) { Invoke-Step $s $selected }
     Write-Phase (L 'PHASE 5 - MONITORING' 'FASE 5 - VIGILANCIA')
     Invoke-Step 'Invoke-StatusPanel' $selected
     Write-Phase (L 'PHASE 6 - CHECK AND SUMMARY' 'FASE 6 - COMPROBACIÓN Y RESUMEN')
@@ -209,7 +215,7 @@ try {
     # nombres e inicio de sesion, lo ultimo: renombrar la cuenta en uso deja a Windows sin reconocerla hasta reiniciar
     Write-Phase (L 'PHASE 7 - NAMES AND LOGIN' 'FASE 7 - NOMBRES E INICIO DE SESIÓN')
     foreach ($s in @('Invoke-RenameApply', 'Invoke-LoginSetup')) { Invoke-Step $s $selected }
-    $Secrets.RustDesk = $null; $Secrets.PanelPin = $null
+    $Secrets.RustDesk = $null; $Secrets.PanelPin = $null; $Secrets.RemoteKey = $null
     $script:Auto = [bool]$Unattended    # la pregunta de reiniciar se hace siempre (salvo -Unattended)
     Invoke-Finish
 } catch {

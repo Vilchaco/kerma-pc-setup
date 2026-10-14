@@ -33,6 +33,7 @@ function Import-KermaConfig {
     $script:ObsThemeId   = $aj.Obs.ThemeId
     $script:WallpaperTags = $aj.Wallpaper.Tags
     $script:AccentColor   = [string]$aj.Wallpaper.Accent
+    $script:RemoteCfg     = $aj.Remote
 
     # Filas de PC con lo que necesitan las secciones
     $script:PCs = @()
@@ -132,7 +133,7 @@ function Test-KermaConfig {
     $errors = New-Object System.Collections.Generic.List[string]
     $logins = @('NoPassword', 'Keep'); $wus = @('Manual', 'Disabled', 'Automatic', 'Keep'); $rds = @('Client', 'Master', 'None')
     $types  = @('Table', 'Staff', 'Office')
-    $flags  = @('Time', 'Rename', 'StaticIP', 'Tuning', 'RemoveApps', 'RemoveOffice', 'RemoveOneDrive', 'Audio', 'ProgramSettings', 'Wallpaper', 'Panel')
+    $flags  = @('Time', 'Rename', 'StaticIP', 'Tuning', 'RemoveApps', 'RemoveOffice', 'RemoveOneDrive', 'Audio', 'ProgramSettings', 'Remote', 'Wallpaper', 'Panel')
 
     foreach ($pn in $Profiles.Keys) {
         $p = $Profiles[$pn]
@@ -168,6 +169,23 @@ function Test-KermaConfig {
             if (-not (Test-IPv4 $pc.Net.IP)) { $errors.Add("PC $($pc.Key): IP '$($pc.Net.IP)' no valida") }
             elseif ($seen.ContainsKey("IP|$($pc.Net.IP)")) { $errors.Add("PC $($pc.Key): IP $($pc.Net.IP) repetida") }
             else { $seen["IP|$($pc.Net.IP)"] = $true }
+        }
+    }
+
+    # Kerma Remote: puerto, IPs / rangos y ordenes que no pueden ir por la red
+    if ($RemoteCfg) {
+        if ([int]$RemoteCfg.Port -lt 1024 -or [int]$RemoteCfg.Port -gt 65535) { $errors.Add("Remote.Port '$($RemoteCfg.Port)' no valido (1024-65535)") }
+        foreach ($a in @($RemoteCfg.Allow)) {
+            $ipPart = ([string]$a -split '/')[0]
+            if (-not (Test-IPv4 $ipPart) -or ([string]$a -match '/' -and [string]$a -notmatch '/([0-9]|[12][0-9]|3[0-2])$')) { $errors.Add("Remote.Allow: '$a' no es una IP ni un rango valido") }
+        }
+        foreach ($g in $RemoteCfg.Commands.Keys) {
+            foreach ($n in $RemoteCfg.Commands[$g].Keys) {
+                $t = [string]$RemoteCfg.Commands[$g][$n]
+                if ($n -notmatch '^[a-z0-9_]+$') { $errors.Add("Remote.Commands.${g}: nombre '$n' no valido (minusculas, numeros y _)") }
+                if ($t -notmatch '^\{[A-Z_]+(:[^}]*)?\}$') { $errors.Add("Remote.Commands.${g}.${n}: '$t' no es un comando {ASI}") }
+                if ($t -match 'DICE|SUBMIT|NUMBER|CLEAR_|SIGN|CONFIRM_SCAN|REJECT_SCAN|BURN|SHUFFLE') { $errors.Add("Remote.Commands.${g}.${n}: '$t' es del dealer o de resultado, no puede ir por la red") }
+            }
         }
     }
 

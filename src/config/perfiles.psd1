@@ -15,6 +15,8 @@
 #  RustDesk       Client / Master / None
 #  Autostart      apps que arrancan al iniciar sesion (Apps de programas.psd1).
 #                 Las mesas con Scanner = $true en el inventario anaden el scanner.
+#  Remote         Kerma Remote: recibe ordenes de los Stream Deck de los
+#                 supervisores (Companion) y las pega en la Dealer App
 #  Taskbar        iconos de la barra de tareas, en orden (Pins de programas.psd1);
 #                 @() = no tocarla. TaskbarLocked = nadie puede cambiarlos.
 # =====================================================================
@@ -26,7 +28,7 @@
         Tuning = $true; RemoveApps = $true; RemoveOffice = $true; RemoveOneDrive = $true
         Programs = @('Chrome', 'RustDesk', 'StreamDeck', 'HdmiMirror', 'OBS', 'AtkAudio', 'AltDenoiser')
         RustDesk = 'Client'
-        Audio = $true; ProgramSettings = $true
+        Audio = $true; ProgramSettings = $true; Remote = $true
         Autostart = @('StreamDeck', 'DealerApp', 'HdmiMirror', 'OBS')
         Taskbar = @('Explorer', 'Chrome', 'RustDesk', 'OBS', 'StreamDeck', 'HdmiMirror', 'Focusrite'); TaskbarLocked = $true
         Wallpaper = $true; Panel = $true
@@ -36,10 +38,12 @@
         Type = 'Staff'
         Time = $true; Rename = $true; Login = 'Keep'; WindowsUpdate = 'Keep'; StaticIP = $true
         Tuning = $false; RemoveApps = $true; RemoveOffice = $true; RemoveOneDrive = $true
-        Programs = @('Chrome', 'RustDesk')
+        # Companion: los Stream Deck de supervisor mandan ordenes a las mesas (Kerma Remote).
+        # Sin la app de Stream Deck de Elgato: las dos se pelean por el aparato.
+        Programs = @('Chrome', 'RustDesk', 'Companion')
         RustDesk = 'Master'
-        Audio = $true; ProgramSettings = $false
-        Autostart = @()
+        Audio = $true; ProgramSettings = $false; Remote = $false
+        Autostart = @('Companion')
         Wallpaper = $true; Panel = $true
     }
     MCR = @{
@@ -49,7 +53,7 @@
         Tuning = $false; RemoveApps = $true; RemoveOffice = $true; RemoveOneDrive = $true
         Programs = @('Chrome')
         RustDesk = 'None'
-        Audio = $true; ProgramSettings = $false
+        Audio = $true; ProgramSettings = $false; Remote = $false
         Autostart = @()
         Wallpaper = $true; Panel = $true
     }
@@ -60,7 +64,7 @@
         Tuning = $true; RemoveApps = $true; RemoveOffice = $true; RemoveOneDrive = $true
         Programs = @('Chrome', 'RustDesk')
         RustDesk = 'Client'
-        Audio = $true; ProgramSettings = $false
+        Audio = $true; ProgramSettings = $false; Remote = $false
         Autostart = @('Cameras')
         Wallpaper = $true; Panel = $true
     }

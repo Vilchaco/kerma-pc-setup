@@ -1,0 +1,2 @@
+Vilchaco/kerma-remote v0.1.2 (commit d684a92)
+Copia literal de KermaRemote.ps1. Para actualizar: copiar de nuevo desde el repo kerma-remote.
