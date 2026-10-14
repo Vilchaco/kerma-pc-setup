@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.5] - 2026-10-14 - ENTRAR pulsa Enter
+
+### Cambiado
+- **Stream Deck: la tecla ENTRAR del teclado del PIN** (`{SIGN_IN}`) pulsa Enter después de pegar, en los perfiles de Craps, Ruleta, Blackjack y Blackjack Unlimited. Las demás teclas siguen sin Enter. Como el perfil ha cambiado, el setup lo sustituye en las mesas que ya lo tenían.
+
 ## [5.10.4] - 2026-10-14 - Perfil de Stream Deck sin preguntar
 
 ### Cambiado

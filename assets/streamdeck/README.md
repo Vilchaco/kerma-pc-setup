@@ -9,7 +9,7 @@ Un perfil por juego para el Stream Deck del dealer (MK.2 de 15 teclas). Se gener
 | `blackjack.streamDeckProfile` | Blackjack | Blackjack 01 a 04 |
 | `blackjack-unlimited.streamDeckProfile` | Blackjack | Blackjack Unlimited (copia del de Blackjack) |
 
-Las teclas pegan el comando en la Dealer App sin Enter. En la última columna van siempre EMERGENCY, PIT MANAGER y SIGN, que abre el teclado del PIN.
+Las teclas pegan el comando en la Dealer App sin Enter, salvo ENTRAR (`{SIGN_IN}`, en el teclado del PIN), que pulsa Enter después. En la última columna van siempre EMERGENCY, PIT MANAGER y SIGN, que abre el teclado del PIN.
 
 El script abre el perfil con la app de Stream Deck, que lo importa. Guarda la huella del perfil importado en `C:\ProgramData\Kerma\streamdeck-<juego>.sha256`:
 
