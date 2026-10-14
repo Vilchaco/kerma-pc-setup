@@ -85,6 +85,63 @@ function Get-StreamDeckProfileDirs([string]$name) {
     return $dirs
 }
 
+# Id del Stream Deck conectado a este PC, sacado de los perfiles que ya tiene la app
+# ("@(1)[4057/128/A00SA...]"). Vacio si la app aun no lo ha visto.
+function Get-StreamDeckDeviceId([string]$model) {
+    $root = Join-Path $env:APPDATA 'Elgato\StreamDeck\ProfilesV3'
+    foreach ($d in @(Get-ChildItem -LiteralPath $root -Directory -Filter '*.sdProfile' -ErrorAction SilentlyContinue)) {
+        try {
+            $m = Get-Content -LiteralPath (Join-Path $d.FullName 'manifest.json') -Raw | ConvertFrom-Json
+            if ($m.Device -and [string]$m.Device.UUID -and (-not $model -or $m.Device.Model -eq $model)) { return [string]$m.Device.UUID }
+        } catch { }
+    }
+    return ''
+}
+
+# Abre la app de Stream Deck como el usuario (no elevada)
+function Start-StreamDeckApp([string]$exe) { Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$exe`"" }
+
+# Instala el perfil sin que la app pregunte: con la app cerrada, copia la carpeta
+# <UUID>.sdProfile del .streamDeckProfile (un zip) en ProfilesV3 y le pone el id
+# del Stream Deck de este PC. En un PC nuevo abre antes la app una vez para que
+# cree su carpeta y reconozca el aparato. $false = no se pudo (sin Stream Deck).
+function Install-StreamDeckProfileDirect([string]$file, [string]$exe) {
+    $tmp = Get-KermaTemp ('sdprofile-' + [IO.Path]::GetFileNameWithoutExtension($file))
+    try {
+        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [IO.Compression.ZipFile]::ExtractToDirectory($file, $tmp)
+        $src = Get-ChildItem -LiteralPath (Join-Path $tmp 'Profiles') -Directory -Filter '*.sdProfile' | Select-Object -First 1
+        if (-not $src) { return $false }
+        $manifest = Join-Path $src.FullName 'manifest.json'
+        $model = [string]((Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json).Device.Model)
+
+        $dev = Get-StreamDeckDeviceId $model
+        if (-not $dev) {
+            # app recien instalada: que arranque una vez y vea el Stream Deck
+            if (-not (Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue)) { Start-StreamDeckApp $exe }
+            for ($i = 0; $i -lt 30 -and -not $dev; $i++) { Start-Sleep -Seconds 2; $dev = Get-StreamDeckDeviceId $model }
+        }
+        if (-not $dev) { return $false }
+
+        Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+        $text = [IO.File]::ReadAllText($manifest)
+        $text = [regex]::Replace($text, '("Device"\s*:\s*\{[^}]*?"UUID"\s*:\s*")[^"]*(")', [Text.RegularExpressions.MatchEvaluator] { param($m) $m.Groups[1].Value + $dev + $m.Groups[2].Value })
+        [IO.File]::WriteAllText($manifest, $text, (New-Object Text.UTF8Encoding $false))
+        $dst = Join-Path $env:APPDATA "Elgato\StreamDeck\ProfilesV3\$($src.Name)"
+        if (Test-Path -LiteralPath $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }
+        Copy-Item -LiteralPath $src.FullName -Destination $dst -Recurse -Force
+        Start-StreamDeckApp $exe
+        return $true
+    } catch {
+        Write-Warn ((L 'Stream Deck (direct install): {0}' 'Stream Deck (instalación directa): {0}') -f $_.Exception.Message)
+        return $false
+    } finally {
+        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 function Invoke-ProgramSettings($pc) {
     Write-Section (L 'PROGRAM SETTINGS  (HDMI Mirror, OBS, VST3, Stream Deck)' 'CONFIGURACIÓN DE PROGRAMAS  (HDMI Mirror, OBS, VST3, Stream Deck)')
     $assets = Get-AssetsDir
@@ -227,20 +284,28 @@ function Invoke-ProgramSettings($pc) {
                     }
                     Write-Ok ((L 'Stream Deck: old profile saved in {0}.' 'Stream Deck: perfil anterior guardado en {0}.') -f $bak)
                 }
-                # al abrir el archivo, la app de Stream Deck lo importa (y se abre si estaba cerrada).
-                # Se abre con explorer.exe, que va SIN permisos de administrador: abierto desde este
-                # PowerShell (elevado), la app de Stream Deck del usuario no recibe el perfil (BJ01).
-                Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$sdProfile`""
-                # comprobar que la app lo ha guardado (si pide confirmacion, hay que aceptar)
-                $seen = @()
-                for ($i = 0; $i -lt 30 -and $seen.Count -eq 0; $i++) { Start-Sleep -Seconds 2; if ($sdName) { $seen = @(Get-StreamDeckProfileDirs $sdName) } }
-                if ($seen.Count -or -not $sdName) {
+                # 1) directo, sin preguntas: el perfil se copia en la carpeta de la app con el
+                #    Stream Deck de este PC; 2) si no se puede, se abre el archivo y la app pregunta
+                $direct = Install-StreamDeckProfileDirect $sdProfile $sdExe
+                if ($direct) {
                     Set-Content -LiteralPath $hashFile -Value $hash -Encoding Ascii
-                    Write-Ok ((L "Stream Deck: profile '{0}' imported into the Stream Deck app." "Stream Deck: perfil '{0}' importado en la app de Stream Deck.") -f $sdName)
-                    Write-Note (L '  If the Stream Deck still shows another profile, pick it in the app.' '  Si el Stream Deck sigue mostrando otro perfil, elígelo en la app.')
+                    Write-Ok ((L "Stream Deck: profile '{0}' installed in the Stream Deck app." "Stream Deck: perfil '{0}' instalado en la app de Stream Deck.") -f $sdName)
+                    Write-Note (L '  If the Stream Deck shows another profile, pick it in the app (once).' '  Si el Stream Deck muestra otro perfil, elígelo en la app (una vez).')
                     Add-Change ((L 'Settings: Stream Deck profile {0}' 'Configuración: perfil de Stream Deck {0}') -f $pc.Game)
                 } else {
-                    Write-Warn ((L "Stream Deck: the app did not save the '{0}' profile within 60 s. If it is asking to import it, accept; if not, double-click {1}" "Stream Deck: la app no guardó el perfil '{0}' en 60 s. Si está preguntando si importarlo, acepta; si no, haz doble clic en {1}") -f $sdName, $sdProfile)
+                    Write-Note (L '  Could not install it directly (is the Stream Deck plugged in?): the app will ask to import it - accept.' '  No se pudo instalar directamente (¿está conectado el Stream Deck?): la app preguntará si importarlo; acepta.')
+                    # explorer.exe: SIN permisos de administrador; abierto desde este PowerShell
+                    # elevado, la app del usuario no recibe el perfil (BJ01)
+                    Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$sdProfile`""
+                    $seen = @()
+                    for ($i = 0; $i -lt 30 -and $seen.Count -eq 0; $i++) { Start-Sleep -Seconds 2; if ($sdName) { $seen = @(Get-StreamDeckProfileDirs $sdName) } }
+                    if ($seen.Count -or -not $sdName) {
+                        Set-Content -LiteralPath $hashFile -Value $hash -Encoding Ascii
+                        Write-Ok ((L "Stream Deck: profile '{0}' imported into the Stream Deck app." "Stream Deck: perfil '{0}' importado en la app de Stream Deck.") -f $sdName)
+                        Add-Change ((L 'Settings: Stream Deck profile {0}' 'Configuración: perfil de Stream Deck {0}') -f $pc.Game)
+                    } else {
+                        Write-Warn ((L "Stream Deck: the app did not save the '{0}' profile within 60 s. If it is asking to import it, accept; if not, double-click {1}" "Stream Deck: la app no guardó el perfil '{0}' en 60 s. Si está preguntando si importarlo, acepta; si no, haz doble clic en {1}") -f $sdName, $sdProfile)
+                    }
                 }
             } else { Write-Skip (L 'Stream Deck: profile kept.' 'Stream Deck: se conserva el perfil.') }
         }

@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.4] - 2026-10-14 - Perfil de Stream Deck sin preguntar
+
+### Cambiado
+- **El perfil de Stream Deck se instala sin que la app pregunte.** El script cierra la app de Stream Deck, copia el perfil directamente en su carpeta de perfiles asociado al Stream Deck de ese PC y la vuelve a abrir. En un PC recién instalado, antes abre la app una vez para que cree su carpeta y reconozca el aparato. Si no se puede (por ejemplo, porque el Stream Deck no está conectado), vuelve al método anterior: la app pregunta si importarlo.
+
 ## [5.10.3] - 2026-10-14 - Foco en la Dealer App y perfil de Stream Deck
 
 ### Añadido
