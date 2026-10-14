@@ -38,6 +38,45 @@ function Resolve-AutostartPathsUpfront($pc) {
     if ($changed) { Save-AppPaths $saved }
 }
 
+# Script que va en el .bat de arranque tras abrir la app: maximizarla y/o darle
+# el foco cuando ya hayan abierto las demas (OBS sale a los 60 s y lo robaria).
+function Get-LaunchHelperScript([string]$proc, [bool]$max, [bool]$focus, [string]$waitFor) {
+    $wait = if ($focus -and $waitFor) { "@($waitFor)" } else { '@()' }
+    return @"
+Add-Type -Namespace K -Name W -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool ShowWindow(System.IntPtr h, int c);
+[DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);
+[DllImport("user32.dll")] public static extern bool BringWindowToTop(System.IntPtr h);
+[DllImport("user32.dll")] public static extern System.IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(System.IntPtr h, out uint p);
+[DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool x);
+[DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+[DllImport("user32.dll")] public static extern void keybd_event(byte v, byte s, uint f, System.UIntPtr e);
+'@
+function W(`$n) { Get-Process -Name `$n -ErrorAction SilentlyContinue | Where-Object { `$_.MainWindowHandle -ne 0 } | Select-Object -First 1 }
+`$p = `$null
+for (`$i = 0; `$i -lt 120 -and -not `$p; `$i++) { `$p = W '$proc'; if (-not `$p) { Start-Sleep -Seconds 1 } }
+if (-not `$p) { exit }
+Start-Sleep -Seconds 2
+if (`$$max) { [void][K.W]::ShowWindow(`$p.MainWindowHandle, 3); Start-Sleep -Seconds 5; `$p = W '$proc'; if (`$p) { [void][K.W]::ShowWindow(`$p.MainWindowHandle, 3) } }
+if (-not `$$focus) { exit }
+foreach (`$o in $wait) { for (`$i = 0; `$i -lt 150 -and -not (W `$o); `$i++) { Start-Sleep -Seconds 1 } }
+Start-Sleep -Seconds 8
+`$p = W '$proc'
+if (-not `$p) { exit }
+`$h = `$p.MainWindowHandle
+`$fp = [uint32]0
+`$ft = [K.W]::GetWindowThreadProcessId([K.W]::GetForegroundWindow(), [ref]`$fp)
+`$me = [K.W]::GetCurrentThreadId()
+`$at = (`$ft -ne 0 -and `$ft -ne `$me) -and [K.W]::AttachThreadInput(`$me, `$ft, `$true)
+[void][K.W]::BringWindowToTop(`$h); [void][K.W]::SetForegroundWindow(`$h)
+if (`$at) { [void][K.W]::AttachThreadInput(`$me, `$ft, `$false) }
+Start-Sleep -Milliseconds 200
+if ([K.W]::GetForegroundWindow() -ne `$h) { [K.W]::keybd_event(0x12, 0, 0, [System.UIntPtr]::Zero); [void][K.W]::SetForegroundWindow(`$h); [K.W]::keybd_event(0x12, 0, 2, [System.UIntPtr]::Zero) }
+if (`$$max) { [void][K.W]::ShowWindow(`$h, 3) }
+"@
+}
+
 function Invoke-AppAutostart($pc) {
     Write-Section (L 'APP AUTOSTART' 'ARRANQUE DE APPS')
     if (@($pc.Apps).Count -eq 0) { Write-Skip (L 'No apps start with Windows on this PC.' 'En este PC no arranca ninguna app con Windows.'); return }
@@ -125,19 +164,15 @@ function Invoke-AppAutostart($pc) {
             $lines += "timeout /t $($app.ShowAfter) /nobreak >nul"
             $lines += $start
         }
-        if ($max -and $path -match '\.exe$') {
+        if (($max -or $app.FocusLast) -and $path -match '\.exe$') {
             # "start /max" no basta con apps tipo Electron (la Dealer App): recuerdan su
             # tamano. Se espera a su ventana y se maximiza (otra vez a los 5 s, por si la
-            # app la redimensiona al cargar).
+            # app la redimensiona al cargar). Con FocusLast, ademas, se espera a que
+            # abran las demas apps del PC y se le da el foco (el PIN se escribe ahi).
             $proc = [IO.Path]::GetFileNameWithoutExtension($path)
-            $ps = @"
-Add-Type -Namespace K -Name W -MemberDefinition '[DllImport("user32.dll")] public static extern bool ShowWindow(System.IntPtr h, int c);'
-for (`$i = 0; `$i -lt 120; `$i++) {
-    `$p = Get-Process -Name '$proc' -ErrorAction SilentlyContinue | Where-Object { `$_.MainWindowHandle -ne 0 } | Select-Object -First 1
-    if (`$p) { Start-Sleep -Seconds 2; [void][K.W]::ShowWindow(`$p.MainWindowHandle, 3); Start-Sleep -Seconds 5; `$p.Refresh(); [void][K.W]::ShowWindow(`$p.MainWindowHandle, 3); break }
-    Start-Sleep -Seconds 1
-}
-"@
+            $others = @($pc.Apps | Where-Object { $_ -ne $k } | ForEach-Object { [string]$Apps[$_].Path } |
+                Where-Object { $_ -match '\.exe$' } | ForEach-Object { "'" + [IO.Path]::GetFileNameWithoutExtension($_) + "'" })
+            $ps = Get-LaunchHelperScript $proc ([bool]$max) ([bool]$app.FocusLast) ($others -join ',')
             $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($ps))
             $lines += "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand $enc"
         }

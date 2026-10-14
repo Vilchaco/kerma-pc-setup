@@ -70,6 +70,8 @@
     #             (Stream Deck NO: su propio inicio no es fiable en un PC
     #             nuevo y tiene que estar abierta para recibir los botones)
     #  Replaces   app antigua cuya tarea se elimina
+    #  FocusLast  cuando han abierto las demas apps del PC, se le da el foco
+    #             (Dealer App: el cuadro del PIN queda listo para escribir)
     #  ShowAfter  segundos tras abrirla para abrirla otra vez: las apps que
     #             arrancan escondidas en la bandeja (Stream Deck) muestran
     #             asi su ventana
@@ -79,7 +81,7 @@
     Apps = @{
         Scanner    = @{ Name = 'Card Scanner'; Id = '01_scanner';    Path = '';                                                 Delay = 10; Maximize = $false }
         StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';  Delay = 15; Maximize = $false; ShowAfter = 20 }
-        DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '';                                                 Delay = 30; Maximize = $true }
+        DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '';                                                 Delay = 30; Maximize = $true; FocusLast = $true }
         HdmiMirror = @{ Name = 'HDMI Mirror';  Id = '04_hdmimirror'; Path = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';               Delay = 45; Maximize = $false; Replaces = 'Mirror App' }
         # OBS: si se cerro mal (fallo, corte de luz, reinicio forzado) deja
         # %APPDATA%\obs-studio\.sentinel\run_* y el siguiente arranque se para en el

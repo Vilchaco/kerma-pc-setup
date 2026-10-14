@@ -2,6 +2,14 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.3] - 2026-10-14 - Foco en la Dealer App y perfil de Stream Deck
+
+### Añadido
+- **La Dealer App se queda delante al arrancar.** Cuando ya se han abierto las demás apps de la mesa (Stream Deck, HDMI Mirror y OBS, que sale la última), el arranque le da el foco a la Dealer App y la maximiza. Así se puede escribir el PIN sin tocar el ratón, siempre que la propia app deje el cursor en su cuadro.
+
+### Corregido
+- **El perfil de Stream Deck no llegaba a la app** (Blackjack 01). El script lo abría con permisos de administrador y la app de Stream Deck del usuario no lo recibía. Ahora se abre como el usuario, a través del Explorador. Además, el script comprueba que la app lo ha guardado; si en 60 s no aparece, lo avisa y lo intenta de nuevo en la siguiente pasada.
+
 ## [5.10.2] - 2026-10-14 - La Dealer App arranca maximizada
 
 ### Corregido

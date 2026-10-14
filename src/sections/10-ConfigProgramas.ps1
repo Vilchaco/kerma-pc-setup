@@ -227,12 +227,21 @@ function Invoke-ProgramSettings($pc) {
                     }
                     Write-Ok ((L 'Stream Deck: old profile saved in {0}.' 'Stream Deck: perfil anterior guardado en {0}.') -f $bak)
                 }
-                # al abrir el archivo, la app de Stream Deck lo importa (y se abre si estaba cerrada)
-                Start-Process -FilePath $sdProfile
-                Set-Content -LiteralPath $hashFile -Value $hash -Encoding Ascii
-                Write-Ok ((L "Stream Deck: profile '{0}' sent to the Stream Deck app." "Stream Deck: perfil '{0}' enviado a la app de Stream Deck.") -f $pc.Game)
-                Write-Note (L '  If the app asks to import it, accept. If the Stream Deck still shows another profile, pick it in the app.' '  Si la app pregunta si importarlo, acepta. Si el Stream Deck sigue mostrando otro perfil, elígelo en la app.')
-                Add-Change ((L 'Settings: Stream Deck profile {0}' 'Configuración: perfil de Stream Deck {0}') -f $pc.Game)
+                # al abrir el archivo, la app de Stream Deck lo importa (y se abre si estaba cerrada).
+                # Se abre con explorer.exe, que va SIN permisos de administrador: abierto desde este
+                # PowerShell (elevado), la app de Stream Deck del usuario no recibe el perfil (BJ01).
+                Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$sdProfile`""
+                # comprobar que la app lo ha guardado (si pide confirmacion, hay que aceptar)
+                $seen = @()
+                for ($i = 0; $i -lt 30 -and $seen.Count -eq 0; $i++) { Start-Sleep -Seconds 2; if ($sdName) { $seen = @(Get-StreamDeckProfileDirs $sdName) } }
+                if ($seen.Count -or -not $sdName) {
+                    Set-Content -LiteralPath $hashFile -Value $hash -Encoding Ascii
+                    Write-Ok ((L "Stream Deck: profile '{0}' imported into the Stream Deck app." "Stream Deck: perfil '{0}' importado en la app de Stream Deck.") -f $sdName)
+                    Write-Note (L '  If the Stream Deck still shows another profile, pick it in the app.' '  Si el Stream Deck sigue mostrando otro perfil, elígelo en la app.')
+                    Add-Change ((L 'Settings: Stream Deck profile {0}' 'Configuración: perfil de Stream Deck {0}') -f $pc.Game)
+                } else {
+                    Write-Warn ((L "Stream Deck: the app did not save the '{0}' profile within 60 s. If it is asking to import it, accept; if not, double-click {1}" "Stream Deck: la app no guardó el perfil '{0}' en 60 s. Si está preguntando si importarlo, acepta; si no, haz doble clic en {1}") -f $sdName, $sdProfile)
+                }
             } else { Write-Skip (L 'Stream Deck: profile kept.' 'Stream Deck: se conserva el perfil.') }
         }
     }
