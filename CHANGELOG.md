@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.2] - 2026-10-14 - La Dealer App arranca maximizada
+
+### Corregido
+- **Dealer App maximizada al arrancar.** Ya se abría con la opción de maximizar de Windows, pero la Dealer App la ignora y recuerda su propio tamaño. Ahora, después de abrirla, el arranque espera a que salga su ventana y la maximiza; a los 5 s lo repite, por si la app se redimensiona al cargar. Vale para cualquier app con "Abrir maximizada" (en las mesas, la Dealer App).
+
 ## [5.10.1] - 2026-10-14 - Clave de Kerma Remote en el panel
 
 ### Cambiado

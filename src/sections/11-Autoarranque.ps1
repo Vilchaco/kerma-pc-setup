@@ -125,6 +125,22 @@ function Invoke-AppAutostart($pc) {
             $lines += "timeout /t $($app.ShowAfter) /nobreak >nul"
             $lines += $start
         }
+        if ($max -and $path -match '\.exe$') {
+            # "start /max" no basta con apps tipo Electron (la Dealer App): recuerdan su
+            # tamano. Se espera a su ventana y se maximiza (otra vez a los 5 s, por si la
+            # app la redimensiona al cargar).
+            $proc = [IO.Path]::GetFileNameWithoutExtension($path)
+            $ps = @"
+Add-Type -Namespace K -Name W -MemberDefinition '[DllImport("user32.dll")] public static extern bool ShowWindow(System.IntPtr h, int c);'
+for (`$i = 0; `$i -lt 120; `$i++) {
+    `$p = Get-Process -Name '$proc' -ErrorAction SilentlyContinue | Where-Object { `$_.MainWindowHandle -ne 0 } | Select-Object -First 1
+    if (`$p) { Start-Sleep -Seconds 2; [void][K.W]::ShowWindow(`$p.MainWindowHandle, 3); Start-Sleep -Seconds 5; `$p.Refresh(); [void][K.W]::ShowWindow(`$p.MainWindowHandle, 3); break }
+    Start-Sleep -Seconds 1
+}
+"@
+            $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($ps))
+            $lines += "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand $enc"
+        }
         $bat = Join-Path $dir "$($app.Id).bat"
         Set-Content -LiteralPath $bat -Value $lines -Encoding Ascii
 
