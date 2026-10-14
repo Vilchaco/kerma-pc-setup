@@ -87,6 +87,10 @@ main{padding:22px 24px 70px;max-width:1500px;margin:0 auto}
 
 /* drawer */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20}
+.keybox{position:fixed;z-index:21;left:50%;top:18vh;transform:translateX(-50%);width:min(520px,calc(100vw - 32px));background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:22px}
+.keybox h3{margin:0 0 6px;font-size:16px}
+.keybox .keyval{font-family:'DM Mono',ui-monospace,monospace;font-size:15px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin:14px 0;word-break:break-all;letter-spacing:.5px}
+.keybox p{color:var(--mut);font-size:12.5px;margin:6px 0}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(720px,100vw);background:var(--bg);border-left:1px solid var(--line);z-index:21;display:flex;flex-direction:column}
 .dhead{padding:18px 22px 0;border-bottom:1px solid var(--line)}
 .dtitle{display:flex;align-items:flex-start;gap:12px}
@@ -149,6 +153,7 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:10px;paddi
   <h1>Estado de los <span>PCs</span></h1>
   <div class="spacer"></div>
   <div class="meta" id="updated"></div>
+  <button id="remotekey" class="ghost" title="Clave común de Kerma Remote, para configurar Companion">Clave Kerma Remote</button>
   <button id="refresh">Actualizar</button>
   <button id="logout" class="ghost">Salir</button>
 </header>
@@ -452,6 +457,19 @@ function showLogin(msg) { $('app').hidden = true; $('login').hidden = false; $('
 $('enter').onclick = () => { sessionStorage.setItem('kerma-status-pin', $('pin').value.trim()); $('err').textContent = 'Comprobando…'; load(); };
 $('pin').onkeydown = (e) => { if (e.key === 'Enter') $('enter').click(); };
 $('refresh').onclick = load;
+$('remotekey').onclick = async () => {
+  let k = '';
+  try { k = (await api('GET', '/api/remote-key')).remoteKey; } catch (e) { alert('No se pudo leer la clave: ' + e.message); return; }
+  const root = $('drawer-root');
+  root.innerHTML = `<div class="scrim" data-close></div><div class="keybox" role="dialog" aria-label="Clave de Kerma Remote">
+    <h3>Clave de Kerma Remote</h3>
+    <p>La misma en todas las mesas. En Companion va en la cabecera <span class="mono">X-Kerma-Key</span> de cada botón: POST a <span class="mono">http://IP-de-la-mesa:10010/cmd/orden</span> con el cuerpo vacío.</p>
+    <div class="keyval" id="keyval">••••••••••••••••••••••••••••••••</div>
+    <p>No la pegues en chats ni en repositorios. Quien la tenga puede pausar las mesas desde la red del casino.</p>
+    <div style="display:flex;gap:8px;margin-top:14px"><button id="keyshow">Mostrar</button><button class="acc" id="keycopy">Copiar</button><span class="spacer"></span><button class="ghost" data-close>Cerrar</button></div></div>`;
+  $('keyshow').onclick = () => { $('keyval').textContent = k; };
+  $('keycopy').onclick = async () => { try { await navigator.clipboard.writeText(k); $('keycopy').textContent = 'Copiada'; } catch { $('keyval').textContent = k; } };
+};
 $('logout').onclick = () => { sessionStorage.removeItem('kerma-status-pin'); closeDrawer(); showLogin(''); };
 $('q').oninput = (e) => { query = e.target.value; render(); };
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drawer) closeDrawer(); });

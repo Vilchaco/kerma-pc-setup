@@ -1,6 +1,6 @@
 ﻿<#
 =====================================================================
-  Kerma Games - PC Setup  (v5.10.0 - PowerShell)
+  Kerma Games - PC Setup  (v5.10.1 - PowerShell)
 =====================================================================
   PC nuevo, una linea en PowerShell (descarga la ultima version):
     irm https://kermasetup.netlify.app | iex
@@ -49,7 +49,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptVersion = '5.10.0'
+$ScriptVersion = '5.10.1'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
 $State = @{ UserRenamed = $false; HostRenamed = $false; RenameWanted = $false; NeedsRestart = $false; Changes = @() }
 $Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin; RemoteKey = $RemoteKey }
@@ -186,9 +186,14 @@ try {
             $Secrets.PanelPin = Read-Secret ('  ' + (L 'Status panel PIN (input is hidden; Enter to skip)' 'PIN del panel de estado (no se ve al escribir; Enter para saltar)'))
         }
         $rc = Get-RemoteCommands $selected
-        if ($Prof.Remote -and $rc -and $rc.Count -and -not (Get-RemoteKeyOnPC) -and -not $Secrets.RemoteKey) {
-            Write-Host (L '  Kerma Remote: the key is the same on every table and in Companion (12+ characters).' '  Kerma Remote: la clave es la misma en todas las mesas y en Companion (12 caracteres o más).')
-            $Secrets.RemoteKey = Read-NewSecret (L 'Kerma Remote key' 'Clave de Kerma Remote')
+        if ($Prof.Remote -and $rc -and $rc.Count -and -not $Secrets.RemoteKey) {
+            # la clave comun la da el panel (con el PIN o la clave de escritura del PC)
+            $Secrets.RemoteKey = Get-PanelRemoteKey
+            if ($Secrets.RemoteKey) { Write-Ok (L 'Kerma Remote key taken from the status panel.' 'Clave de Kerma Remote tomada del panel de estado.') }
+            elseif (-not (Get-RemoteKeyOnPC)) {
+                Write-Host (L '  Kerma Remote: could not get the key from the panel. Type it (Panel > Kerma Remote key).' '  Kerma Remote: no se pudo sacar la clave del panel. Escríbela (Panel > Clave Kerma Remote).')
+                $Secrets.RemoteKey = Read-NewSecret (L 'Kerma Remote key' 'Clave de Kerma Remote')
+            }
         }
         if (-not $selected.Net.IP -and $Prof.StaticIP) {
             $ipNew = Read-Host (L '  Static IP for this PC (Enter = leave the network as it is)' '  IP fija para este PC (Enter = dejar la red como está)')

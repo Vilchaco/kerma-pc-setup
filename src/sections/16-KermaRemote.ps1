@@ -20,6 +20,20 @@ function Get-RemoteKeyOnPC {
     return ''
 }
 
+# Clave comun de las mesas, guardada en el panel (variable KERMA_REMOTE_KEY de Netlify,
+# nunca en el repositorio). Se pide con el PIN o, si el PC ya esta registrado, con su
+# clave de escritura del panel.
+function Get-PanelRemoteKey {
+    $h = @{}
+    if ($script:Secrets.PanelPin) { $h['x-pin'] = $script:Secrets.PanelPin }
+    else {
+        $kf = Join-Path $env:ProgramData 'Kerma\status.key'
+        if (Test-Path -LiteralPath $kf) { $h['x-kerma-key'] = (Get-Content -LiteralPath $kf -Raw).Trim() }
+    }
+    if ($h.Count -eq 0) { return '' }
+    try { return [string](Invoke-RestMethod -Uri "$PanelBase/api/remote-key" -Headers $h -UseBasicParsing -TimeoutSec 15).remoteKey } catch { return '' }
+}
+
 function Stop-KermaRemote {
     Stop-ScheduledTask -TaskName 'Kerma - Remote' -ErrorAction SilentlyContinue
     Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
@@ -40,7 +54,9 @@ function Invoke-KermaRemote($pc) {
     Write-Host ''
     if (-not (Ask-YesNo (L '  Install / update Kerma Remote?' '  ¿Instalar / actualizar Kerma Remote?') $true)) { Write-Skip (L 'Kerma Remote left as it is.' 'Kerma Remote sin cambios.'); return }
 
+    # la del panel manda: asi todas las mesas tienen la misma (tambien las de pruebas)
     $key = $script:Secrets.RemoteKey
+    if (-not $key) { $key = Get-PanelRemoteKey; if ($key) { Write-Ok (L 'Kerma Remote key taken from the status panel.' 'Clave de Kerma Remote tomada del panel de estado.') } }
     if (-not $key) { $key = Get-RemoteKeyOnPC }
     if (-not $key -and -not $script:Auto) { $key = Read-NewSecret (L '  Kerma Remote key (the same one Companion uses, 12+ characters)' '  Clave de Kerma Remote (la misma que usa Companion, 12 caracteres o más)') }
     if (-not $key) { Write-Skip (L 'No key - Kerma Remote not installed (run the script again to do it).' 'Sin clave: Kerma Remote no se instaló (vuelve a pasar el script para hacerlo).'); return }

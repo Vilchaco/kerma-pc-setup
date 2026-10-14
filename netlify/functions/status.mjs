@@ -8,13 +8,15 @@
 //   GET    /api/log?id=KEY&at=ISO (x-pin)    -> that log as text
 //   POST   /api/command?id=KEY (x-pin)       -> queue an action for that PC, body { action } (only ACTIONS)
 //   DELETE /api/command?id=KEY (x-pin)       -> cancel it
+//   GET    /api/remote-key (x-pin or x-kerma-key) -> { remoteKey } common Kerma Remote key of the tables
+//          (env KERMA_REMOTE_KEY): the setup takes it from here, the panel shows it to set up Companion
 // The PCs cannot be reached from here (casino LAN): a queued action goes back in the answer
 // to the next POST /api/status of that PC (every 5 min) and is deleted then.
 // Environment: STATUS_PIN (people) and STATUS_WRITE_KEY (PCs). Never in the repo: it is public.
 // 5 wrong PINs in 15 min lock the PIN for 15 min (blob lock/fails), same as Kerma Tips.
 import { getStore } from '@netlify/blobs';
 
-export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command'] };
+export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command', '/api/remote-key'] };
 
 const ACTIONS = ['timesync'];
 
@@ -115,6 +117,15 @@ export default async (req) => {
         return json({ logs });
       }
     }
+    if (path === '/api/remote-key' && req.method === 'GET') {
+      const wk = process.env.STATUS_WRITE_KEY;
+      const byPc = wk && req.headers.get('x-kerma-key') === wk;
+      if (!byPc) { const bad = await checkPin(req, store); if (bad) return bad; }
+      const remoteKey = process.env.KERMA_REMOTE_KEY;
+      if (!remoteKey) return json({ error: 'not-configured', msg: 'KERMA_REMOTE_KEY is missing in Netlify' }, 503);
+      return json({ remoteKey });
+    }
+
     if (path === '/api/command') {
       const bad = await checkPin(req, store); if (bad) return bad;
       const id = cleanId(url.searchParams.get('id'));

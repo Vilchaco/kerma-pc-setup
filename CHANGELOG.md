@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.1] - 2026-10-14 - Clave de Kerma Remote en el panel
+
+### Cambiado
+- **Una sola clave de Kerma Remote, guardada en el panel de estado** (en Netlify, nunca en el repositorio). El setup la recoge sola, con el PIN o con la clave de escritura del PC si ya está registrado, así que ya no hay que escribirla en cada mesa. Todas las mesas acaban con la misma, también las que tenían otra de las pruebas. Solo si el panel no responde se pide a mano.
+- **Botón "Clave Kerma Remote" en el panel** (con el PIN), para configurar Companion: la muestra o la copia.
+
 ## [5.10.0] - 2026-10-14 - Stream Deck definitivos y Kerma Remote
 
 ### Añadido
