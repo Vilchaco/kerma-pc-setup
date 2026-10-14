@@ -7,6 +7,7 @@ Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El
 ### Añadido
 - **Perfiles de Stream Deck definitivos** de Craps, Ruleta, Blackjack y Blackjack Unlimited (el mismo que Blackjack), cerrados con los supervisores. Pegan el comando sin Enter y llevan EMERGENCY, PIT MANAGER y SIGN (teclado del PIN) en la última columna.
 - **Kerma Remote en las mesas.** Recibe en el puerto 10010 las órdenes de los Stream Deck de los supervisores (Companion) y las pega en la Dealer App: pausar, reanudar, abrir y cerrar apuestas, recuperar la ronda y, en Craps y Ruleta, las cámaras. Solo acepta las órdenes de la lista de su juego, desde la red del casino y con la clave común. En modo Automático la clave se pide al empezar y solo se guarda en el PC. Programa: Kerma Remote v0.1.2.
+- El panel de estado muestra **Kerma Remote** entre las apps de cada mesa: en verde si está escuchando, en rojo si no.
 - **Bitfocus Companion en los PCs de supervisor.** Se instala y arranca con Windows, para los Stream Deck de supervisor.
 
 ### Cambiado

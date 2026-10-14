@@ -21,6 +21,11 @@ function Get-StatusConfig($pc) {
         if ($list.Contains($k)) { $list[$k].autostart = $true; continue }
         $list[$k] = @{ name = $a.Name; check = $path; process = $proc; autostart = $true }
     }
+    # Kerma Remote: un .ps1, el panel lo ve abierto si corre desde su carpeta
+    $rc = Get-RemoteCommands $pc
+    if ($Prof.Remote -and $rc -and $rc.Count) {
+        $list['KermaRemote'] = @{ name = 'Kerma Remote'; check = 'C:\ProgramData\Kerma\remote\KermaRemote.ps1'; process = ''; autostart = $true }
+    }
     return [ordered]@{
         key = $pc.Key; label = $pc.Label; type = $pc.Type; group = $pc.Group; game = $pc.Game; profile = $pc.Profile
         script_version = $ScriptVersion; apps = @($list.Values)
