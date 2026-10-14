@@ -105,7 +105,7 @@ function Start-StreamDeckApp([string]$exe) { Start-Process -FilePath 'explorer.e
 # <UUID>.sdProfile del .streamDeckProfile (un zip) en ProfilesV3 y le pone el id
 # del Stream Deck de este PC. En un PC nuevo abre antes la app una vez para que
 # cree su carpeta y reconozca el aparato. $false = no se pudo (sin Stream Deck).
-function Install-StreamDeckProfileDirect([string]$file, [string]$exe) {
+function Install-StreamDeckProfileDirect([string]$file, [string]$exe, [string]$target) {
     $tmp = Get-KermaTemp ('sdprofile-' + [IO.Path]::GetFileNameWithoutExtension($file))
     try {
         if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
@@ -129,7 +129,9 @@ function Install-StreamDeckProfileDirect([string]$file, [string]$exe) {
         $text = [IO.File]::ReadAllText($manifest)
         $text = [regex]::Replace($text, '("Device"\s*:\s*\{[^}]*?"UUID"\s*:\s*")[^"]*(")', [Text.RegularExpressions.MatchEvaluator] { param($m) $m.Groups[1].Value + $dev + $m.Groups[2].Value })
         [IO.File]::WriteAllText($manifest, $text, (New-Object Text.UTF8Encoding $false))
-        $dst = Join-Path $env:APPDATA "Elgato\StreamDeck\ProfilesV3\$($src.Name)"
+        # en la carpeta del perfil que ya usa el Stream Deck: la app recuerda el perfil
+        # elegido por esa carpeta, asi que el aparato sigue mostrandolo (BJ01)
+        $dst = if ($target) { $target } else { Join-Path $env:APPDATA "Elgato\StreamDeck\ProfilesV3\$($src.Name)" }
         if (Test-Path -LiteralPath $dst) { Remove-Item -LiteralPath $dst -Recurse -Force }
         Copy-Item -LiteralPath $src.FullName -Destination $dst -Recurse -Force
         Start-StreamDeckApp $exe
@@ -273,20 +275,23 @@ function Invoke-ProgramSettings($pc) {
                 $go = Ask-YesNo (L '  Replace it with the new one?' '  ¿Sustituirlo por el nuevo?') $true
             }
             if ($go) {
-                if ($existing.Count) {
+                # Destino: la carpeta del perfil con este nombre o, si no hay, la del "Default
+                # Profile" (el que muestra el Stream Deck en un PC nuevo). Se reutiliza su
+                # carpeta para que el aparato siga mostrandolo; los duplicados se quitan.
+                $target = if ($existing.Count) { $existing[0] } else { @(Get-StreamDeckProfileDirs 'Default Profile') | Select-Object -First 1 }
+                $touch = @($existing) + @($target) | Where-Object { $_ } | Select-Object -Unique
+                if ($touch.Count) {
                     Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
                     Start-Sleep -Seconds 3
                     $bak = "C:\KermaSetup\backup\streamdeck-$stamp"
                     New-Item -ItemType Directory -Path $bak -Force | Out-Null
-                    foreach ($d in $existing) {
-                        Copy-Item -LiteralPath $d -Destination $bak -Recurse -Force
-                        Remove-Item -LiteralPath $d -Recurse -Force
-                    }
-                    Write-Ok ((L 'Stream Deck: old profile saved in {0}.' 'Stream Deck: perfil anterior guardado en {0}.') -f $bak)
+                    foreach ($d in $touch) { Copy-Item -LiteralPath $d -Destination $bak -Recurse -Force }
+                    foreach ($d in @($existing | Select-Object -Skip 1)) { Remove-Item -LiteralPath $d -Recurse -Force }
+                    Write-Ok ((L 'Stream Deck: previous profile saved in {0}.' 'Stream Deck: perfil anterior guardado en {0}.') -f $bak)
                 }
                 # 1) directo, sin preguntas: el perfil se copia en la carpeta de la app con el
                 #    Stream Deck de este PC; 2) si no se puede, se abre el archivo y la app pregunta
-                $direct = Install-StreamDeckProfileDirect $sdProfile $sdExe
+                $direct = Install-StreamDeckProfileDirect $sdProfile $sdExe ([string]$target)
                 if ($direct) {
                     Set-Content -LiteralPath $hashFile -Value $hash -Encoding Ascii
                     Write-Ok ((L "Stream Deck: profile '{0}' installed in the Stream Deck app." "Stream Deck: perfil '{0}' instalado en la app de Stream Deck.") -f $sdName)

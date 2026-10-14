@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.6] - 2026-10-14 - El Stream Deck sigue mostrando el perfil de Kerma
+
+### Corregido
+- **Al sustituir el perfil, el Stream Deck pasaba a mostrar otro** (Blackjack 01). La app de Stream Deck recuerda el perfil elegido por su carpeta, y el script borraba esa carpeta y creaba otra. Ahora el perfil nuevo se escribe dentro de la carpeta del que ya existía, así el aparato lo sigue mostrando. En un PC nuevo se escribe en la del "Default Profile", que es el que muestra el Stream Deck al principio. Antes de tocar nada se guarda una copia en `C:\KermaSetup\backup`.
+
 ## [5.10.5] - 2026-10-14 - ENTRAR pulsa Enter
 
 ### Cambiado
