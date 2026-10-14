@@ -175,6 +175,27 @@ function Invoke-ProgramSettings($pc) {
             Add-Change ((L 'Settings: HDMI Mirror {0}' 'Configuración: HDMI Mirror {0}') -f (Split-Path -Path $hmSrc -Leaf))
         } else { Write-Skip (L 'HDMI Mirror: config kept.' 'HDMI Mirror: se conserva su configuración.') }
     }
+    # siempre: "Iniciar el espejo al abrir la app" marcado (IniciarAlAbrir), con o sin
+    # configuracion guardada: el arranque de la mesa solo abre HdmiMirror.exe
+    if (Test-Path -LiteralPath $hmExe) {
+        try {
+            $cfgFile = Join-Path (Split-Path -Path $hmExe -Parent) 'hdmimirror.config.json'
+            $j = if (Test-Path -LiteralPath $cfgFile) { Get-Content -LiteralPath $cfgFile -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
+            if ($j.IniciarAlAbrir -ne $true) {
+                $running = [bool](Get-Process -Name 'HdmiMirror' -ErrorAction SilentlyContinue)
+                # cerrada: al salir guarda su configuracion y pisaria el cambio
+                Get-Process -Name 'HdmiMirror' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 1
+                if ($j.PSObject.Properties['IniciarAlAbrir']) { $j.IniciarAlAbrir = $true } else { $j | Add-Member -NotePropertyName 'IniciarAlAbrir' -NotePropertyValue $true }
+                [IO.File]::WriteAllText($cfgFile, ($j | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding $false))
+                if ($running) { Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$hmExe`"" }
+                Write-Ok (L "HDMI Mirror: 'Start the mirror when the app opens' turned on." "HDMI Mirror: 'Iniciar el espejo al abrir la app' marcado.")
+                Add-Change (L 'Settings: HDMI Mirror starts the mirror when it opens' 'Configuración: HDMI Mirror inicia el espejo al abrirse')
+            } else {
+                Write-Ok (L "HDMI Mirror: 'Start the mirror when the app opens' already on." "HDMI Mirror: 'Iniciar el espejo al abrir la app' ya estaba marcado.")
+            }
+        } catch { Write-Warn ((L 'HDMI Mirror settings: {0}' 'Ajustes de HDMI Mirror: {0}') -f $_.Exception.Message) }
+    }
 
     # ---- OBS: assets\obs\ se copia en %APPDATA%\obs-studio\ (escenas, perfiles, global.ini, temas)
     Write-Host ''

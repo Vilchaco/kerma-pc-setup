@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.9] - 2026-10-14 - HDMI Mirror inicia el espejo solo
+
+### Cambiado
+- **HDMI Mirror con "Iniciar el espejo al abrir la app" siempre marcado** en todas las mesas, haya o no configuración guardada para esa mesa. El arranque solo abre HdmiMirror.exe, y así la app espera a la Dealer App e inicia el espejo sola. El resto de su configuración no se toca.
+
 ## [5.10.8] - 2026-10-14 - Perfil de Stream Deck en Ruleta
 
 ### Corregido
