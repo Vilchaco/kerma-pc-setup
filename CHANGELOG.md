@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.7] - 2026-10-14 - El perfil de la mesa pisa el Default Profile
+
+### Cambiado
+- **El perfil de la mesa sustituye al "Default Profile" de la app de Stream Deck**, que es el que muestra el aparato si no se elige otro. Así el Stream Deck enseña siempre el de Kerma, sin elegirlo a mano. Las demás copias con el mismo nombre se quitan, y antes se guarda todo en `C:\KermaSetup\backup`. Mientras haya un "Default Profile", el script lo sustituye aunque el perfil de Kerma ya estuviera instalado: así se arregla Blackjack 01.
+
 ## [5.10.6] - 2026-10-14 - El Stream Deck sigue mostrando el perfil de Kerma
 
 ### Corregido

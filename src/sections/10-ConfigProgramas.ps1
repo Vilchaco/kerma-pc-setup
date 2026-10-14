@@ -266,7 +266,10 @@ function Invoke-ProgramSettings($pc) {
         $hashFile = Join-Path (Initialize-KermaDataDir) "streamdeck-$($pc.Game).sha256"
         $oldHash = if (Test-Path -LiteralPath $hashFile) { (Get-Content -LiteralPath $hashFile -Raw).Trim() } else { '' }
         $existing = if ($sdName) { @(Get-StreamDeckProfileDirs $sdName) } else { @() }
-        if ($existing.Count -and $oldHash -eq $hash) {
+        # "Default Profile" es el que muestra el Stream Deck si no se elige otro: mientras
+        # exista, el perfil de la mesa se escribe encima de el (decision de Fran, BJ01)
+        $defaults = @(Get-StreamDeckProfileDirs 'Default Profile')
+        if ($existing.Count -and $oldHash -eq $hash -and $defaults.Count -eq 0) {
             Write-Ok ((L "Stream Deck: profile '{0}' is already the current one." "Stream Deck: el perfil '{0}' ya es el actual.") -f $sdName)
         } else {
             $go = $true
@@ -275,10 +278,10 @@ function Invoke-ProgramSettings($pc) {
                 $go = Ask-YesNo (L '  Replace it with the new one?' '  ¿Sustituirlo por el nuevo?') $true
             }
             if ($go) {
-                # Destino: la carpeta del perfil con este nombre o, si no hay, la del "Default
-                # Profile" (el que muestra el Stream Deck en un PC nuevo). Se reutiliza su
-                # carpeta para que el aparato siga mostrandolo; los duplicados se quitan.
-                $target = if ($existing.Count) { $existing[0] } else { @(Get-StreamDeckProfileDirs 'Default Profile') | Select-Object -First 1 }
+                # Destino: la carpeta del "Default Profile" (el que muestra el Stream Deck) o,
+                # si ya no hay (se piso en otra pasada), la del perfil con este nombre. Se
+                # reutiliza la carpeta para que el aparato lo siga mostrando.
+                $target = if ($defaults.Count) { $defaults[0] } elseif ($existing.Count) { $existing[0] } else { '' }
                 $touch = @($existing) + @($target) | Where-Object { $_ } | Select-Object -Unique
                 if ($touch.Count) {
                     Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -286,7 +289,8 @@ function Invoke-ProgramSettings($pc) {
                     $bak = "C:\KermaSetup\backup\streamdeck-$stamp"
                     New-Item -ItemType Directory -Path $bak -Force | Out-Null
                     foreach ($d in $touch) { Copy-Item -LiteralPath $d -Destination $bak -Recurse -Force }
-                    foreach ($d in @($existing | Select-Object -Skip 1)) { Remove-Item -LiteralPath $d -Recurse -Force }
+                    # las demas copias con ese nombre sobran: el Stream Deck queda en una sola
+                    foreach ($d in @($existing | Where-Object { $_ -ne $target })) { Remove-Item -LiteralPath $d -Recurse -Force }
                     Write-Ok ((L 'Stream Deck: previous profile saved in {0}.' 'Stream Deck: perfil anterior guardado en {0}.') -f $bak)
                 }
                 # 1) directo, sin preguntas: el perfil se copia en la carpeta de la app con el
