@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.10] - 2026-10-14 - Craps 01 a su IP nueva
+
+### Cambiado
+- **Craps 01 pasa a 192.168.0.160** (antes 192.168.1.86), según el plan de red: 1.x quedará para el DHCP. Lo aprobó David. El script la pone al pasar el setup en esa mesa; el fondo de pantalla y el panel la muestran ya.
+
 ## [5.10.9] - 2026-10-14 - HDMI Mirror inicia el espejo solo
 
 ### Cambiado
