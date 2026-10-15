@@ -87,6 +87,15 @@ function Get-StreamDeckProfileDirs([string]$name) {
 
 # Id del Stream Deck conectado a este PC, sacado de los perfiles que ya tiene la app
 # ("@(1)[4057/128/A00SA...]"). Vacio si la app aun no lo ha visto.
+# Todas las carpetas de perfil de la app de Stream Deck de este usuario
+function Get-StreamDeckAllProfileDirs {
+    $root = Join-Path $env:APPDATA 'Elgato\StreamDeck\ProfilesV3'
+    return @(Get-ChildItem -LiteralPath $root -Directory -Filter '*.sdProfile' -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+}
+function Get-StreamDeckDirName([string]$dir) {
+    try { return [string](Get-Content -LiteralPath (Join-Path $dir 'manifest.json') -Raw | ConvertFrom-Json).Name } catch { return (Split-Path -Path $dir -Leaf) }
+}
+
 function Get-StreamDeckDeviceId([string]$model) {
     $root = Join-Path $env:APPDATA 'Elgato\StreamDeck\ProfilesV3'
     foreach ($d in @(Get-ChildItem -LiteralPath $root -Directory -Filter '*.sdProfile' -ErrorAction SilentlyContinue)) {
@@ -291,7 +300,10 @@ function Invoke-ProgramSettings($pc) {
         # "Default Profile" es el que muestra el Stream Deck si no se elige otro: mientras
         # exista, el perfil de la mesa se escribe encima de el (decision de Fran, BJ01)
         $defaults = @(Get-StreamDeckProfileDirs 'Default Profile')
-        if ($existing.Count -and $oldHash -eq $hash -and $defaults.Count -eq 0) {
+        # En una mesa el Stream Deck solo lleva el perfil de su juego: cualquier otro (p. ej.
+        # el Craps viejo con otro nombre en CR01) puede ser el que muestra el aparato.
+        $others = @(Get-StreamDeckAllProfileDirs | Where-Object { $existing -notcontains $_ -and $defaults -notcontains $_ })
+        if ($existing.Count -and $oldHash -eq $hash -and $defaults.Count -eq 0 -and $others.Count -eq 0) {
             Write-Ok ((L "Stream Deck: profile '{0}' is already the current one." "Stream Deck: el perfil '{0}' ya es el actual.") -f $sdName)
         } else {
             $go = $true
@@ -303,8 +315,12 @@ function Invoke-ProgramSettings($pc) {
                 # Destino: la carpeta del "Default Profile" (el que muestra el Stream Deck) o,
                 # si ya no hay (se piso en otra pasada), la del perfil con este nombre. Se
                 # reutiliza la carpeta para que el aparato lo siga mostrando.
-                $target = if ($defaults.Count) { $defaults[0] } elseif ($existing.Count) { $existing[0] } else { '' }
-                $touch = @($existing) + @($target) | Where-Object { $_ } | Select-Object -Unique
+                # si no hay ninguno de esos, se pisa otro perfil (asi la app no se queda sin el
+                # id del aparato, que se saca de los perfiles que tiene)
+                $target = if ($defaults.Count) { $defaults[0] } elseif ($existing.Count) { $existing[0] } elseif ($others.Count) { $others[0] } else { '' }
+                $others = @($others | Where-Object { $_ -ne $target })
+                $otherNames = @($others | ForEach-Object { Get-StreamDeckDirName $_ })
+                $touch = @($existing) + @($target) + @($others) | Where-Object { $_ } | Select-Object -Unique
                 if ($touch.Count) {
                     Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
                     Start-Sleep -Seconds 3
@@ -313,6 +329,9 @@ function Invoke-ProgramSettings($pc) {
                     foreach ($d in $touch) { Copy-Item -LiteralPath $d -Destination $bak -Recurse -Force }
                     # las demas copias con ese nombre sobran: el Stream Deck queda en una sola
                     foreach ($d in @($existing | Where-Object { $_ -ne $target })) { Remove-Item -LiteralPath $d -Recurse -Force }
+                    # los perfiles de otros nombres tambien se quitan: la app vuelve al de la mesa
+                    foreach ($d in $others) { Remove-Item -LiteralPath $d -Recurse -Force }
+                    if ($others.Count) { Write-Note ((L '  Other Stream Deck profiles removed (copy kept): {0}' '  Otros perfiles de Stream Deck quitados (con copia): {0}') -f ($otherNames -join ', ')) }
                     Write-Ok ((L 'Stream Deck: previous profile saved in {0}.' 'Stream Deck: perfil anterior guardado en {0}.') -f $bak)
                 }
                 # 1) directo, sin preguntas: el perfil se copia en la carpeta de la app con el

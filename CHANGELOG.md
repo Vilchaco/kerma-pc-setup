@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.13] - 2026-10-14 - En la mesa, solo el perfil de su juego
+
+### Corregido
+- **Craps 01 seguía mostrando el diseño viejo del Stream Deck.** El perfil viejo tenía otro nombre y el aparato lo seguía mostrando, aunque el nuevo se había instalado bien. Ahora la app de Stream Deck de la mesa se queda solo con el perfil de su juego: los demás perfiles se quitan, guardando antes una copia en `C:\KermaSetup\backup`, y el aparato vuelve al de la mesa.
+
 ## [5.10.12] - 2026-10-14 - IP fija repetida en otro adaptador
 
 ### Corregido
