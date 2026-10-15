@@ -125,6 +125,20 @@ function Invoke-NetworkSetup($pc) {
     Write-Host ''
     if (-not (Ask-YesNo (L '  Apply?' '  ¿Aplicar?') $true)) { Write-Skip (L 'Network left unchanged.' 'Red sin cambios.'); return }
 
+    # La IP puede estar puesta en OTRO adaptador (CR01: el Wi-Fi desconectado tenia la .150
+    # fija) y Windows no deja repetirla. Si ese adaptador no esta conectado se le quita
+    # (vuelve a DHCP); si lo esta, seria un choque de verdad y no se toca.
+    foreach ($o in @(Get-NetIPAddress -IPAddress $ip -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceIndex -ne $nic.ifIndex })) {
+        $oa = Get-NetAdapter -InterfaceIndex $o.InterfaceIndex -ErrorAction SilentlyContinue
+        $oName = if ($oa) { $oa.Name } else { [string]$o.InterfaceAlias }
+        if ($oa -and $oa.Status -eq 'Up') {
+            Write-Fail ((L '{0} is already used by adapter {1}, which is connected. Network left unchanged.' '{0} ya la usa el adaptador {1}, que está conectado. La red queda como está.') -f $ip, $oName)
+            return
+        }
+        Remove-NetIPAddress -InterfaceIndex $o.InterfaceIndex -IPAddress $ip -Confirm:$false -ErrorAction SilentlyContinue
+        netsh interface ipv4 set address name="$oName" source=dhcp | Out-Null
+        Write-Note ((L '  {0} was set on {1} (not connected): removed, {1} back to DHCP.' '  {0} estaba puesta en {1} (desconectado): se le quita y {1} vuelve a DHCP.') -f $ip, $oName)
+    }
     $wasDhcp = (Get-NetIPInterface -InterfaceIndex $nic.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).Dhcp -eq 'Enabled'
     $out = netsh interface ipv4 set address name="$name" source=static address=$ip mask=$mask gateway=$gw gwmetric=1 2>&1
     if ($LASTEXITCODE -ne 0) {

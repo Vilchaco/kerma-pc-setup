@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.12] - 2026-10-14 - IP fija repetida en otro adaptador
+
+### Corregido
+- **En Craps 01 no se pudo poner la 192.168.0.150** (*The object already exists*): esa IP ya estaba puesta, fija, en el Wi-Fi, que está desconectado. Ahora, si la IP de la mesa está en otro adaptador desconectado, el script se la quita y lo deja en DHCP antes de ponerla en el cable. Si ese otro adaptador está conectado, no toca nada y lo avisa, porque sería un choque de verdad.
+
 ## [5.10.11] - 2026-10-14 - Craps 01 en 192.168.0.150
 
 ### Corregido
