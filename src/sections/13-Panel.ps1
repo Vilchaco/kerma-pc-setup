@@ -15,7 +15,7 @@ function Get-StatusConfig($pc) {
     }
     foreach ($k in @($pc.Apps)) {
         $a = $Apps[$k]
-        $path = if ($saved[$k]) { $saved[$k] } else { $a.Path }
+        $path = if ($saved[$k]) { $saved[$k] } elseif ($a.Path) { [Environment]::ExpandEnvironmentVariables([string]$a.Path) } else { '' }
         if (-not $path) { continue }
         $proc = if ($path -match '\.exe$') { [IO.Path]::GetFileNameWithoutExtension($path) } else { '' }
         if ($list.Contains($k)) { $list[$k].autostart = $true; continue }

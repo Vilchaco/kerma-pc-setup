@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.15] - 2026-10-14 - Ruta de la Dealer App comprobada
+
+### Corregido
+- **En Blackjack Unlimited 01 la "Dealer App" abría el Card Scanner:** al configurarla se había elegido el .bat del escáner. Ahora cada app tiene un nombre de archivo obligatorio (`dealer-control.exe` para la Dealer App y `Start-Matrix120-Keyboard.bat` para el Card Scanner) y una ruta guardada con otro nombre no se usa. Además, la Dealer App se busca sola en su sitio de siempre (`%LOCALAPPDATA%\Dealer Control\dealer-control.exe`), así que en modo Automático ya no hay que elegirla a mano.
+
 ## [5.10.14] - 2026-10-14 - Craps sin HDMI Mirror
 
 ### Cambiado

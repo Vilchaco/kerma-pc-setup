@@ -7,12 +7,16 @@
 # (C:\Users\<otro>\Desktop\...): se prueba el mismo sitio en este PC.
 function Get-SuggestedAppPath([string]$k, $saved) {
     $app = $Apps[$k]
-    $cands = @($saved[$k], $app.Path)
+    $def = if ($app.Path) { [Environment]::ExpandEnvironmentVariables([string]$app.Path) } else { '' }
+    $cands = @($saved[$k], $def)
     if ($saved[$k] -match '^[A-Za-z]:\\Users\\[^\\]+\\(.+)$') {
-        $cands = @($saved[$k], (Join-Path $env:USERPROFILE $Matches[1]), $app.Path)
+        $cands = @($saved[$k], (Join-Path $env:USERPROFILE $Matches[1]), $def)
     }
+    # Expect: el archivo tiene que llamarse asi (en BJUNL01 se guardo el .bat del
+    # scanner como Dealer App y la tarea abria el scanner dos veces)
+    if ($app.Expect) { $cands = @($cands | Where-Object { $_ -and (Split-Path -Path $_ -Leaf) -ieq $app.Expect }) }
     foreach ($cand in $cands) { if ($cand -and (Test-AppPath $cand).Ok) { return $cand } }
-    if ($saved[$k]) { return $saved[$k] }   # para que se vea por que falla
+    if ($saved[$k] -and (-not $app.Expect -or (Split-Path -Path $saved[$k] -Leaf) -ieq $app.Expect)) { return $saved[$k] }   # para que se vea por que falla
     return ''
 }
 
