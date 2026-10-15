@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.11] - 2026-10-14 - Craps 01 en 192.168.0.150
+
+### Corregido
+- **La IP buena de Craps 01 es 192.168.0.150**, no la .160 de la 5.10.10.
+
 ## [5.10.10] - 2026-10-14 - Craps 01 a su IP nueva
 
 ### Cambiado
