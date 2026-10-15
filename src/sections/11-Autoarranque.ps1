@@ -94,6 +94,16 @@ function Invoke-AppAutostart($pc) {
     Write-Host ((L "  Tasks: '{0} - <App> Startup', scripts in {1}" "  Tareas: '{0} - <App> Startup', scripts en {1}") -f $tableName, $dir)
     $saved = Get-SavedAppPaths
 
+    # apps del perfil que este PC no lleva (Without): fuera su tarea si la tenia
+    foreach ($k in @($pc.Without | Where-Object { $Apps.ContainsKey($_) })) {
+        $old = "$tableName - $($Apps[$k].Name) Startup"
+        if (Get-ScheduledTask -TaskName $old -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $old -Confirm:$false -ErrorAction SilentlyContinue
+            Write-Ok ((L '{0}: this PC does not use it - autostart task removed.' '{0}: este PC no la usa; tarea de arranque quitada.') -f $Apps[$k].Name)
+            Add-Change ((L 'Autostart removed: {0}' 'Arranque quitado: {0}') -f $Apps[$k].Name)
+        }
+    }
+
     foreach ($k in $pc.Apps) {
         $app      = $Apps[$k]
         $taskName = "$tableName - $($app.Name) Startup"

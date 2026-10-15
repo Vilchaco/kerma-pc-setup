@@ -42,12 +42,15 @@ function Import-KermaConfig {
         $apps = @()
         if ($row.Scanner) { $apps += 'Scanner' }
         if ($prof) { $apps += @($prof.Autostart) }
+        # Without: programas / apps / iconos del perfil que este PC no lleva (Craps: HDMI Mirror)
+        $without = @($row.Without | Where-Object { $_ })
+        $apps = @($apps | Where-Object { $without -notcontains $_ })
         $script:PCs += @{
             Key = $row.Key; Group = $row.Group; Label = $row.Label; Profile = $row.Profile
             Type = if ($prof) { $prof.Type } else { '' }
             Hostname = $row.Hostname; Username = $row.Username; FullName = $row.FullName; Game = $row.Game
             Apps = $apps; Net = @{ IP = [string]$row.IP }; IPSource = if ($row.IP) { 'inventory' } else { '' }
-            DavidName = $row.DavidName; WallpaperText = $row.WallpaperText
+            DavidName = $row.DavidName; WallpaperText = $row.WallpaperText; Without = $without
             RustDesk = ($prof -and $prof.RustDesk -ne 'None')
         }
     }
@@ -156,6 +159,11 @@ function Test-KermaConfig {
         if ($p.Requires -and -not $Packages.ContainsKey($p.Requires)) { $errors.Add("programa ${k}: Requires '$($p.Requires)' no existe") }
     }
 
+    foreach ($pc in $PCs) {
+        foreach ($w in @($pc.Without)) {
+            if (-not ($Packages.ContainsKey($w) -or $Apps.ContainsKey($w) -or $Pins.ContainsKey($w))) { $errors.Add("PC $($pc.Key): Without '$w' no existe en programas.psd1") }
+        }
+    }
     $seen = @{}
     foreach ($pc in $PCs) {
         foreach ($field in @('Key', 'Hostname', 'Username')) {

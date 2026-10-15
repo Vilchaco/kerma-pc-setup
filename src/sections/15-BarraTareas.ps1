@@ -39,7 +39,7 @@ function Get-PinShortcut($key, $pin, $shell) {
 
 function Invoke-TaskbarPins($pc) {
     Write-Section (L 'TASKBAR ICONS' 'ICONOS DE LA BARRA DE TAREAS')
-    $keys = @($Prof.Taskbar | Where-Object { $_ })
+    $keys = @($Prof.Taskbar | Where-Object { $_ -and @($pc.Without) -notcontains $_ })
     $pol = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer'
     if ($keys.Count -eq 0) {
         # sin iconos en el perfil: si una version anterior la fijo, se libera

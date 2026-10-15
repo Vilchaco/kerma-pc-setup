@@ -165,7 +165,10 @@ function Invoke-ProgramSettings($pc) {
     $hmSrc = @((Join-Path $assets "hdmi-mirror\$($pc.Key).json"), (Join-Path $assets 'hdmi-mirror\default.json')) |
         Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
     Write-Host ''
-    if (-not (Test-Path -LiteralPath $hmExe)) {
+    $hmUsed = @($pc.Without) -notcontains 'HdmiMirror'
+    if (-not $hmUsed) {
+        Write-Skip (L 'HDMI Mirror: this PC does not use it.' 'HDMI Mirror: este PC no lo usa.')
+    } elseif (-not (Test-Path -LiteralPath $hmExe)) {
         Write-Skip (L 'HDMI Mirror: not installed on this PC.' 'HDMI Mirror: no está instalado en este PC.')
     } elseif (-not $hmSrc) {
         Write-Skip ((L 'HDMI Mirror: no saved config (assets\hdmi-mirror\{0}.json).' 'HDMI Mirror: no hay configuración guardada (assets\hdmi-mirror\{0}.json).') -f $pc.Key)
@@ -186,7 +189,7 @@ function Invoke-ProgramSettings($pc) {
     }
     # siempre: "Iniciar el espejo al abrir la app" marcado (IniciarAlAbrir), con o sin
     # configuracion guardada: el arranque de la mesa solo abre HdmiMirror.exe
-    if (Test-Path -LiteralPath $hmExe) {
+    if ($hmUsed -and (Test-Path -LiteralPath $hmExe)) {
         try {
             $cfgFile = Join-Path (Split-Path -Path $hmExe -Parent) 'hdmimirror.config.json'
             $j = if (Test-Path -LiteralPath $cfgFile) { Get-Content -LiteralPath $cfgFile -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }

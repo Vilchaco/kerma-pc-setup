@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.10.14] - 2026-10-14 - Craps sin HDMI Mirror
+
+### Cambiado
+- **Craps 01 no lleva HDMI Mirror:** tiene dos pantallas tipo prompter. Ya no se instala ni se configura, no arranca con Windows, no tiene icono en la barra de tareas y el panel no lo vigila. Si ya tenía la tarea de arranque, el setup la quita.
+- **Nuevo campo `Without` en el inventario** para que un PC concreto no lleve algo de su perfil (programas, apps de arranque o iconos), por ejemplo `Without = @('HdmiMirror')`.
+
 ## [5.10.13] - 2026-10-14 - En la mesa, solo el perfil de su juego
 
 ### Corregido

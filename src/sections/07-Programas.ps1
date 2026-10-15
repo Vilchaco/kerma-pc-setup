@@ -195,6 +195,7 @@ function Show-FocusriteDevices {
 function Get-ProgramList($pc) {
     $list = @($Prof.Programs)
     if (-not $pc.RustDesk) { $list = @($list | Where-Object { $_ -ne 'RustDesk' }) }
+    $list = @($list | Where-Object { @($pc.Without) -notcontains $_ })
     return $list
 }
 
