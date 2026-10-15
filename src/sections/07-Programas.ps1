@@ -48,6 +48,15 @@ function Initialize-WingetSource([string]$w) {
     return $false
 }
 
+# Paquete de la web de descargas de Bitfocus (Companion Satellite no esta en winget
+# y sus releases de GitHub no traen binarios): el mas reciente para ese target.
+function Get-BitfocusPackage([string]$product, [string]$target) {
+    $r = Invoke-RestMethod -Uri "https://api.bitfocus.io/v1/product/$product/packages?limit=50" -UseBasicParsing -Headers @{ 'User-Agent' = 'Kerma-PCSetup' }
+    $pkg = @($r.packages | Where-Object { $_.target -eq $target }) | Select-Object -First 1
+    if (-not $pkg) { throw ((L "no '{0}' package of {1} in the Bitfocus downloads" "no hay paquete '{0}' de {1} en las descargas de Bitfocus") -f $target, $product) }
+    return @{ Tag = [string]$pkg.version; Name = [string](Split-Path -Path ([uri]$pkg.uri).AbsolutePath -Leaf); Url = [string]$pkg.uri }
+}
+
 function Get-LatestReleaseAsset([string]$repo, [string]$pattern, [string]$tag) {
     # Tag fija una version concreta (la probada); si no, la ultima
     $which = if ($tag) { "tags/$tag" } else { 'latest' }
@@ -129,8 +138,8 @@ function Install-KermaPackage($key, $p) {
         return
     }
 
-    # ---- release de GitHub (.msi o .zip)
-    $rel = Get-LatestReleaseAsset $p.Repo $p.Asset $p.Tag
+    # ---- release de GitHub (.msi o .zip) o paquete de Bitfocus (.exe)
+    $rel = if ($p.Source -eq 'bitfocus') { Get-BitfocusPackage $p.Product $p.Target } else { Get-LatestReleaseAsset $p.Repo $p.Asset $p.Tag }
     $installedTag = ''
     if ($marker -and (Test-Path -LiteralPath $marker)) { $installedTag = (Get-Content -LiteralPath $marker -Raw).Trim() }
     if ($p.Check -and (Test-Path -LiteralPath $p.Check)) {
@@ -147,7 +156,11 @@ function Install-KermaPackage($key, $p) {
     Write-Host ((L '  Downloading {0} {1} ({2})...' '  Descargando {0} {1} ({2})...') -f $p.Name, $rel.Tag, $rel.Name)
     Invoke-WebRequest -Uri $rel.Url -OutFile $file -UseBasicParsing
 
-    if ($rel.Name -match '\.msi$') {
+    if ($rel.Name -match '\.exe$') {
+        # instalador NSIS de electron-builder (Companion Satellite): /S = silencioso, para todo el equipo
+        $proc = Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
+        if ($proc.ExitCode -ne 0) { Write-Fail ((L '{0}: the installer returned code {1}.' '{0}: el instalador devolvió el código {1}.') -f $p.Name, $proc.ExitCode); return }
+    } elseif ($rel.Name -match '\.msi$') {
         $proc = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$file`" /qn /norestart" -Wait -PassThru
         if ($proc.ExitCode -eq 3010) { $State.NeedsRestart = $true }
         if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) { Write-Fail ((L '{0}: the installer returned code {1}.' '{0}: el instalador devolvió el código {1}.') -f $p.Name, $proc.ExitCode); return }

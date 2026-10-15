@@ -2,6 +2,16 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.11.0] - 2026-10-15 - Companion central, Satellite y Burn Hand remoto
+
+### Cambiado
+- **Kerma Remote solo acepta órdenes del Companion central** (servidor 192.168.3.254), no de toda la red. Para pruebas desde otro PC hay que añadir su IP en `ajustes.psd1`.
+- **Supervisores con Companion Satellite en vez de Companion completo.** Satellite conecta el Stream Deck del supervisor al Companion central (192.168.3.254, puerto 16622) y arranca con Windows. Como no está en winget y su GitHub no trae instaladores, se descarga de la web oficial de Bitfocus. El script le deja puesta la dirección del servidor y el nombre del PC.
+- **Supervisores con IP fija:** Supervisor 01 en 192.168.0.200 y Supervisor 02 en 192.168.0.202.
+
+### Añadido
+- **Burn Hand desde los Stream Deck de supervisor** en Blackjack y Blackjack Unlimited (`burn_hand`), a petición de Fran. Es la acción más común de los supervisores.
+
 ## [5.10.15] - 2026-10-14 - Ruta de la Dealer App comprobada
 
 ### Corregido

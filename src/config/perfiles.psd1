@@ -38,12 +38,13 @@
         Type = 'Staff'
         Time = $true; Rename = $true; Login = 'Keep'; WindowsUpdate = 'Keep'; StaticIP = $true
         Tuning = $false; RemoveApps = $true; RemoveOffice = $true; RemoveOneDrive = $true
-        # Companion: los Stream Deck de supervisor mandan ordenes a las mesas (Kerma Remote).
+        # Companion Satellite: el Stream Deck del supervisor se conecta al Companion central,
+        # que manda las ordenes a las mesas (Kerma Remote) y a los ATEM.
         # Sin la app de Stream Deck de Elgato: las dos se pelean por el aparato.
-        Programs = @('Chrome', 'RustDesk', 'Companion')
+        Programs = @('Chrome', 'RustDesk', 'CompanionSatellite')
         RustDesk = 'Master'
         Audio = $true; ProgramSettings = $false; Remote = $false
-        Autostart = @('Companion')
+        Autostart = @('CompanionSatellite')
         Wallpaper = $true; Panel = $true
     }
     MCR = @{

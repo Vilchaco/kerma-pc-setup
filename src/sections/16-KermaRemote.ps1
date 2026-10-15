@@ -114,3 +114,38 @@ function Invoke-KermaRemote($pc) {
     }
     Add-Change ((L 'Kerma Remote: port {0}, orders {1}' 'Kerma Remote: puerto {0}, órdenes {1}') -f $port, (@($cmds.Keys | Sort-Object) -join ', '))
 }
+
+# ---------------------------------------------------------------------
+#  COMPANION SATELLITE (PCs de supervisor): su Stream Deck se conecta al
+#  Companion central. Config en %APPDATA%\Companion Satellite\config.json
+#  (electron-store; claves de satellite/src/config.ts del repo de Bitfocus).
+# ---------------------------------------------------------------------
+function Invoke-SatelliteSetup($pc) {
+    $p = $Packages['CompanionSatellite']
+    if (@(Get-ProgramList $pc) -notcontains 'CompanionSatellite') { return }
+    Write-Section (L 'COMPANION SATELLITE  (supervisor Stream Deck)' 'COMPANION SATELLITE  (Stream Deck del supervisor)')
+    if (-not $SatelliteCfg -or -not $SatelliteCfg.Server) { Write-Skip (L 'No Satellite server in ajustes.psd1.' 'No hay servidor de Satellite en ajustes.psd1.'); return }
+    if (-not (Test-Path -LiteralPath $p.Check)) { Write-Skip (L 'Companion Satellite is not installed.' 'Companion Satellite no está instalado.'); return }
+    Write-Host ((L '  Connects to the central Companion {0}:{1}.' '  Se conecta al Companion central {0}:{1}.') -f $SatelliteCfg.Server, $SatelliteCfg.Port)
+    if (-not (Ask-YesNo (L '  Configure it?' '  ¿Configurarlo?') $true)) { Write-Skip (L 'Satellite left as it is.' 'Satellite sin cambios.'); return }
+    try {
+        $dir = Join-Path $env:APPDATA 'Companion Satellite'
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        $file = Join-Path $dir 'config.json'
+        $j = if (Test-Path -LiteralPath $file) { Get-Content -LiteralPath $file -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
+        $hostName = if ($State.HostRenamed -or $State.RenameWanted) { $pc.Hostname } else { $env:COMPUTERNAME }
+        $set = [ordered]@{ remoteProtocol = 'tcp'; remoteIp = [string]$SatelliteCfg.Server; remotePort = [int]$SatelliteCfg.Port; installationName = "Satellite $hostName" }
+        foreach ($k in $set.Keys) {
+            if ($j.PSObject.Properties[$k]) { $j.$k = $set[$k] } else { $j | Add-Member -NotePropertyName $k -NotePropertyValue $set[$k] }
+        }
+        # cerrado mientras se escribe (guarda su configuracion) y abierto despues como el usuario
+        $running = [bool](Get-Process -Name $p.Process -ErrorAction SilentlyContinue)
+        Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+        [IO.File]::WriteAllText($file, ($j | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false))
+        if ($running -or (Test-SameUserAsConsole)) { Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$($p.Check)`"" }
+        Write-Ok ((L 'Companion Satellite: connects to {0}:{1} as "{2}".' 'Companion Satellite: se conecta a {0}:{1} como "{2}".') -f $SatelliteCfg.Server, $SatelliteCfg.Port, $set.installationName)
+        Write-Note (L '  In the central Companion (Surfaces), give this Stream Deck page 5 (SUPERVISOR) as start page.' '  En el Companion central (Surfaces), ponle a este Stream Deck la página 5 (SUPERVISOR) como página de inicio.')
+        Add-Change ((L 'Companion Satellite -> {0}:{1}' 'Companion Satellite -> {0}:{1}') -f $SatelliteCfg.Server, $SatelliteCfg.Port)
+    } catch { Write-Fail ((L 'Companion Satellite: {0}' 'Companion Satellite: {0}') -f $_.Exception.Message) }
+}

@@ -56,19 +56,27 @@
     # Kerma Remote en las mesas (Remote = $true en el perfil): ordenes desde Companion.
     # Por la red solo llega el NOMBRE de la orden; el texto que se pega en la Dealer App
     # sale de aqui, segun el juego. Nada de ordenes de resultado ni del dealer (dados,
-    # numeros, SUBMIT, CLEAR, SIGN, escaneo, BURN, SHUFFLE): el lint las rechaza.
+    # numeros, SUBMIT, CLEAR, SIGN, escaneo, SHUFFLE): el lint las rechaza. BURN_HAND si
+    # puede: es la accion mas comun de los supervisores (Fran, 15-oct).
     # Allow: IPs o rangos que pueden mandar (ademas hace falta la clave, remote.key).
+    # Solo el Companion central (servidor 192.168.3.254); para pruebas desde MCR u otro
+    # PC, anadir su IP, nunca toda la red.
     Remote = @{
         Port          = 10010
-        Allow         = @('192.168.0.0/22')
+        Allow         = @('192.168.3.254')
         TargetProcess = 'dealer-control'
         Commands = @{
             'craps'               = @{ atem_auto = '{ATEM_AUTO}'; pause = '{PAUSE}'; resume = '{RESUME}'; timer_start = '{TIMER_START}'; close_betting = '{CLOSE_BETTING}'; refresh_table = '{REFRESH_TABLE}' }
             'roulette'            = @{ atem_auto = '{ATEM_AUTO}'; make_cut = '{MAKE_CUT}'; pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; close_betting = '{CLOSE_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
-            'blackjack'           = @{ pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
-            'blackjack-unlimited' = @{ pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
+            'blackjack'           = @{ burn_hand = '{BURN_HAND}'; pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
+            'blackjack-unlimited' = @{ burn_hand = '{BURN_HAND}'; pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
         }
     }
+
+    # Companion Satellite en los PCs de supervisor: conecta su Stream Deck al Companion
+    # central (VM de Proxmox, 5.0.3). Alli, en Surfaces, cada Stream Deck nuevo hay que
+    # ponerle la pagina 5 (SUPERVISOR) como pagina de inicio.
+    Satellite = @{ Server = '192.168.3.254'; Port = 16622 }
 
     # Tema de OBS: Id debe ser EXACTAMENTE el id de @OBSThemeMeta en assets\obs\themes\<ThemeFile>
     Obs = @{ ThemeFile = 'Kerma.ovt'; ThemeId = 'com.kerma.Yami.Kerma' }

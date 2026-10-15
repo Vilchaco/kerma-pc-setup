@@ -34,6 +34,7 @@ function Import-KermaConfig {
     $script:WallpaperTags = $aj.Wallpaper.Tags
     $script:AccentColor   = [string]$aj.Wallpaper.Accent
     $script:RemoteCfg     = $aj.Remote
+    $script:SatelliteCfg  = $aj.Satellite
 
     # Filas de PC con lo que necesitan las secciones
     $script:PCs = @()
@@ -154,7 +155,8 @@ function Test-KermaConfig {
     }
     foreach ($k in $Packages.Keys) {
         $p = $Packages[$k]
-        if (@('winget', 'github') -notcontains $p.Source) { $errors.Add("programa ${k}: Source '$($p.Source)' no valido") }
+        if (@('winget', 'github', 'bitfocus') -notcontains $p.Source) { $errors.Add("programa ${k}: Source '$($p.Source)' no valido") }
+        if ($p.Source -eq 'bitfocus' -and (-not $p.Product -or -not $p.Target)) { $errors.Add("programa ${k}: falta Product o Target") }
         if ($p.Source -eq 'github' -and (-not $p.Repo -or -not $p.Asset)) { $errors.Add("programa ${k}: falta Repo o Asset") }
         if ($p.Requires -and -not $Packages.ContainsKey($p.Requires)) { $errors.Add("programa ${k}: Requires '$($p.Requires)' no existe") }
     }
@@ -192,7 +194,7 @@ function Test-KermaConfig {
                 $t = [string]$RemoteCfg.Commands[$g][$n]
                 if ($n -notmatch '^[a-z0-9_]+$') { $errors.Add("Remote.Commands.${g}: nombre '$n' no valido (minusculas, numeros y _)") }
                 if ($t -notmatch '^\{[A-Z_]+(:[^}]*)?\}$') { $errors.Add("Remote.Commands.${g}.${n}: '$t' no es un comando {ASI}") }
-                if ($t -match 'DICE|SUBMIT|NUMBER|CLEAR_|SIGN|CONFIRM_SCAN|REJECT_SCAN|BURN|SHUFFLE') { $errors.Add("Remote.Commands.${g}.${n}: '$t' es del dealer o de resultado, no puede ir por la red") }
+                if ($t -match 'DICE|SUBMIT|NUMBER|CLEAR_|SIGN|CONFIRM_SCAN|REJECT_SCAN|SHUFFLE') { $errors.Add("Remote.Commands.${g}.${n}: '$t' es del dealer o de resultado, no puede ir por la red") }
             }
         }
     }
