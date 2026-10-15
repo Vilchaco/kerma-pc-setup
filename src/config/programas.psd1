@@ -5,6 +5,7 @@
     # -----------------------------------------------------------------
     #  Packages: programas que el script instala (el orden lo da el perfil)
     #  Source 'winget' : Id = paquete de winget (winget search <nombre>)
+    #  Source 'bitfocus': Product / Target de la API de descargas de Bitfocus (.exe NSIS)
     #  Source 'github' : Repo = owner/name de un repositorio PUBLICO,
     #                    Asset = regex del archivo de la release. .msi =
     #                    instalacion silenciosa; .zip = se extrae en
@@ -37,6 +38,10 @@
                         File = 'VST3[\\/]Alt Denoiser\.vst3[\\/]Contents[\\/]x86_64-win[\\/]Alt Denoiser\.vst3$'; FileAs = 'Alt-Denoiser.vst3'
                         InstallTo = 'C:\Program Files\Common Files\VST3'; Check = 'C:\Program Files\Common Files\VST3\Alt-Denoiser.vst3'; Process = 'obs64'; Requires = 'AtkAudio' }
         Companion  = @{ Name = 'Bitfocus Companion'; Source = 'winget'; Id = 'Bitfocus.Companion'; Check = 'C:\Program Files\Companion\Companion.exe' }
+        # Companion Satellite: no esta en winget y su GitHub no trae binarios; sale de la API
+        # de descargas de Bitfocus (instalador NSIS, para todo el equipo)
+        CompanionSatellite = @{ Name = 'Companion Satellite'; Source = 'bitfocus'; Product = 'companion-satellite'; Target = 'win-x64'
+                        Check = 'C:\Program Files\Companion Satellite\Companion Satellite.exe'; Process = 'Companion Satellite' }
         Deskflow   = @{ Name = 'Deskflow';      Source = 'winget'; Id = 'Deskflow.Deskflow';    Check = 'C:\Program Files\Deskflow\deskflow.exe' }
         # Id sale de ajustes.psd1 (Audio.ScarlettPackageId); se instala si hay una Focusrite conectada.
         # Su paquete de winget solo pasa /silent y el instalador (Inno) pregunta si reiniciar: se
@@ -98,6 +103,7 @@
         # Deskflow: ya no se usa (fue una prueba en el PC de Hector)
         Deskflow   = @{ Name = 'Deskflow';     Id = '01_deskflow';   Path = 'C:\Program Files\Deskflow\deskflow.exe';          Delay = 10; Maximize = $false }
         Companion  = @{ Name = 'Companion';    Id = '06_companion';  Path = 'C:\Program Files\Companion\Companion.exe';         Delay = 10; Maximize = $false }
+        CompanionSatellite = @{ Name = 'Companion Satellite'; Id = '07_satellite'; Path = 'C:\Program Files\Companion Satellite\Companion Satellite.exe'; Delay = 10; Maximize = $false }
     }
 
     # -----------------------------------------------------------------

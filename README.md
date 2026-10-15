@@ -119,7 +119,8 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Instalar programas | Instala o actualiza los programas de ese tipo de PC. |
 | Acceso remoto | Configura RustDesk por IP directa: CLIENT en mesas, MASTER en supervisores. |
 | Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck, y el tema Kerma de OBS. El perfil de Stream Deck se sustituye si cambia en el repositorio (con copia del anterior en `C:\KermaSetup\backup`). |
-| Kerma Remote | En las mesas: recibe por la red, en el puerto 10010, las órdenes de los Stream Deck de los supervisores (Companion) y las pega en la Dealer App. Solo acepta órdenes de la lista de su juego y con la clave común, que se pide al empezar y solo se guarda en el PC. |
+| Kerma Remote | En las mesas: recibe en el puerto 10010 las órdenes del Companion central (servidor 192.168.3.254), al que van los Stream Deck de los supervisores, y las pega en la Dealer App. Solo acepta las órdenes de la lista de su juego, solo desde el servidor y con la clave común, que el setup toma del panel. |
+| Companion Satellite | En los PCs de supervisor: conecta su Stream Deck al Companion central (192.168.3.254, puerto 16622). En el Companion central, en *Surfaces*, a cada Stream Deck nuevo hay que ponerle la página 5 (SUPERVISOR) como página de inicio. |
 | Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. OBS arranca sin el aviso de modo seguro aunque se haya cerrado mal, y sin el aviso de actualizaciones. |
 | Audio | Quita los sonidos de Windows y pone la Scarlett como micrófono y salida predeterminados. |
 | Fondo de pantalla | El mismo fondo de Kerma en todos los PCs, con una tarjeta: tipo de PC en su color, nombre, IP y nombre de equipo. |
@@ -131,7 +132,7 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Tipo | PCs | Comportamiento |
 |---|---|---|
 | Mesa | Ruleta, Blackjack, Blackjack Unlimited, Craps | Sin contraseña y actualizaciones manuales. Instala Chrome, RustDesk, Stream Deck, HDMI Mirror, OBS, atkAudio y Alt Denoiser, con el perfil de Stream Deck de su juego y Kerma Remote. Configura el autoarranque de Dealer App y, en blackjack, del Card Scanner, que se instalan a mano. |
-| Supervisor | Supervisor 01 y 02 | Recomienda mantener la contraseña y las actualizaciones automáticas. Instala Chrome, RustDesk y Bitfocus Companion, que arranca con Windows para los Stream Deck de supervisor. Sin la app de Stream Deck de Elgato. |
+| Supervisor | Supervisor 01 y 02 | Recomienda mantener la contraseña y las actualizaciones automáticas. Instala Chrome, RustDesk y Companion Satellite, que arranca con Windows y conecta su Stream Deck al Companion central. Sin la app de Stream Deck de Elgato. IPs 192.168.0.200 y .202. |
 | Oficina | PC de Hector | Igual que una mesa, pero instala Chrome y RustDesk, y su app de inicio es el programa de cámaras. |
 
 En cualquier PC con una Focusrite conectada se instala también Focusrite Control 2.
