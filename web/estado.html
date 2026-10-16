@@ -281,7 +281,7 @@ function analyse(p, now) {
   if (f && !f.ok && (now - new Date(f.at)) < 3600000) issues.push(['warn', `La última sincronización no dejó el reloj en hora`]);
   if (p.watchdog_paused_until && new Date(p.watchdog_paused_until) > now) issues.push(['info', `🔧 En mantenimiento hasta las ${new Date(p.watchdog_paused_until).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}: el vigilante no reabre apps`]);
   for (const n of p.watchdog_failed || []) issues.push(['bad', `${n}: el vigilante no consigue abrirla`]);
-  const reopened = (p.watchdog || []).filter((e) => now - new Date(e.at) < 3600000);
+  const reopened = (p.watchdog || []).filter((e) => now - new Date(e.at) < 15 * 60000);   // 15 min en amarillo (Fran)
   for (const e of reopened) issues.push(['warn', `${e.app} se cerró y el vigilante la reabrió (${new Date(e.at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })})`]);
   for (const w of p.warnings || []) issues.push(['warn', w]);
   const h = issues.some((i) => i[0] === 'bad') ? 'bad' : issues.some((i) => i[0] === 'warn') ? 'warn' : 'ok';
