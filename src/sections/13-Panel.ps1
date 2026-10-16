@@ -13,18 +13,21 @@ function Get-StatusConfig($pc) {
         $proc = if ($p.Process) { $p.Process } elseif ($p.Check -match '\.exe$') { [IO.Path]::GetFileNameWithoutExtension($p.Check) } else { '' }
         $list[$k] = @{ name = $p.Name; check = $p.Check; process = $proc; autostart = $false }
     }
+    # task = su tarea de arranque: el vigilante del recolector la lanza si la app se cierra
+    $hostName = if ($State.HostRenamed -or $State.RenameWanted) { $pc.Hostname } else { $env:COMPUTERNAME }
     foreach ($k in @($pc.Apps)) {
         $a = $Apps[$k]
         $path = if ($saved[$k]) { $saved[$k] } elseif ($a.Path) { [Environment]::ExpandEnvironmentVariables([string]$a.Path) } else { '' }
         if (-not $path) { continue }
         $proc = if ($path -match '\.exe$') { [IO.Path]::GetFileNameWithoutExtension($path) } else { '' }
-        if ($list.Contains($k)) { $list[$k].autostart = $true; continue }
-        $list[$k] = @{ name = $a.Name; check = $path; process = $proc; autostart = $true }
+        $task = if ($a.SelfStarts) { '' } else { "$hostName - $($a.Name) Startup" }
+        if ($list.Contains($k)) { $list[$k].autostart = $true; $list[$k].task = $task; continue }
+        $list[$k] = @{ name = $a.Name; check = $path; process = $proc; autostart = $true; task = $task }
     }
     # Kerma Remote: un .ps1, el panel lo ve abierto si corre desde su carpeta
     $rc = Get-RemoteCommands $pc
     if ($Prof.Remote -and $rc -and $rc.Count) {
-        $list['KermaRemote'] = @{ name = 'Kerma Remote'; check = 'C:\ProgramData\Kerma\remote\KermaRemote.ps1'; process = ''; autostart = $true }
+        $list['KermaRemote'] = @{ name = 'Kerma Remote'; check = 'C:\ProgramData\Kerma\remote\KermaRemote.ps1'; process = ''; autostart = $true; task = 'Kerma - Remote' }
     }
     return [ordered]@{
         key = $pc.Key; label = $pc.Label; type = $pc.Type; group = $pc.Group; game = $pc.Game; profile = $pc.Profile

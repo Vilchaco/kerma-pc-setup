@@ -10,15 +10,17 @@
 //   DELETE /api/command?id=KEY (x-pin)       -> cancel it
 //   GET    /api/remote-key (x-pin or x-kerma-key) -> { remoteKey } common Kerma Remote key of the tables
 //          (env KERMA_REMOTE_KEY): the setup takes it from here, the panel shows it to set up Companion
+//   POST   /api/alerts-test (x-pin)          -> test message to the alert channels (Telegram / Slack)
 // The PCs cannot be reached from here (casino LAN): a queued action goes back in the answer
 // to the next POST /api/status of that PC (every 5 min) and is deleted then.
 // Environment: STATUS_PIN (people) and STATUS_WRITE_KEY (PCs). Never in the repo: it is public.
 // 5 wrong PINs in 15 min lock the PIN for 15 min (blob lock/fails), same as Kerma Tips.
 import { getStore } from '@netlify/blobs';
+import { notify } from '../shared/notify.mjs';
 
-export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command', '/api/remote-key'] };
+export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command', '/api/remote-key', '/api/alerts-test'] };
 
-const ACTIONS = ['timesync'];
+const ACTIONS = ['timesync', 'watch_pause', 'watch_resume'];
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -117,6 +119,12 @@ export default async (req) => {
         return json({ logs });
       }
     }
+    if (path === '/api/alerts-test' && req.method === 'POST') {
+      const bad = await checkPin(req, store); if (bad) return bad;
+      const sent = await notify('🧪 <b>Prueba de avisos</b> del panel de estado de Kerma. Si ves esto, funcionan.');
+      return json({ ok: sent.length > 0, sent });
+    }
+
     if (path === '/api/remote-key' && req.method === 'GET') {
       const wk = process.env.STATUS_WRITE_KEY;
       const byPc = wk && req.headers.get('x-kerma-key') === wk;

@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.0] - 2026-10-15 - Vigilante de apps y avisos por Telegram
+
+### Añadido
+- **Vigilante de apps en cada PC.** Si una app que arranca con Windows está cerrada (OBS, Dealer App, HDMI Mirror, Stream Deck o Kerma Remote), el informe de cada 5 minutos vuelve a lanzar su tarea de arranque. Se abre igual que al encender: OBS sin el aviso de modo seguro tras un cierre inesperado. Lo hace como mucho 3 veces por hora y app. Desde el panel se puede pausar 2 horas por PC, para mantenimiento. Lo provocó Ruleta 01: OBS se cerró solo y la mesa estuvo sin audio sin que nadie lo supiera.
+- **Avisos por Telegram** (y Slack más adelante) desde el panel, las 24 horas, solo cuando algo cambia: una app que debe estar abierta lleva 10 minutos cerrada, el vigilante no consigue abrirla o la ha reabierto, un PC deja de reportar o el reloj se desvía más de 2 s. Se avisa también cuando se arregla.
+- En el panel, cada PC muestra su vigilante: si está activo o en pausa, qué ha reabierto en las últimas 24 horas y qué no consigue abrir.
+
 ## [5.11.0] - 2026-10-15 - Companion central, Satellite y Burn Hand remoto
 
 ### Cambiado

@@ -279,6 +279,9 @@ function analyse(p, now) {
   if (p.remote && !p.remote.listening && p.type !== 'MCR') issues.push(['warn', 'RustDesk no acepta conexiones']);
   const f = lastFix(p);
   if (f && !f.ok && (now - new Date(f.at)) < 3600000) issues.push(['warn', `La última sincronización no dejó el reloj en hora`]);
+  for (const n of p.watchdog_failed || []) issues.push(['bad', `${n}: el vigilante no consigue abrirla`]);
+  const reopened = (p.watchdog || []).filter((e) => now - new Date(e.at) < 3600000);
+  for (const e of reopened) issues.push(['warn', `${e.app} se cerró y el vigilante la reabrió (${new Date(e.at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })})`]);
   for (const w of p.warnings || []) issues.push(['warn', w]);
   const h = issues.some((i) => i[0] === 'bad') ? 'bad' : issues.some((i) => i[0] === 'warn') ? 'warn' : 'ok';
   return { h, issues };
@@ -314,7 +317,7 @@ function render() {
 }
 
 function syncControl(p) {
-  if (p.pending) return `<span class="pend" title="Pedido a las ${esc(new Date(p.pending.at).toLocaleTimeString('es-MX'))}. El PC lo recoge en su próximo reporte (como mucho 5 min).">⏳ pendiente</span> <button class="mini ghost" data-cancel="${esc(p.id)}" title="Cancelar">✕</button>`;
+  if (p.pending && p.pending.action === 'timesync') return `<span class="pend" title="Pedido a las ${esc(new Date(p.pending.at).toLocaleTimeString('es-MX'))}. El PC lo recoge en su próximo reporte (como mucho 5 min).">⏳ pendiente</span> <button class="mini ghost" data-cancel="${esc(p.id)}" title="Cancelar">✕</button>`;
   if (canSync(p)) return `<button class="mini" data-sync="${esc(p.id)}" title="Sincronizar el reloj con la hora de internet">Sincronizar</button>`;
   return `<span class="tag" title="Este PC tiene el setup ${esc(p.script_version || '?')}: pásale el setup otra vez para poder sincronizarlo desde aquí.">setup antiguo</span>`;
 }
@@ -396,7 +399,23 @@ function tabResumen(p, now, a) {
   <div class="sect"><h4>Audio y acceso remoto</h4>${kv([['Focusrite', (p.focusrite || []).join(', ') || 'no conectada'],
     ['Micrófono', p.audio && p.audio.default_recording], ['Salida', p.audio && p.audio.default_playback],
     ['RustDesk', p.remote ? `servicio ${p.remote.rustdesk_service} (${p.remote.rustdesk_start}) · puerto ${p.remote.port} ${p.remote.listening ? '<span class="ok">abierto</span>' : '<span class="bad">CERRADO</span>'}` : 'no instalado', true]])}</div>
+  ${tabVigilante(p, now)}
   <div class="sect"><button class="danger" data-forget="${esc(p.id)}">Olvidar este PC</button> <span class="mut" style="font-size:12px;margin-left:8px">Si sigue encendido vuelve a aparecer en 5 minutos.</span></div>`;
+}
+
+function tabVigilante(p, now) {
+  if (p.watchdog === undefined) return '';   // PC con un setup sin vigilante
+  const paused = p.watchdog_paused_until && new Date(p.watchdog_paused_until) > now;
+  const pend = p.pending && p.pending.action && p.pending.action.startsWith('watch_');
+  const ev = (p.watchdog || []).slice().sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 8)
+    .map((e) => `${esc(e.app)} reabierta · ${dateTime(e.at)}`);
+  const btn = pend ? `<span class="pend">⏳ pendiente (como mucho 5 min)</span>`
+    : paused ? `<button class="mini" data-watch="watch_resume" data-id="${esc(p.id)}">Reanudar vigilante</button>`
+    : `<button class="mini" data-watch="watch_pause" data-id="${esc(p.id)}" title="Para cerrar apps a propósito (mantenimiento) sin que se vuelvan a abrir">Pausar 2 h</button>`;
+  return `<div class="sect"><h4>Vigilante de apps</h4>${kv([
+    ['Estado', (paused ? `<span class="warn">pausado hasta las ${new Date(p.watchdog_paused_until).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>` : '<span class="ok">activo</span>: si una app de arranque se cierra, la vuelve a abrir') + ' &nbsp;' + btn, true],
+    ['No consigue abrir', (p.watchdog_failed || []).join(', ') || null],
+    ['Últimas 24 h', ev.length ? ev.join('<br>') : 'nada que reabrir', true]])}</div>`;
 }
 
 function tabApps(p) {
@@ -478,6 +497,11 @@ document.addEventListener('click', async (e) => {
   const t = (s) => e.target.closest(s);
   let el;
   if ((el = t('[data-filter]'))) { filter = filter === el.dataset.filter ? 'all' : el.dataset.filter; render(); return; }
+  if ((el = t('[data-watch]'))) {
+    el.disabled = true;
+    try { await api('POST', '/api/command?id=' + encodeURIComponent(el.dataset.id), { action: el.dataset.watch }); } catch (err) { alert('No se pudo: ' + err.message); }
+    load(); return;
+  }
   if ((el = t('[data-sync]')) || (el = t('[data-cancel]'))) {
     e.stopPropagation();
     el.disabled = true;

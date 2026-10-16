@@ -185,6 +185,35 @@ if ($cfg -and $cfg.apps) {
     }
 }
 
+# ------------------------------------------------------------- vigilante
+# Si una app que arranca con Windows esta cerrada (crash, alguien la cerro...), se
+# lanza otra vez SU tarea de arranque: abre igual que al encender (OBS sin el aviso de
+# modo seguro). Maximo 3 veces por hora y app; si no basta, el panel avisa
+# (watchdog_failed). Se pausa desde el panel ("Pausar vigilante", 2 h por defecto).
+$WatchFile = Join-Path $Here 'watchdog.json'
+$watch = Get-Safe { Get-Content -LiteralPath $WatchFile -Raw | ConvertFrom-Json }
+if (-not $watch) { $watch = [pscustomobject]@{ pausedUntil = $null; restarts = @() } }
+$watchEvents = @()
+$watchFailed = @()
+$nowUtc = (Get-Date).ToUniversalTime()
+$restarts = @($watch.restarts | Where-Object { $_ -and ($nowUtc - [datetime]$_.at).TotalHours -lt 24 })
+$paused = $watch.pausedUntil -and ([datetime]$watch.pausedUntil) -gt $nowUtc
+$bootMin = if ($os) { ((Get-Date) - $os.LastBootUpTime).TotalMinutes } else { 0 }
+if ($cfg -and $user -and -not $Print -and -not $NoSend -and -not $paused -and $bootMin -ge 4) {
+    foreach ($app in @($cfg.apps)) {
+        $a = $apps | Where-Object { $_.name -eq [string]$app.name } | Select-Object -First 1
+        if (-not $a -or -not $app.task -or -not $a.autostart -or -not $a.installed -or $a.running -ne $false) { continue }
+        $recent = @($restarts | Where-Object { $_.app -eq $a.name -and ($nowUtc - [datetime]$_.at).TotalMinutes -lt 60 })
+        if ($recent.Count -ge 3) { $watchFailed += $a.name; continue }
+        $ok = $true
+        try { Start-ScheduledTask -TaskName ([string]$app.task) -ErrorAction Stop } catch { $ok = $false; $watchFailed += $a.name }
+        if ($ok) { $restarts += [pscustomobject]@{ app = $a.name; at = $nowUtc.ToString('o') } }
+    }
+}
+$watch.restarts = @($restarts)
+Get-Safe { $watch | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $WatchFile -Encoding UTF8 } | Out-Null
+$watchEvents = @($restarts | ForEach-Object { @{ app = [string]$_.app; at = [string]$_.at } })
+
 # ------------------------------------------------------------- scheduled tasks created by the setup
 $tasks = @()
 foreach ($t in @(Get-Safe { Get-ScheduledTask | Where-Object { $_.TaskName -like 'Kerma - *' -or $_.TaskName -like '* Startup' } })) {
@@ -247,6 +276,9 @@ $status = [ordered]@{
     audio          = $audio
     remote         = $remote
     last_command   = $lastCmd
+    watchdog       = $watchEvents
+    watchdog_failed = @($watchFailed)
+    watchdog_paused_until = if ($paused) { [string]$watch.pausedUntil } else { $null }
     warnings       = @($Warnings)
 }
 
@@ -307,6 +339,20 @@ try {
     $done = @()
     foreach ($c in @($resp.commands | Where-Object { $_ })) {
         switch ([string]$c.action) {
+            'watch_pause' {
+                $w = Get-Safe { Get-Content -LiteralPath $WatchFile -Raw | ConvertFrom-Json }
+                if (-not $w) { $w = [pscustomobject]@{ pausedUntil = $null; restarts = @() } }
+                $w.pausedUntil = (Get-Date).ToUniversalTime().AddHours(2).ToString('o')
+                Get-Safe { $w | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $WatchFile -Encoding UTF8 } | Out-Null
+                $status.watchdog_paused_until = $w.pausedUntil
+                $done += [ordered]@{ action = 'watch_pause'; id = [string]$c.id; at = (Get-Date).ToUniversalTime().ToString('o'); ok = $true }
+            }
+            'watch_resume' {
+                $w = Get-Safe { Get-Content -LiteralPath $WatchFile -Raw | ConvertFrom-Json }
+                if ($w) { $w.pausedUntil = $null; Get-Safe { $w | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $WatchFile -Encoding UTF8 } | Out-Null }
+                $status.watchdog_paused_until = $null
+                $done += [ordered]@{ action = 'watch_resume'; id = [string]$c.id; at = (Get-Date).ToUniversalTime().ToString('o'); ok = $true }
+            }
             'timesync' {
                 $r = Invoke-TimeFix 'panel'
                 $r.id = [string]$c.id
@@ -317,10 +363,12 @@ try {
         }
     }
     if ($done.Count) {
-        $status.last_command = $done[-1]
+        # last_command es la ultima sincronizacion del reloj (lo que ensena el panel)
+        $sync = @($done | Where-Object { $_.action -eq 'timesync' })
+        if ($sync.Count) { $status.last_command = $sync[-1] }
         $status.collected_at = (Get-Date).ToUniversalTime().ToString('o')
         $state = Join-Path $Here 'last_command.json'
-        try { $done[-1] | ConvertTo-Json -Compress | Set-Content -LiteralPath $state -Encoding UTF8 } catch { }
+        if ($sync.Count) { try { $sync[-1] | ConvertTo-Json -Compress | Set-Content -LiteralPath $state -Encoding UTF8 } catch { } }
         $resp = Send-Report $key
     }
 } catch {
