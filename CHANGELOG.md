@@ -2,6 +2,14 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.1] - 2026-10-16 - El vigilante respeta el setup y el modo mantenimiento
+
+### Corregido
+- **El vigilante ya no reabre apps mientras corre el setup.** En Blackjack 01 y Blackjack Unlimited 01 volvió a abrir OBS en mitad del setup, que lo había cerrado para copiar su configuración.
+
+### Cambiado
+- **Modo mantenimiento en el panel**, con ese nombre, en el detalle de cada PC (apartado "Vigilante de apps y mantenimiento"). Durante 2 horas el vigilante no reabre nada y Telegram no avisa de apps cerradas. La tarjeta del PC lo indica. Solo aparece en los PCs con la 5.12 o posterior.
+
 ## [5.12.0] - 2026-10-15 - Vigilante de apps y avisos por Telegram
 
 ### Añadido

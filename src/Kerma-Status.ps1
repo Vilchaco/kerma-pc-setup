@@ -199,7 +199,9 @@ $nowUtc = (Get-Date).ToUniversalTime()
 $restarts = @($watch.restarts | Where-Object { $_ -and ($nowUtc - [datetime]$_.at).TotalHours -lt 24 })
 $paused = $watch.pausedUntil -and ([datetime]$watch.pausedUntil) -gt $nowUtc
 $bootMin = if ($os) { ((Get-Date) - $os.LastBootUpTime).TotalMinutes } else { 0 }
-if ($cfg -and $user -and -not $Print -and -not $NoSend -and -not $paused -and $bootMin -ge 4) {
+# mientras corre el setup no se reabre nada: el setup cierra OBS, Stream Deck... a proposito
+$setupRunning = [bool](Get-Safe { Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop | Where-Object { $_.CommandLine -like '*Kerma-PCSetup.ps1*' } })
+if ($cfg -and $user -and -not $Print -and -not $NoSend -and -not $paused -and -not $setupRunning -and $bootMin -ge 4) {
     foreach ($app in @($cfg.apps)) {
         $a = $apps | Where-Object { $_.name -eq [string]$app.name } | Select-Object -First 1
         if (-not $a -or -not $app.task -or -not $a.autostart -or -not $a.installed -or $a.running -ne $false) { continue }

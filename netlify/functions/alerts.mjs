@@ -38,7 +38,9 @@ function problems(p, now) {
     return out;   // lo demas son datos viejos
   }
   const bootMin = p.windows && p.windows.boot_time ? (new Date(p.received_at) - new Date(p.windows.boot_time)) / 60000 : 99;
-  if (bootMin >= BOOT_GRACE_MIN && p.user) {
+  // en mantenimiento (desde el panel) las apps cerradas no avisan
+  const maint = p.watchdog_paused_until && new Date(p.watchdog_paused_until) > now;
+  if (bootMin >= BOOT_GRACE_MIN && p.user && !maint) {
     for (const a of p.apps || []) {
       if (a.autostart && a.installed && a.running === false) {
         out['app:' + a.name] = { text: `🔴 <b>${esc(name)}</b>: <b>${esc(a.name)}</b> cerrada`, ok: `✅ <b>${esc(name)}</b>: ${esc(a.name)} vuelve a estar abierta`, wait: APP_MIN };

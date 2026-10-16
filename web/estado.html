@@ -279,6 +279,7 @@ function analyse(p, now) {
   if (p.remote && !p.remote.listening && p.type !== 'MCR') issues.push(['warn', 'RustDesk no acepta conexiones']);
   const f = lastFix(p);
   if (f && !f.ok && (now - new Date(f.at)) < 3600000) issues.push(['warn', `La última sincronización no dejó el reloj en hora`]);
+  if (p.watchdog_paused_until && new Date(p.watchdog_paused_until) > now) issues.push(['info', `🔧 En mantenimiento hasta las ${new Date(p.watchdog_paused_until).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}: el vigilante no reabre apps`]);
   for (const n of p.watchdog_failed || []) issues.push(['bad', `${n}: el vigilante no consigue abrirla`]);
   const reopened = (p.watchdog || []).filter((e) => now - new Date(e.at) < 3600000);
   for (const e of reopened) issues.push(['warn', `${e.app} se cerró y el vigilante la reabrió (${new Date(e.at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })})`]);
@@ -410,10 +411,10 @@ function tabVigilante(p, now) {
   const ev = (p.watchdog || []).slice().sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 8)
     .map((e) => `${esc(e.app)} reabierta · ${dateTime(e.at)}`);
   const btn = pend ? `<span class="pend">⏳ pendiente (como mucho 5 min)</span>`
-    : paused ? `<button class="mini" data-watch="watch_resume" data-id="${esc(p.id)}">Reanudar vigilante</button>`
-    : `<button class="mini" data-watch="watch_pause" data-id="${esc(p.id)}" title="Para cerrar apps a propósito (mantenimiento) sin que se vuelvan a abrir">Pausar 2 h</button>`;
-  return `<div class="sect"><h4>Vigilante de apps</h4>${kv([
-    ['Estado', (paused ? `<span class="warn">pausado hasta las ${new Date(p.watchdog_paused_until).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>` : '<span class="ok">activo</span>: si una app de arranque se cierra, la vuelve a abrir') + ' &nbsp;' + btn, true],
+    : paused ? `<button class="mini" data-watch="watch_resume" data-id="${esc(p.id)}">Quitar modo mantenimiento</button>`
+    : `<button class="mini" data-watch="watch_pause" data-id="${esc(p.id)}" title="Para cerrar apps a propósito sin que el vigilante las vuelva a abrir">Modo mantenimiento (2 h)</button>`;
+  return `<div class="sect"><h4>Vigilante de apps y mantenimiento</h4>${kv([
+    ['Estado', (paused ? `<span class="warn">en mantenimiento hasta las ${new Date(p.watchdog_paused_until).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>` : '<span class="ok">activo</span>: si una app de arranque se cierra, la vuelve a abrir') + ' &nbsp;' + btn, true],
     ['No consigue abrir', (p.watchdog_failed || []).join(', ') || null],
     ['Últimas 24 h', ev.length ? ev.join('<br>') : 'nada que reabrir', true]])}</div>`;
 }
