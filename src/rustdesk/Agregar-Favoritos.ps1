@@ -161,13 +161,11 @@ foreach ($equipo in $Equipos) {
     $archivoPeer = Join-Path $carpetaPeers ($nombreArchivo + '.toml')
     if (Test-Path -LiteralPath $archivoPeer) {
         $textoActual = [System.IO.File]::ReadAllText($archivoPeer, [System.Text.Encoding]::UTF8)
-        $vista = [regex]::Match($textoActual, '(?m)^[ \t]*view_style[ \t]*=[^\r\n]*$')
-        if ($vista.Success) {
-            $textoNuevo = $textoActual.Substring(0, $vista.Index) + "view_style = 'adaptive'" +
-                $textoActual.Substring($vista.Index + $vista.Length)
-        } else {
-            $textoNuevo = "view_style = 'adaptive'`r`n" + $textoActual
-        }
+        # [Kerma PC Setup] con saltos de linea CRLF, '[^\r\n]*$' no encontraba la linea y se
+        # anadia OTRO view_style: TOML con clave repetida, que RustDesk descarta (MCR: solo
+        # quedaba el favorito con ficha propia). Ahora se quitan todas y se pone una.
+        $sinVista = [regex]::Replace($textoActual, '(?m)^[ \t]*view_style[ \t]*=[^\r\n]*(\r?\n)?', '')
+        $textoNuevo = "view_style = 'adaptive'`r`n" + $sinVista
         if ($textoNuevo -ne $textoActual) {
             $respaldoPeer = "$archivoPeer.$(Get-Date -Format yyyyMMdd-HHmmss).bak"
             Copy-Item -LiteralPath $archivoPeer -Destination $respaldoPeer -ErrorAction Stop

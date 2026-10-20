@@ -4,7 +4,9 @@ Commit : 24be0b3 (2026-10-08) "Preparar credenciales de RustDesk en cola para ev
 Files  : Configurar-Esta-PC.ps1, Instalar-Logo-Kerma.ps1, Agregar-Favoritos.ps1,
          Configurar-Display.ps1, Limpiar-Perfil-Cliente.ps1,
          Configurar-Contrasena-Saliente.ps1, logo-kerma-games.png
-Changes: none to the code. Line endings set to CRLF and a UTF-8 BOM added to
+Changes: Agregar-Favoritos.ps1, view_style of existing peer cards (CRLF regex bug that
+         duplicated the key and made RustDesk drop the card; 20-oct-2026, tell David).
+         Otherwise no code changes. Line endings set to CRLF and a UTF-8 BOM added to
          the files with accents, so Windows PowerShell 5.1 reads them right.
 Not copied: the interactive wizard (.cmd), Importar-Equipos.ps1 and
          Conectar-Equipos.ps1 - Kerma-PCSetup.ps1 drives these scripts itself

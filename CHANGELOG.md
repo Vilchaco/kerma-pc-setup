@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.8] - 2026-10-20 - Favoritos de RustDesk al repetir el setup
+
+### Corregido
+- **En el MCR solo aparecía Craps en Favoritos de RustDesk.** Al pasar el setup por segunda vez, el script de Favoritos (de David) no encontraba la línea `view_style` de cada ficha, porque los saltos de línea son de Windows, y añadía otra. Con la clave repetida, RustDesk descartaba esas fichas y solo quedaba la de Craps, que tenía ficha propia por haberte conectado a ella. Ahora se quitan todas las `view_style` y se pone una. Las fichas que se perdieron se vuelven a crear al pasar el setup. Hay que avisar a David para que lo corrija también en su repositorio.
+
 ## [5.12.7] - 2026-10-20 - Barra fija en el MCR
 
 ### Cambiado
