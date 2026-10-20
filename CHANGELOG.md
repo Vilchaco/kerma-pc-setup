@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.2] - 2026-10-19 - RustDesk en el MCR
+
+### Cambiado
+- **El PC del MCR (técnicos) lleva RustDesk en modo MASTER**, como los supervisores: lo instala, guarda la contraseña común y pone en Favoritos la lista de equipos para entrar a las mesas. Hasta ahora el MCR no tenía RustDesk.
+
 ## [5.12.1] - 2026-10-16 - El vigilante respeta el setup y el modo mantenimiento
 
 ### Corregido
