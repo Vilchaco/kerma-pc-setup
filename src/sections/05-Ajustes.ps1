@@ -37,6 +37,36 @@ function Invoke-NetworkTuning {
     }
 }
 
+function Set-TaskbarClean {
+    # Barra de tareas: busqueda oculta; Vista de tareas, Widgets y Reanudar desactivados.
+    # Tambien la usa la barra fija (15-BarraTareas) en PCs sin Tuning (MCR, oficina).
+    $tb = @()
+    try {
+        $sr = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search'
+        Initialize-RegistryKey $sr
+        Set-ItemProperty -Path $sr -Name SearchboxTaskbarMode -Value 0 -Type DWord
+        $tb += (L 'search hidden' 'búsqueda oculta')
+    } catch { Write-Warn ((L 'Taskbar search: {0}' 'Búsqueda de la barra: {0}') -f $_.Exception.Message) }
+    $adv = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    try { Set-ItemProperty -Path $adv -Name ShowTaskViewButton -Value 0 -Type DWord; $tb += (L 'Task view off' 'sin Vista de tareas') }
+    catch { Write-Warn ((L 'Task view: {0}' 'Vista de tareas: {0}') -f $_.Exception.Message) }
+    # Windows 11 reciente bloquea TaskbarDa: Widgets tambien se quita por directiva
+    try { Set-ItemProperty -Path $adv -Name TaskbarDa -Value 0 -Type DWord -ErrorAction Stop } catch { }
+    try {
+        $dsh = 'HKLM:\SOFTWARE\Policies\Microsoft\Dsh'
+        Initialize-RegistryKey $dsh
+        Set-ItemProperty -Path $dsh -Name AllowNewsAndInterests -Value 0 -Type DWord
+        $tb += (L 'Widgets off' 'sin Widgets')
+    } catch { Write-Warn "Widgets: $($_.Exception.Message)" }
+    try {
+        $res = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\CrossDeviceResume\Configuration'
+        Initialize-RegistryKey $res
+        Set-ItemProperty -Path $res -Name IsResumeAllowed -Value 0 -Type DWord
+        $tb += (L 'Resume off' 'sin Reanudar')
+    } catch { Write-Warn ((L 'Resume: {0}' 'Reanudar: {0}') -f $_.Exception.Message) }
+    return $tb
+}
+
 function Invoke-PcTuning($pc) {
     Write-Section (L 'PC SETTINGS  (power, USB, notifications, taskbar, network)' 'AJUSTES DEL PC  (energía, USB, notificaciones, barra de tareas, red)')
     Write-Host (L '  - Screen never turns off, the PC never sleeps or hibernates' '  - La pantalla nunca se apaga y el PC no se suspende ni hiberna')
@@ -74,31 +104,7 @@ function Invoke-PcTuning($pc) {
         Add-Change ((L 'Tuning: notifications + screen saver off ({0})' 'Ajustes: sin notificaciones ni salvapantallas ({0})') -f $env:USERNAME)
     } catch { Write-Warn ((L 'Notifications / screen saver: {0}' 'Notificaciones / salvapantallas: {0}') -f $_.Exception.Message) }
 
-    # Barra de tareas: busqueda oculta; Vista de tareas, Widgets y Reanudar desactivados
-    $tb = @()
-    try {
-        $sr = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search'
-        Initialize-RegistryKey $sr
-        Set-ItemProperty -Path $sr -Name SearchboxTaskbarMode -Value 0 -Type DWord
-        $tb += (L 'search hidden' 'búsqueda oculta')
-    } catch { Write-Warn ((L 'Taskbar search: {0}' 'Búsqueda de la barra: {0}') -f $_.Exception.Message) }
-    $adv = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
-    try { Set-ItemProperty -Path $adv -Name ShowTaskViewButton -Value 0 -Type DWord; $tb += (L 'Task view off' 'sin Vista de tareas') }
-    catch { Write-Warn ((L 'Task view: {0}' 'Vista de tareas: {0}') -f $_.Exception.Message) }
-    # Windows 11 reciente bloquea TaskbarDa: Widgets tambien se quita por directiva
-    try { Set-ItemProperty -Path $adv -Name TaskbarDa -Value 0 -Type DWord -ErrorAction Stop } catch { }
-    try {
-        $dsh = 'HKLM:\SOFTWARE\Policies\Microsoft\Dsh'
-        Initialize-RegistryKey $dsh
-        Set-ItemProperty -Path $dsh -Name AllowNewsAndInterests -Value 0 -Type DWord
-        $tb += (L 'Widgets off' 'sin Widgets')
-    } catch { Write-Warn "Widgets: $($_.Exception.Message)" }
-    try {
-        $res = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\CrossDeviceResume\Configuration'
-        Initialize-RegistryKey $res
-        Set-ItemProperty -Path $res -Name IsResumeAllowed -Value 0 -Type DWord
-        $tb += (L 'Resume off' 'sin Reanudar')
-    } catch { Write-Warn ((L 'Resume: {0}' 'Reanudar: {0}') -f $_.Exception.Message) }
+    $tb = @(Set-TaskbarClean)
     if ($tb.Count) {
         Write-Ok ((L 'Taskbar: {0}.' 'Barra de tareas: {0}.') -f ($tb -join ', '))
         Add-Change ((L 'Tuning: taskbar {0}' 'Ajustes: barra de tareas {0}') -f ($tb -join ', '))

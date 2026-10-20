@@ -57,6 +57,8 @@
         RustDesk = 'Master'
         Audio = $true; ProgramSettings = $false; Remote = $false
         Autostart = @()
+        # barra fija como en las mesas, con las apps de los tecnicos
+        Taskbar = @('Explorer', 'Chrome', 'RustDesk', 'IVMS4200'); TaskbarLocked = $true
         Wallpaper = $true; Panel = $true
     }
     Office = @{

@@ -75,6 +75,7 @@
         OBS        = @{ Name = 'OBS Studio';          Exe = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe';        Lnk = 'OBS Studio*' }
         StreamDeck = @{ Name = 'Stream Deck';         Exe = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';       Lnk = '*Stream Deck' }
         HdmiMirror = @{ Name = 'HDMI Mirror';         Exe = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';                       Lnk = '' }
+        IVMS4200   = @{ Name = 'iVMS-4200';           Exe = '';                                                           Lnk = 'iVMS-4200*' }
         Focusrite  = @{ Name = 'Focusrite Control 2'; Exe = '';                                                           Lnk = 'Focusrite Control 2' }
     }
 

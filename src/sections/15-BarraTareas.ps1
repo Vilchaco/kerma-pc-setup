@@ -92,6 +92,9 @@ function Invoke-TaskbarPins($pc) {
     New-ItemProperty -Path $pol -Name StartLayoutFile -Value $file -PropertyType ExpandString -Force | Out-Null
     New-ItemProperty -Path $pol -Name LockedStartLayout -Value ([int][bool]$Prof.TaskbarLocked) -PropertyType DWord -Force | Out-Null
     # los iconos que el usuario fijo a mano dejan de valer: que no se mezclen
+    # como en las mesas: sin buscador, Vista de tareas, Widgets ni Reanudar
+    $clean = @(Set-TaskbarClean)
+    if ($clean.Count) { Write-Ok ((L 'Taskbar: {0}.' 'Barra de tareas: {0}.') -f ($clean -join ', ')) }
     if (Test-SameUserAsConsole) {
         Remove-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband' -Recurse -Force -ErrorAction SilentlyContinue
         Get-ChildItem -LiteralPath (Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar') -Filter '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue

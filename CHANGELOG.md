@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.7] - 2026-10-20 - Barra fija en el MCR
+
+### Cambiado
+- **El MCR lleva la barra de tareas fija** con Explorador, Chrome, RustDesk e iVMS-4200.
+- **La barra fija también quita el buscador, la Vista de tareas, los Widgets y Reanudar**, como en las mesas, aunque el PC no lleve el resto de ajustes de mesa (energía, notificaciones...). Afecta al MCR y a los PCs de oficina. Las notificaciones de Windows se mantienen en el MCR, para los avisos de Telegram.
+
 ## [5.12.6] - 2026-10-20 - Barra de tareas en los PCs de oficina
 
 ### Cambiado
