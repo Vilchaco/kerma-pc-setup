@@ -155,8 +155,9 @@ function Test-KermaConfig {
     }
     foreach ($k in $Packages.Keys) {
         $p = $Packages[$k]
-        if (@('winget', 'github', 'bitfocus') -notcontains $p.Source) { $errors.Add("programa ${k}: Source '$($p.Source)' no valido") }
+        if (@('winget', 'github', 'bitfocus', 'url') -notcontains $p.Source) { $errors.Add("programa ${k}: Source '$($p.Source)' no valido") }
         if ($p.Source -eq 'bitfocus' -and (-not $p.Product -or -not $p.Target)) { $errors.Add("programa ${k}: falta Product o Target") }
+        if ($p.Source -eq 'url' -and (-not $p.Url -or -not $p.CheckReg)) { $errors.Add("programa ${k}: falta Url o CheckReg") }
         if ($p.Source -eq 'github' -and (-not $p.Repo -or -not $p.Asset)) { $errors.Add("programa ${k}: falta Repo o Asset") }
         if ($p.Requires -and -not $Packages.ContainsKey($p.Requires)) { $errors.Add("programa ${k}: Requires '$($p.Requires)' no existe") }
     }

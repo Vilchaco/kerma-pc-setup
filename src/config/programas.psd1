@@ -6,6 +6,8 @@
     #  Packages: programas que el script instala (el orden lo da el perfil)
     #  Source 'winget' : Id = paquete de winget (winget search <nombre>)
     #  Source 'bitfocus': Product / Target de la API de descargas de Bitfocus (.exe NSIS)
+    #  Source 'url'    : Url (+ Referer) del instalador del fabricante, Args, CheckReg =
+    #                    nombre en Programas de Windows (comodines), TimeoutMin
     #  Source 'github' : Repo = owner/name de un repositorio PUBLICO,
     #                    Asset = regex del archivo de la release. .msi =
     #                    instalacion silenciosa; .zip = se extrae en
@@ -42,6 +44,13 @@
         # de descargas de Bitfocus (instalador NSIS, para todo el equipo)
         CompanionSatellite = @{ Name = 'Companion Satellite'; Source = 'bitfocus'; Product = 'companion-satellite'; Target = 'win-x64'
                         Check = 'C:\Program Files\Companion Satellite\Companion Satellite.exe'; Process = 'Companion Satellite' }
+        # iVMS-4200 (Hikvision): ver y gestionar las camaras de la red (MCR). No esta en winget;
+        # la web de Hikvision solo deja descargar con cabeceras de navegador (Referer). Su
+        # instalador es propio: se intenta en silencio (/silent) y, si abre ventana, se termina a mano.
+        IVMS4200   = @{ Name = 'iVMS-4200 (camaras Hikvision)'; Source = 'url'
+                        Url = 'https://www.hikvision.com/content/dam/hikvision/en/support/download/vms/ivms4200-series/software-download/v3-14-1-4/iVMS-4200V3.14.1.4_E.exe'
+                        Referer = 'https://www.hikvision.com/en/support/download/software/ivms4200-series/'
+                        Args = '/silent'; CheckReg = 'iVMS-4200*'; TimeoutMin = 20 }
         Deskflow   = @{ Name = 'Deskflow';      Source = 'winget'; Id = 'Deskflow.Deskflow';    Check = 'C:\Program Files\Deskflow\deskflow.exe' }
         # Id sale de ajustes.psd1 (Audio.ScarlettPackageId); se instala si hay una Focusrite conectada.
         # Su paquete de winget solo pasa /silent y el instalador (Inno) pregunta si reiniciar: se

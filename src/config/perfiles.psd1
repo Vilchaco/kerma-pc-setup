@@ -53,7 +53,7 @@
         Time = $true; Rename = $true; Login = 'Keep'; WindowsUpdate = 'Keep'; StaticIP = $true
         Tuning = $false; RemoveApps = $true; RemoveOffice = $true; RemoveOneDrive = $true
         # RustDesk MASTER: los tecnicos entran a las mesas desde aqui (Fran, 19-oct; antes sin RustDesk)
-        Programs = @('Chrome', 'RustDesk')
+        Programs = @('Chrome', 'RustDesk', 'IVMS4200')
         RustDesk = 'Master'
         Audio = $true; ProgramSettings = $false; Remote = $false
         Autostart = @()

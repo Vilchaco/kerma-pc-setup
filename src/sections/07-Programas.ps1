@@ -93,10 +93,41 @@ function Invoke-WingetLive([string]$key, [string[]]$arguments) {
     return @{ ExitCode = $code; Code = ('{0} (0x{1:X8})' -f $code, $code); Tail = $tail }
 }
 
+# Programa instalado segun "Programas y caracteristicas" (DisplayName con comodines)
+function Test-InstalledProgram([string]$pattern) {
+    if (-not $pattern) { return $false }
+    foreach ($k in @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*')) {
+        if (@(Get-ItemProperty -Path $k -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like $pattern }).Count) { return $true }
+    }
+    return $false
+}
+
 function Install-KermaPackage($key, $p) {
     $marker = if ($p.Check) { Join-Path (Split-Path -Path $p.Check -Parent) ".kerma-version-$key" } else { '' }
     if ($p.Requires -and -not (Test-Path -LiteralPath $Packages[$p.Requires].Check)) {
         Write-Skip ((L '{0}: needs {1}, which is not installed.' '{0}: necesita {1}, que no está instalado.') -f $p.Name, $Packages[$p.Requires].Name)
+        return
+    }
+
+    if ($p.Source -eq 'url') {
+        # instalador de la web del fabricante (iVMS-4200 de Hikvision): solo se descarga
+        # con cabeceras de navegador; se instala si no aparece en Programas de Windows
+        if (Test-InstalledProgram $p.CheckReg) { Write-Ok ((L '{0}: already installed.' '{0}: ya estaba instalado.') -f $p.Name); return }
+        $dl = 'C:\KermaSetup\downloads'
+        New-Item -ItemType Directory -Path $dl -Force | Out-Null
+        $file = Join-Path $dl ([IO.Path]::GetFileName(([uri]$p.Url).AbsolutePath))
+        Write-Host ((L '  Downloading {0}...' '  Descargando {0}...') -f $p.Name)
+        $h = @{}
+        if ($p.Referer) { $h['Referer'] = $p.Referer }
+        Invoke-WebRequest -Uri $p.Url -OutFile $file -UseBasicParsing -Headers $h -UserAgent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
+        Write-Host ((L '  Installing {0} (if its installer shows a window, finish it by hand)...' '  Instalando {0} (si su instalador muestra una ventana, termínala a mano)...') -f $p.Name)
+        $proc = Start-Process -FilePath $file -ArgumentList ([string]$p.Args) -PassThru
+        $mins = if ($p.TimeoutMin) { [int]$p.TimeoutMin } else { 20 }
+        if (-not $proc.WaitForExit($mins * 60000)) { Write-Warn ((L '{0}: the installer is still open after {1} min - left running.' '{0}: el instalador sigue abierto tras {1} min; se deja abierto.') -f $p.Name, $mins) }
+        if (Test-InstalledProgram $p.CheckReg) {
+            Write-Ok ((L '{0} installed.' '{0} instalado.') -f $p.Name)
+            Add-Change ((L 'Installed: {0}' 'Instalado: {0}') -f $p.Name)
+        } else { Write-Fail ((L '{0}: not found in Windows programs after the installer.' '{0}: no aparece en los programas de Windows tras el instalador.') -f $p.Name) }
         return
     }
 

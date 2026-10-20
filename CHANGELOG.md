@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.3] - 2026-10-19 - Cámaras Hikvision en el MCR
+
+### Añadido
+- **iVMS-4200 en el PC del MCR**, para ver y gestionar las cámaras Hikvision de la red. No está en winget: el script descarga la versión oficial 3.14.1.4 de la web de Hikvision y prueba a instalarla en silencio. Si su instalador abre una ventana, hay que terminarla a mano. Se da por instalado cuando aparece en los programas de Windows.
+- Nuevo tipo de programa `url` (descarga directa del fabricante) para los que no están en winget ni en GitHub.
+
 ## [5.12.2] - 2026-10-19 - RustDesk en el MCR
 
 ### Cambiado
