@@ -68,6 +68,8 @@
         RustDesk = 'Client'
         Audio = $true; ProgramSettings = $false; Remote = $false
         Autostart = @('Cameras')
+        # barra de tareas como en las mesas, pero sin sus apps (OBS, Stream Deck, HDMI Mirror...)
+        Taskbar = @('Explorer', 'Chrome', 'RustDesk'); TaskbarLocked = $true
         Wallpaper = $true; Panel = $true
     }
 }

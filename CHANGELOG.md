@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.6] - 2026-10-20 - Barra de tareas en los PCs de oficina
+
+### Cambiado
+- **Los PCs de oficina llevan la barra de tareas fija, como las mesas,** pero solo con Explorador, Chrome y RustDesk: sin OBS, Stream Deck, HDMI Mirror ni Focusrite. Se quitan Edge, la Tienda y el resto de iconos de Windows.
+
 ## [5.12.5] - 2026-10-20 - Arreglos de la instalación del MCR
 
 ### Corregido
