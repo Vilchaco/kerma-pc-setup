@@ -76,6 +76,7 @@ function Invoke-WingetLive([string]$key, [string[]]$arguments) {
     $log = Join-Path $logDir ("winget-{0}-{1}.log" -f $key, (Get-Date -Format 'yyyyMMdd-HHmmss'))
     $argLine = (($arguments + @('--log', $log)) | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
     $proc = Start-Process -FilePath $script:Winget -ArgumentList $argLine -NoNewWindow -PassThru
+    $null = $proc.Handle   # en PowerShell 5.1, sin esto ExitCode sale vacio (MCR: "codigo  (0x)")
     # tiempo maximo: un instalador colgado (Stream Deck tardo mas de 30 min)
     # no puede parar el setup, y Ctrl+C no corta un programa externo
     if (-not $proc.WaitForExit($WingetTimeoutMin * 60 * 1000)) {
@@ -86,6 +87,7 @@ function Invoke-WingetLive([string]$key, [string[]]$arguments) {
         return @{ ExitCode = -1; Code = (L 'timeout' 'tiempo agotado'); Tail = ''; TimedOut = $true }
     }
     $code = $proc.ExitCode
+    if ($null -eq $code) { $code = -1 }
     $tail = ''
     if ($code -ne 0 -and (Test-Path -LiteralPath $log)) {
         $tail = ((Get-Content -LiteralPath $log -Tail 8 -ErrorAction SilentlyContinue) | ForEach-Object { '    ' + $_ }) -join [Environment]::NewLine
@@ -165,6 +167,21 @@ function Install-KermaPackage($key, $p) {
         } else {
             Write-Fail ((L '{0} not installed (winget code {1}).' '{0} no se instaló (código de winget {1}).') -f $p.Name, $r.Code)
             if ($r.Tail) { Write-Host $r.Tail }
+            # plan B: el .msi oficial del fabricante (Chrome en el MCR: winget fallo en 4 s)
+            if ($p.FallbackMsi) {
+                try {
+                    $dl = 'C:\KermaSetup\downloads'
+                    New-Item -ItemType Directory -Path $dl -Force | Out-Null
+                    $msi = Join-Path $dl ([IO.Path]::GetFileName(([uri]$p.FallbackMsi).AbsolutePath))
+                    Write-Host ((L '  Trying the official installer of {0} instead...' '  Probando con el instalador oficial de {0}...') -f $p.Name)
+                    Invoke-WebRequest -Uri $p.FallbackMsi -OutFile $msi -UseBasicParsing
+                    $mp = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$msi`" /qn /norestart" -Wait -PassThru
+                    if ($p.Check -and (Test-Path -LiteralPath $p.Check)) {
+                        Write-Ok ((L '{0} installed (official installer).' '{0} instalado (instalador oficial).') -f $p.Name)
+                        Add-Change ((L 'Installed: {0}' 'Instalado: {0}') -f $p.Name)
+                    } else { Write-Fail ((L '{0}: the official installer did not work either (code {1}).' '{0}: tampoco funcionó el instalador oficial (código {1}).') -f $p.Name, $mp.ExitCode) }
+                } catch { Write-Fail ((L '{0}: official installer: {1}' '{0}: instalador oficial: {1}') -f $p.Name, $_.Exception.Message) }
+            }
         }
         return
     }

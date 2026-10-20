@@ -191,7 +191,7 @@ if ($cfg -and $cfg.apps) {
 # modo seguro). Maximo 3 veces por hora y app; si no basta, el panel avisa
 # (watchdog_failed). Se pausa desde el panel ("Pausar vigilante", 2 h por defecto).
 $WatchFile = Join-Path $Here 'watchdog.json'
-$watch = Get-Safe { Get-Content -LiteralPath $WatchFile -Raw | ConvertFrom-Json }
+$watch = if (Test-Path -LiteralPath $WatchFile) { Get-Safe { Get-Content -LiteralPath $WatchFile -Raw | ConvertFrom-Json } } else { $null }
 if (-not $watch) { $watch = [pscustomobject]@{ pausedUntil = $null; restarts = @() } }
 $watchEvents = @()
 $watchFailed = @()

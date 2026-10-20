@@ -16,12 +16,14 @@
     #  Override        : (winget) argumentos del instalador en lugar de los
     #                    del paquete, si los suyos no son del todo silenciosos
     #  Restart         : $true = pide reiniciar al final si se instala
+    #  FallbackMsi     : (winget) .msi oficial por si winget falla
     #  Tag             : (github) version fija en vez de la ultima
     #  File / FileAs   : (github .zip) copiar solo ese archivo del zip (regex sobre su
     #                    ruta dentro del zip) a InstallTo con el nombre FileAs
     # -----------------------------------------------------------------
     Packages = @{
-        Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome';        Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe' }
+        Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome';        Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+                        FallbackMsi = 'https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi' }
         RustDesk   = @{ Name = 'RustDesk';      Source = 'github'; Repo = 'rustdesk/rustdesk';  Asset = '^rustdesk-[0-9.]+-x86_64\.msi$';  Check = 'C:\Program Files\RustDesk\rustdesk.exe' }
         StreamDeck = @{ Name = 'Stream Deck';   Source = 'winget'; Id = 'Elgato.StreamDeck';    Check = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe' }
         # HDMI Mirror guarda hdmimirror.config.json junto a su exe: la carpeta debe ser escribible

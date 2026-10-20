@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.5] - 2026-10-20 - Arreglos de la instalación del MCR
+
+### Corregido
+- **Chrome no se instaló en el MCR** y el error salía sin código. En PowerShell 5.1 hay que tocar el proceso al lanzarlo para poder leer luego su código de salida; ahora se hace, y el log dice por qué falla winget. Si winget falla con Chrome, el script prueba con el instalador oficial de Google (.msi para empresas).
+- **La comprobación final mostraba un error rojo** por un archivo del vigilante que aún no existía (`watchdog.json`). Era inofensivo; ya no sale.
+
 ## [5.12.4] - 2026-10-19 - MCR en 192.168.0.101
 
 ### Cambiado
