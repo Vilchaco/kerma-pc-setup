@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.12.4] - 2026-10-19 - MCR en 192.168.0.101
+
+### Cambiado
+- **El PC del MCR pasa a 192.168.0.101** (antes 192.168.1.79), por indicación de David. El script la pone al pasar el setup en ese PC.
+
 ## [5.12.3] - 2026-10-19 - Cámaras Hikvision en el MCR
 
 ### Añadido
