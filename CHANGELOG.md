@@ -2,6 +2,20 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.14.0] - 2026-10-28 - Actualizar los programas al repasar un PC
+
+### Añadido
+- **Al volver a pasar el script, los programas que ya están instalados se actualizan si hay versión nueva.** Antes solo se actualizaban HDMI Mirror y atkAudio; el resto se daba por bueno si ya estaba instalado.
+  - **Stream Deck, OBS y Focusrite Control 2:** winget mira si hay versión nueva; si la hay, cierra el programa y lo actualiza (`antes -> después` en pantalla y en el log). Si está al día, sigue sin tardar.
+  - **Companion Satellite:** se compara con la última versión de Bitfocus y se actualiza igual.
+  - **HDMI Mirror y atkAudio:** como antes, a la última release de GitHub.
+- La lista de programas del principio dice qué se va a buscar: «instalado: buscar actualización» o «instalado (versión fija)».
+
+### Sin cambios a propósito
+- **Chrome** se actualiza solo (Google Update).
+- **RustDesk** no se actualiza solo: hacerlo corta la conexión de RustDesk y reinstala su servicio. Se actualiza a mano.
+- **Alt Denoiser** (v1.0.1) e **iVMS-4200** (v3.14.1.4) son versiones fijas.
+
 ## [5.13.0] - 2026-10-28 - Brandbook de Kerma Games 2026
 
 ### Cambiado

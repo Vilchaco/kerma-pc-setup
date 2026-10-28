@@ -116,7 +116,7 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Red | Muestra los adaptadores y pone una IP fija o vuelve a DHCP. Solo hay que teclear la IP. |
 | Ajustes del PC | Pantalla siempre encendida, sin suspensión, USB sin ahorro de energía, sin notificaciones ni salvapantallas. Barra de tareas sin búsqueda, Vista de tareas, Widgets ni Reanudar. Red con encendido remoto y sin ahorro de energía. |
 | Quitar apps preinstaladas | Quita Solitario, Xbox, Teams, apps de Bing, Candy Crush y similares, Microsoft 365 de prueba y OneDrive, en todos los tipos de PC. |
-| Instalar programas | Instala o actualiza los programas de ese tipo de PC. |
+| Instalar programas | Instala los programas de ese tipo de PC y, si ya están, los actualiza cuando hay versión nueva (winget, GitHub o Bitfocus). Chrome se actualiza solo; RustDesk, Alt Denoiser e iVMS-4200 se quedan en su versión. |
 | Acceso remoto | Configura RustDesk por IP directa: CLIENT en mesas, MASTER en supervisores. |
 | Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck, y el tema Kerma de OBS. El perfil de Stream Deck se sustituye si cambia en el repositorio (con copia del anterior en `C:\KermaSetup\backup`). |
 | Kerma Remote | En las mesas: recibe en el puerto 10010 las órdenes del Companion central (servidor 192.168.3.254), al que van los Stream Deck de los supervisores, y las pega en la Dealer App. Solo acepta las órdenes de la lista de su juego, solo desde el servidor y con la clave común, que el setup toma del panel. |

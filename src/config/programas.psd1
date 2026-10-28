@@ -17,19 +17,24 @@
     #                    del paquete, si los suyos no son del todo silenciosos
     #  Restart         : $true = pide reiniciar al final si se instala
     #  FallbackMsi     : (winget) .msi oficial por si winget falla
-    #  Tag             : (github) version fija en vez de la ultima
+    #  Tag             : (github) version fija en vez de la ultima (no se actualiza)
+    #  NoUpdate        : $true = si ya esta instalado no se busca version nueva
+    #                    (al repasar un PC el resto se actualiza: winget upgrade,
+    #                    o la release nueva de GitHub / Bitfocus; 'url' es version fija)
+    #  Process         : proceso(s) que se cierran antes de instalar / actualizar
     #  File / FileAs   : (github .zip) copiar solo ese archivo del zip (regex sobre su
     #                    ruta dentro del zip) a InstallTo con el nombre FileAs
     # -----------------------------------------------------------------
     Packages = @{
-        Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome';        Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+        Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome';        Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe'; NoUpdate = $true   # se actualiza solo (Google Update)
                         FallbackMsi = 'https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi' }
-        RustDesk   = @{ Name = 'RustDesk';      Source = 'github'; Repo = 'rustdesk/rustdesk';  Asset = '^rustdesk-[0-9.]+-x86_64\.msi$';  Check = 'C:\Program Files\RustDesk\rustdesk.exe' }
-        StreamDeck = @{ Name = 'Stream Deck';   Source = 'winget'; Id = 'Elgato.StreamDeck';    Check = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe' }
+        RustDesk   = @{ Name = 'RustDesk';      Source = 'github'; Repo = 'rustdesk/rustdesk';  Asset = '^rustdesk-[0-9.]+-x86_64\.msi$';  Check = 'C:\Program Files\RustDesk\rustdesk.exe'
+                        NoUpdate = $true }   # actualizarlo corta la conexion de RustDesk y reinstala su servicio: a mano
+        StreamDeck = @{ Name = 'Stream Deck';   Source = 'winget'; Id = 'Elgato.StreamDeck';    Check = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe'; Process = 'StreamDeck' }
         # HDMI Mirror guarda hdmimirror.config.json junto a su exe: la carpeta debe ser escribible
         HdmiMirror = @{ Name = 'HDMI Mirror';   Source = 'github'; Repo = 'Vilchaco/kerma-hdmi-mirror'; Asset = '^HdmiMirror-v[0-9.]+\.zip$'
                         InstallTo = 'C:\Kerma'; Check = 'C:\Kerma\HdmiMirror\HdmiMirror.exe'; Process = 'HdmiMirror'; UserWritable = 'C:\Kerma\HdmiMirror' }
-        OBS        = @{ Name = 'OBS Studio';    Source = 'winget'; Id = 'OBSProject.OBSStudio'; Check = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe' }
+        OBS        = @{ Name = 'OBS Studio';    Source = 'winget'; Id = 'OBSProject.OBSStudio'; Check = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Process = 'obs64' }
         # atkAudio: VST3 dentro de OBS (gratis, AGPL). El zip de la release trae un zip por
         # plataforma; el portable de Windows se extrae en la carpeta de OBS.
         AtkAudio   = @{ Name = 'atkAudio (VST3 in OBS)'; Source = 'github'; Repo = 'atkAudio/PluginForObsRelease'; Asset = '^atkAudio-PluginForObs\.zip$'
@@ -57,7 +62,7 @@
         # Id sale de ajustes.psd1 (Audio.ScarlettPackageId); se instala si hay una Focusrite conectada.
         # Su paquete de winget solo pasa /silent y el instalador (Inno) pregunta si reiniciar: se
         # sustituye por el modo totalmente silencioso y el script reinicia al final.
-        Focusrite  = @{ Name = 'Focusrite Control 2 (Scarlett)'; Source = 'winget'; Id = ''; Check = ''; Override = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-'; Restart = $true }
+        Focusrite  = @{ Name = 'Focusrite Control 2 (Scarlett)'; Source = 'winget'; Id = ''; Check = ''; Override = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-'; Restart = $true; Process = 'Focusrite Control 2' }
     }
 
     # -----------------------------------------------------------------

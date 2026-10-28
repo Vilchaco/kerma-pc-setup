@@ -104,6 +104,65 @@ function Test-InstalledProgram([string]$pattern) {
     return $false
 }
 
+# Codigos de winget upgrade que no son un fallo (lista oficial de winget: returnCodes.md)
+$WingetUpToDate = @('8A15002B', '8A15004F') | ForEach-Object { [Convert]::ToInt32($_, 16) }                         # no hay version mas nueva
+$WingetNoUpgrade = @('8A150014', '8A150050', '8A150068', '8A15008E', '8A150114') | ForEach-Object { [Convert]::ToInt32($_, 16) }   # winget no sabe actualizarlo
+$WingetRebootOk = @('8A150109', '8A15010B') | ForEach-Object { [Convert]::ToInt32($_, 16) }                         # actualizado, falta reiniciar
+
+# Programa de winget ya instalado: si hay version nueva, se cierra y se actualiza
+function Update-WingetPackage($key, $p) {
+    $chk = Invoke-Native $script:Winget @('list', '--id', $p.Id, '--exact', '--upgrade-available', '--accept-source-agreements', '--disable-interactivity')
+    if ($chk.ExitCode -ne 0) { Write-Ok ((L '{0}: installed and up to date.' '{0}: instalado y al día.') -f $p.Name); return }
+    # tabla de winget: Nombre  Id  Version  Disponible  Origen
+    $from = ''; $to = ''
+    $row = @($chk.Text -split "`r?`n" | Where-Object { $_ -match ('(^|\s)' + [regex]::Escape($p.Id) + '\s') }) | Select-Object -First 1
+    if ($row) {
+        $t = @(($row -split [regex]::Escape($p.Id), 2)[1].Trim() -split '\s+')
+        if ($t.Count -ge 2) { $from = $t[0]; $to = $t[1] }
+    }
+    $vers = if ($from -and $to) { " $from -> $to" } else { '' }
+    Write-Host ((L '  {0}: new version, updating{1}...' '  {0}: hay versión nueva, actualizando{1}...') -f $p.Name, $vers)
+    if ($p.Process) { Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }
+    $upArgs = @('upgrade', '--id', $p.Id, '--exact', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
+    if ($p.Override) { $upArgs += @('--override', $p.Override) }
+    $r = Invoke-WingetLive $key $upArgs
+    if ($r.ExitCode -eq 0 -or $WingetRebootOk -contains $r.ExitCode) {
+        Write-Ok ((L '{0} updated{1}.' '{0} actualizado{1}.') -f $p.Name, $vers)
+        if ($p.Restart -or $r.ExitCode -ne 0) { $State.NeedsRestart = $true }
+        Add-Change ((L 'Updated: {0}{1}' 'Actualizado: {0}{1}') -f $p.Name, $vers)
+    } elseif ($WingetUpToDate -contains $r.ExitCode) {
+        Write-Ok ((L '{0}: installed and up to date.' '{0}: instalado y al día.') -f $p.Name)
+    } elseif ($WingetNoUpgrade -contains $r.ExitCode) {
+        Write-Warn ((L '{0}: winget cannot update it (code {1}); the installed version stays.' '{0}: winget no puede actualizarlo (código {1}); se queda la versión instalada.') -f $p.Name, $r.Code)
+    } else {
+        Write-Fail ((L '{0} not updated (winget code {1}); the installed version stays.' '{0} no se actualizó (código de winget {1}); se queda la versión instalada.') -f $p.Name, $r.Code)
+        if ($r.Tail) { Write-Host $r.Tail }
+    }
+}
+
+# Version de un programa instalado sin marca del script (instalado a mano): la del exe
+function Get-ExeVersion([string]$path) {
+    try {
+        $vi = (Get-Item -LiteralPath $path -ErrorAction Stop).VersionInfo
+        $v = if ($vi.ProductVersion) { $vi.ProductVersion } else { $vi.FileVersion }
+        return ([string]$v).Trim()
+    } catch { return '' }
+}
+
+# $true si la release $tag es mas nueva que $current (v1.2.3, 1.2.3.0...). Si no se
+# pueden comparar como version, basta con que sean distintas.
+function Test-NewerTag([string]$current, [string]$tag) {
+    $a = ($current -replace '^[vV]', '' -replace '[-+ ].*$', '').Trim()
+    $b = ($tag -replace '^[vV]', '' -replace '[-+ ].*$', '').Trim()
+    $va = $null; $vb = $null
+    if ([version]::TryParse($a, [ref]$va) -and [version]::TryParse($b, [ref]$vb)) {
+        $va = [version]('{0}.{1}.{2}' -f $va.Major, $va.Minor, [Math]::Max($va.Build, 0))
+        $vb = [version]('{0}.{1}.{2}' -f $vb.Major, $vb.Minor, [Math]::Max($vb.Build, 0))
+        return ($vb -gt $va)
+    }
+    return ($a -ne $b)
+}
+
 function Install-KermaPackage($key, $p) {
     $marker = if ($p.Check) { Join-Path (Split-Path -Path $p.Check -Parent) ".kerma-version-$key" } else { '' }
     if ($p.Requires -and -not (Test-Path -LiteralPath $Packages[$p.Requires].Check)) {
@@ -134,21 +193,28 @@ function Install-KermaPackage($key, $p) {
     }
 
     if ($p.Source -eq 'winget') {
-        if ($p.Check -and (Test-Path -LiteralPath $p.Check)) { Write-Ok ((L '{0}: already installed.' '{0}: ya estaba instalado.') -f $p.Name); return }
+        $installed = [bool]($p.Check -and (Test-Path -LiteralPath $p.Check))
+        if ($installed -and $p.NoUpdate) { Write-Ok ((L '{0}: already installed.' '{0}: ya estaba instalado.') -f $p.Name); return }
         if (-not $script:Winget) {
             $script:Winget = Initialize-Winget
             if ($script:Winget -and -not (Initialize-WingetSource $script:Winget)) { $script:WingetBroken = $true }
         }
-        if ($script:WingetBroken) { Write-Skip ((L '{0}: winget catalog not available.' '{0}: catálogo de winget no disponible.') -f $p.Name); return }
+        if ($script:WingetBroken) {
+            if ($installed) { Write-Ok ((L '{0}: already installed (winget catalog not available: updates not checked).' '{0}: ya estaba instalado (sin catálogo de winget: no se buscan actualizaciones).') -f $p.Name); return }
+            Write-Skip ((L '{0}: winget catalog not available.' '{0}: catálogo de winget no disponible.') -f $p.Name); return
+        }
         if (-not $script:Winget) {
+            if ($installed) { Write-Ok ((L '{0}: already installed (no winget: updates not checked).' '{0}: ya estaba instalado (sin winget: no se buscan actualizaciones).') -f $p.Name); return }
             Write-Fail ((L '{0}: winget is not available on this PC, so it cannot be installed automatically.' '{0}: este PC no tiene winget, no se puede instalar solo.') -f $p.Name)
             Write-Note (L '  Windows LTSC / IoT editions do not include winget. Install it by hand.' '  Las ediciones LTSC / IoT de Windows no traen winget. Instálalo a mano.')
             return
         }
         if (-not $p.Check) {
             $pre = Invoke-Native $script:Winget @('list', '--id', $p.Id, '--exact', '--accept-source-agreements', '--disable-interactivity')
-            if ($pre.ExitCode -eq 0) { Write-Ok ((L '{0}: already installed.' '{0}: ya estaba instalado.') -f $p.Name); return }
+            $installed = $pre.ExitCode -eq 0
+            if ($installed -and $p.NoUpdate) { Write-Ok ((L '{0}: already installed.' '{0}: ya estaba instalado.') -f $p.Name); return }
         }
+        if ($installed) { Update-WingetPackage $key $p; return }
         $base = @('install', '--id', $p.Id, '--exact', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
         if ($p.Override) { $base += @('--override', $p.Override) }
         Write-Host ((L '  Installing {0} (winget {1})...' '  Instalando {0} (winget {1})...') -f $p.Name, $p.Id)
@@ -187,16 +253,24 @@ function Install-KermaPackage($key, $p) {
     }
 
     # ---- release de GitHub (.msi o .zip) o paquete de Bitfocus (.exe)
+    if ($p.NoUpdate -and $p.Check -and (Test-Path -LiteralPath $p.Check)) { Write-Ok ((L '{0}: already installed.' '{0}: ya estaba instalado.') -f $p.Name); return }
     $rel = if ($p.Source -eq 'bitfocus') { Get-BitfocusPackage $p.Product $p.Target } else { Get-LatestReleaseAsset $p.Repo $p.Asset $p.Tag }
     $installedTag = ''
     if ($marker -and (Test-Path -LiteralPath $marker)) { $installedTag = (Get-Content -LiteralPath $marker -Raw).Trim() }
+    $updating = $false
     if ($p.Check -and (Test-Path -LiteralPath $p.Check)) {
-        if ($rel.Name -notmatch '\.zip$' -or $installedTag -eq $rel.Tag) {
-            $ver = if ($installedTag) { " ($installedTag)" } else { '' }
-            Write-Ok ((L '{0}: already installed{1}.' '{0}: ya estaba instalado{1}.') -f $p.Name, $ver); return
+        # version instalada: la marca que deja el script; si no hay (instalado a mano), la del
+        # exe en .msi / .exe (un .zip sin marca se reemplaza, como antes)
+        $current = $installedTag
+        if (-not $current -and $rel.Name -notmatch '\.zip$') { $current = Get-ExeVersion $p.Check }
+        $upToDate = if ($current) { -not (Test-NewerTag $current $rel.Tag) } else { $rel.Name -notmatch '\.zip$' }
+        if ($upToDate) {
+            $ver = if ($current) { " ($current)" } else { '' }
+            Write-Ok ((L '{0}: installed and up to date{1}.' '{0}: instalado y al día{1}.') -f $p.Name, $ver); return
         }
-        $from = if ($installedTag) { $installedTag } else { L 'installed copy' 'la copia instalada' }
+        $from = if ($current) { $current } else { L 'installed copy' 'la copia instalada' }
         Write-Host ((L '  {0}: updating {1} -> {2}' '  {0}: actualizando {1} -> {2}') -f $p.Name, $from, $rel.Tag)
+        $updating = $true
     }
     $dl = 'C:\KermaSetup\downloads'
     New-Item -ItemType Directory -Path $dl -Force | Out-Null
@@ -204,6 +278,7 @@ function Install-KermaPackage($key, $p) {
     Write-Host ((L '  Downloading {0} {1} ({2})...' '  Descargando {0} {1} ({2})...') -f $p.Name, $rel.Tag, $rel.Name)
     Invoke-WebRequest -Uri $rel.Url -OutFile $file -UseBasicParsing
 
+    if ($updating -and $p.Process -and $rel.Name -notmatch '\.zip$') { Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }
     if ($rel.Name -match '\.exe$') {
         # instalador NSIS de electron-builder (Companion Satellite): /S = silencioso, para todo el equipo
         $proc = Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
@@ -242,8 +317,13 @@ function Install-KermaPackage($key, $p) {
     }
     if ($p.Check -and -not (Test-Path -LiteralPath $p.Check)) { Write-Fail ((L '{0}: installed, but {1} is missing.' '{0}: instalado, pero falta {1}.') -f $p.Name, $p.Check); return }
     if ($marker) { Set-Content -LiteralPath $marker -Value $rel.Tag -Encoding Ascii }
-    Write-Ok ((L '{0} {1} installed.' '{0} {1} instalado.') -f $p.Name, $rel.Tag)
-    Add-Change ((L 'Installed: {0} {1}' 'Instalado: {0} {1}') -f $p.Name, $rel.Tag)
+    if ($updating) {
+        Write-Ok ((L '{0} updated to {1}.' '{0} actualizado a {1}.') -f $p.Name, $rel.Tag)
+        Add-Change ((L 'Updated: {0} {1}' 'Actualizado: {0} {1}') -f $p.Name, $rel.Tag)
+    } else {
+        Write-Ok ((L '{0} {1} installed.' '{0} {1} instalado.') -f $p.Name, $rel.Tag)
+        Add-Change ((L 'Installed: {0} {1}' 'Instalado: {0} {1}') -f $p.Name, $rel.Tag)
+    }
 }
 
 # Focusrite conectadas (USB vendor 1235). Devuelve cuantas.
@@ -273,7 +353,11 @@ function Invoke-InstallPrograms($pc) {
     Write-Host (L '  Programs for this PC:' '  Programas de este PC:')
     foreach ($k in $list) {
         $p = $Packages[$k]
-        $st = if (-not $p.Check) { L 'install / check' 'instalar / comprobar' } elseif (Test-Path -LiteralPath $p.Check) { L 'installed' 'instalado' } else { L 'to install' 'por instalar' }
+        $fixed = $p.NoUpdate -or $p.Tag -or $p.Source -eq 'url'
+        $st = if (-not $p.Check) { L 'install / check for updates' 'instalar / buscar actualización' }
+              elseif (-not (Test-Path -LiteralPath $p.Check)) { L 'to install' 'por instalar' }
+              elseif ($fixed) { L 'installed (fixed version)' 'instalado (versión fija)' }
+              else { L 'installed: check for updates' 'instalado: buscar actualización' }
         Write-Host ("    - {0,-32} {1}" -f $p.Name, $st)
     }
     Write-Host ''
