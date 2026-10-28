@@ -22,6 +22,8 @@
     #                    (al repasar un PC el resto se actualiza: winget upgrade,
     #                    o la release nueva de GitHub / Bitfocus; 'url' es version fija)
     #  Process         : proceso(s) que se cierran antes de instalar / actualizar
+    #  ProcessDir      : y tambien todo lo que corre desde esa carpeta o tiene algo suyo
+    #                    cargado (OBS: navegador interno, camara virtual en otras apps)
     #  File / FileAs   : (github .zip) copiar solo ese archivo del zip (regex sobre su
     #                    ruta dentro del zip) a InstallTo con el nombre FileAs
     # -----------------------------------------------------------------
@@ -34,7 +36,8 @@
         # HDMI Mirror guarda hdmimirror.config.json junto a su exe: la carpeta debe ser escribible
         HdmiMirror = @{ Name = 'HDMI Mirror';   Source = 'github'; Repo = 'Vilchaco/kerma-hdmi-mirror'; Asset = '^HdmiMirror-v[0-9.]+\.zip$'
                         InstallTo = 'C:\Kerma'; Check = 'C:\Kerma\HdmiMirror\HdmiMirror.exe'; Process = 'HdmiMirror'; UserWritable = 'C:\Kerma\HdmiMirror' }
-        OBS        = @{ Name = 'OBS Studio';    Source = 'winget'; Id = 'OBSProject.OBSStudio'; Check = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Process = 'obs64' }
+        OBS        = @{ Name = 'OBS Studio';    Source = 'winget'; Id = 'OBSProject.OBSStudio'; Check = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Process = 'obs64'
+                        ProcessDir = 'C:\Program Files\obs-studio' }
         # atkAudio: VST3 dentro de OBS (gratis, AGPL). El zip de la release trae un zip por
         # plataforma; el portable de Windows se extrae en la carpeta de OBS.
         AtkAudio   = @{ Name = 'atkAudio (VST3 in OBS)'; Source = 'github'; Repo = 'atkAudio/PluginForObsRelease'; Asset = '^atkAudio-PluginForObs\.zip$'

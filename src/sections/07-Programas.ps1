@@ -109,6 +109,32 @@ $WingetUpToDate = @('8A15002B', '8A15004F') | ForEach-Object { [Convert]::ToInt3
 $WingetNoUpgrade = @('8A150014', '8A150050', '8A150068', '8A15008E', '8A150114') | ForEach-Object { [Convert]::ToInt32($_, 16) }   # winget no sabe actualizarlo
 $WingetRebootOk = @('8A150109', '8A15010B') | ForEach-Object { [Convert]::ToInt32($_, 16) }                         # actualizado, falta reiniciar
 
+# Cierra el programa antes de instalar encima: sus procesos (Process) y, con ProcessDir,
+# todo lo que corre desde su carpeta o tiene cargado algo de ella (OBS: obs-browser-page,
+# o su camara virtual dentro de otra app). Si no, su instalador falla "en uso" (BJUNL01).
+function Stop-PackageProcesses($p) {
+    $closed = @()
+    if ($p.Process) {
+        foreach ($x in @(Get-Process -Name $p.Process -ErrorAction SilentlyContinue)) { $closed += $x.ProcessName; Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue }
+    }
+    if ($p.ProcessDir) {
+        $dir = $p.ProcessDir.TrimEnd('\') + '\'
+        foreach ($x in @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID -and $_.Id -gt 4 })) {
+            $hit = $false
+            try { $hit = [bool]($x.Path -and $x.Path.StartsWith($dir, [StringComparison]::OrdinalIgnoreCase)) } catch { }
+            if (-not $hit) {
+                try { $hit = [bool](@($x.Modules | Where-Object { $_.FileName -and $_.FileName.StartsWith($dir, [StringComparison]::OrdinalIgnoreCase) }).Count) } catch { }
+            }
+            if ($hit) { $closed += $x.ProcessName; Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue }
+        }
+    }
+    $closed = @($closed | Select-Object -Unique)
+    if ($closed.Count) {
+        Write-Host ((L '  Closed: {0}' '  Cerrados: {0}') -f ($closed -join ', '))
+        Start-Sleep -Seconds 3
+    }
+}
+
 # Programa de winget ya instalado: si hay version nueva, se cierra y se actualiza
 function Update-WingetPackage($key, $p) {
     $chk = Invoke-Native $script:Winget @('list', '--id', $p.Id, '--exact', '--upgrade-available', '--accept-source-agreements', '--disable-interactivity')
@@ -122,7 +148,7 @@ function Update-WingetPackage($key, $p) {
     }
     $vers = if ($from -and $to) { " $from -> $to" } else { '' }
     Write-Host ((L '  {0}: new version, updating{1}...' '  {0}: hay versión nueva, actualizando{1}...') -f $p.Name, $vers)
-    if ($p.Process) { Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }
+    Stop-PackageProcesses $p
     $upArgs = @('upgrade', '--id', $p.Id, '--exact', '--silent', '--accept-package-agreements', '--accept-source-agreements', '--disable-interactivity')
     if ($p.Override) { $upArgs += @('--override', $p.Override) }
     $r = Invoke-WingetLive $key $upArgs
@@ -131,7 +157,8 @@ function Update-WingetPackage($key, $p) {
         if ($p.Restart -or $r.ExitCode -ne 0) { $State.NeedsRestart = $true }
         Add-Change ((L 'Updated: {0}{1}' 'Actualizado: {0}{1}') -f $p.Name, $vers)
     } elseif ($WingetUpToDate -contains $r.ExitCode) {
-        Write-Ok ((L '{0}: installed and up to date.' '{0}: instalado y al día.') -f $p.Name)
+        # winget lista una version nueva pero ninguna aplica a este PC (Focusrite en BJUNL01)
+        Write-Ok ((L '{0}: installed; winget lists a newer version but none applies to this PC.' '{0}: instalado; winget anuncia otra versión pero ninguna vale para este PC.') -f $p.Name)
     } elseif ($WingetNoUpgrade -contains $r.ExitCode) {
         Write-Warn ((L '{0}: winget cannot update it (code {1}); the installed version stays.' '{0}: winget no puede actualizarlo (código {1}); se queda la versión instalada.') -f $p.Name, $r.Code)
     } else {
@@ -278,7 +305,7 @@ function Install-KermaPackage($key, $p) {
     Write-Host ((L '  Downloading {0} {1} ({2})...' '  Descargando {0} {1} ({2})...') -f $p.Name, $rel.Tag, $rel.Name)
     Invoke-WebRequest -Uri $rel.Url -OutFile $file -UseBasicParsing
 
-    if ($updating -and $p.Process -and $rel.Name -notmatch '\.zip$') { Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2 }
+    if ($updating -and $rel.Name -notmatch '\.zip$') { Stop-PackageProcesses $p }
     if ($rel.Name -match '\.exe$') {
         # instalador NSIS de electron-builder (Companion Satellite): /S = silencioso, para todo el equipo
         $proc = Start-Process -FilePath $file -ArgumentList '/S' -Wait -PassThru
@@ -288,7 +315,7 @@ function Install-KermaPackage($key, $p) {
         if ($proc.ExitCode -eq 3010) { $State.NeedsRestart = $true }
         if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) { Write-Fail ((L '{0}: the installer returned code {1}.' '{0}: el instalador devolvió el código {1}.') -f $p.Name, $proc.ExitCode); return }
     } elseif ($rel.Name -match '\.zip$') {
-        if ($p.Process) { Get-Process -Name $p.Process -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1 }
+        Stop-PackageProcesses $p
         New-Item -ItemType Directory -Path $p.InstallTo -Force | Out-Null
         if ($p.File) {
             # solo un archivo del zip, con el nombre que espera la configuracion (Alt Denoiser)

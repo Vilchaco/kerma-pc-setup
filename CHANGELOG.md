@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.14.1] - 2026-10-28 - OBS no se actualizaba "en uso"
+
+### Corregido
+- **OBS no se actualizaba en BJUNL01** (winget 0x8A150111: «la aplicación está en uso»). Se cerraba `obs64`, pero seguían abiertos procesos que usan archivos de OBS: su navegador interno o la cámara virtual cargada dentro de otra app. Ahora, antes de actualizar OBS, se cierra todo lo que corre desde `C:\Program Files\obs-studio` o tiene algo suyo cargado, y se dice en pantalla qué se cerró. Igual al poner atkAudio dentro de la carpeta de OBS.
+- Focusrite Control 2 decía «hay versión nueva» y luego «al día»: ahora dice que winget anuncia otra versión pero ninguna vale para este PC.
+
 ## [5.14.0] - 2026-10-28 - Actualizar los programas al repasar un PC
 
 ### Añadido
