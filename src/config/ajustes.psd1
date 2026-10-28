@@ -35,21 +35,22 @@
     # Panel de estado
     Panel = @{ Base = 'https://kermasetup.netlify.app' }
 
+    # Colores del Brandbook Kerma Games 2026 (pag. 26): acento #EA7F2B y sus tonos.
     # Fondo de pantalla: una plantilla (assets\wallpaper\base.jpg) para todos.
     # Tags: texto y color de la tarjeta, por juego del inventario (Game) y,
     # si no tiene, por perfil (Supervisor, MCR, Office). Color en #RRGGBB.
     Wallpaper = @{
         # Aspecto de Windows con el fondo: modo oscuro y este color de enfasis
         # (barras de titulo, botones, seleccion). Vacio = no tocar los colores.
-        Accent = '#C8A96E'
+        Accent = '#EA7F2B'
         Tags = @{
-            'blackjack'           = @{ Text = 'Blackjack';           Color = '#C8A96E' }
-            'blackjack-unlimited' = @{ Text = 'Blackjack Unlimited'; Color = '#C8A96E' }
-            'roulette'            = @{ Text = 'Roulette';            Color = '#5FB878' }
-            'craps'               = @{ Text = 'Craps';               Color = '#E05555' }
-            'Supervisor'          = @{ Text = 'Supervisor';          Color = '#8A88A0' }
-            'MCR'                 = @{ Text = 'Control room';        Color = '#4FA3E0' }
-            'Office'              = @{ Text = 'Office';              Color = '#968CC8' }
+            'blackjack'           = @{ Text = 'Blackjack';           Color = '#EA7F2B' }
+            'blackjack-unlimited' = @{ Text = 'Blackjack Unlimited'; Color = '#FEE396' }
+            'roulette'            = @{ Text = 'Roulette';            Color = '#FFDFAC' }
+            'craps'               = @{ Text = 'Craps';               Color = '#EE9956' }
+            'Supervisor'          = @{ Text = 'Supervisor';          Color = '#CFCED2' }
+            'MCR'                 = @{ Text = 'Control room';        Color = '#CFCED2' }
+            'Office'              = @{ Text = 'Office';              Color = '#CFCED2' }
         }
     }
 

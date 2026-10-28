@@ -42,7 +42,7 @@ function Get-WallpaperTag($pc) {
     foreach ($k in @($pc.Game, $pc.Profile)) {
         if ($k -and $WallpaperTags.ContainsKey($k)) { return $WallpaperTags[$k] }
     }
-    return @{ Text = ''; Color = '#C8A96E' }
+    return @{ Text = ''; Color = '#EA7F2B' }
 }
 
 # Dibuja el fondo: plantilla + tarjeta. $name admite '|' para dos lineas;
@@ -102,7 +102,7 @@ function New-KermaWallpaper([string]$template, [string]$name, [string]$tag, [str
         # tarjeta semitransparente y barra de color
         $accent = [System.Drawing.ColorTranslator]::FromHtml($color)
         $card = New-RoundedRect $X $Y $W $H 20
-        $fill = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(150, 12, 8, 40))
+        $fill = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(150, 17, 12, 31))   # brandbook #110C1F
         $edge = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(40, 255, 255, 255)), 1
         $g.FillPath($fill, $card); $g.DrawPath($edge, $card)
         $bar = New-RoundedRect $X $Y 9 $H 4
@@ -110,7 +110,7 @@ function New-KermaWallpaper([string]$template, [string]$name, [string]$tag, [str
         $g.FillPath($barBrush, $bar)
 
         $white = [System.Drawing.Brushes]::White
-        $lav = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(215, 196, 186, 236))
+        $lav = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(230, 207, 206, 210))   # brandbook #CFCED2
         $tx = $X + $pad; $ty = $Y + 28
         if ($hasTag) { $g.DrawString($tag.ToUpperInvariant(), $fTag, $barBrush, $tx, $ty, $fmt); $ty += 42 }
         foreach ($l in $lines) { $g.DrawString($l, $fTitle, $white, $tx, $ty, $fmt); $ty += $lineH }
@@ -149,7 +149,7 @@ function Set-KermaColors([string]$hex) {
     Initialize-RegistryKey $pers
     Set-ItemProperty -Path $pers -Name AppsUseLightTheme -Value 0 -Type DWord
     Set-ItemProperty -Path $pers -Name SystemUsesLightTheme -Value 0 -Type DWord
-    Set-ItemProperty -Path $pers -Name ColorPrevalence -Value 0 -Type DWord      # barra de tareas oscura, sin dorado
+    Set-ItemProperty -Path $pers -Name ColorPrevalence -Value 0 -Type DWord      # barra de tareas oscura, sin el naranja
     $acc = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent'
     Initialize-RegistryKey $acc
     Set-ItemProperty -Path $acc -Name AccentPalette -Value $pal -Type Binary

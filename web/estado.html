@@ -7,11 +7,12 @@
 <link rel="icon" href="icon.jpg"><link rel="apple-touch-icon" href="icon.jpg">
 <meta name="robots" content="noindex">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
-:root{--bg:#0a0a0f;--card:#12121a;--card2:#181824;--card3:#1d1d2b;--line:#1e1e2e;--line2:#2a2a3d;--txt:#e8e4dc;--mut:#8a88a0;--mut2:#5a5870;--acc:#c8a96e;--acc-ink:#0a0a0f;--acc-soft:rgba(200,169,110,.1);--ok:#5fb878;--bad:#e05555;--warn:#f29a2e;--info:#4fa3e0}
+/* Brandbook Kerma Games 2026 (pags. 21 y 26): Sora principal, Orbitron solo en titulos; fondo #0A0712, acento #EA7F2B */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Sora:wght@400;500;600;700&display=swap');
+:root{--bg:#0A0712;--card:#110C1F;--card2:#161029;--card3:#1E1832;--line:#353041;--line2:#4D4957;--txt:#FFFFFF;--mut:#CFCED2;--mut2:#56525F;--acc:#EA7F2B;--acc-ink:#0A0712;--acc-soft:rgba(234,127,43,.12);--ok:#5fb878;--bad:#e05555;--warn:#F4C95D;--info:#4fa3e0}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 Inter,system-ui,sans-serif}
-.mono{font-family:'DM Mono',ui-monospace,monospace}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 Sora,system-ui,sans-serif}
+.mono{font-family:Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums}
 button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line2);background:var(--card2);color:var(--txt);padding:7px 12px;transition:border-color .15s,background .15s}
 button:hover{border-color:var(--acc)}
 button:disabled{opacity:.5;cursor:default}
@@ -26,9 +27,9 @@ input.search:focus{outline:none;border-color:var(--acc)}
 .bg-ok{background:var(--ok)}.bg-bad{background:var(--bad)}.bg-warn{background:var(--warn)}.bg-off{background:var(--mut2)}
 
 /* header */
-header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(10,10,15,.92);backdrop-filter:blur(8px);flex-wrap:wrap}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(10,7,18,.92);backdrop-filter:blur(8px);flex-wrap:wrap}
 header img{height:32px}
-header h1{font-size:17px;font-weight:600;margin:0}
+header h1{font-family:Orbitron,Sora,sans-serif;font-size:16px;font-weight:800;margin:0;letter-spacing:.4px}
 header h1 span{color:var(--acc)}
 .spacer{flex:1}
 .meta{color:var(--mut);font-size:12.5px}
@@ -65,7 +66,7 @@ main{padding:22px 24px 70px;max-width:1500px;margin:0 auto}
 .card-top .name b{font-size:15.5px;font-weight:600;display:block}
 .card-top .name small{color:var(--mut);font-size:11.5px}
 .badge{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap}
-.badge.ok{background:rgba(95,184,120,.12)}.badge.warn{background:rgba(242,154,46,.12)}.badge.bad{background:rgba(224,85,85,.13)}.badge.off{background:rgba(138,136,160,.12);color:var(--mut)}
+.badge.ok{background:rgba(95,184,120,.12)}.badge.warn{background:rgba(244,201,93,.12)}.badge.bad{background:rgba(224,85,85,.13)}.badge.off{background:rgba(207,206,210,.1);color:var(--mut)}
 .issues{display:grid;gap:3px;font-size:12.5px}
 .issues div{display:flex;gap:7px;align-items:baseline}
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -89,7 +90,7 @@ main{padding:22px 24px 70px;max-width:1500px;margin:0 auto}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20}
 .keybox{position:fixed;z-index:21;left:50%;top:18vh;transform:translateX(-50%);width:min(520px,calc(100vw - 32px));background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:22px}
 .keybox h3{margin:0 0 6px;font-size:16px}
-.keybox .keyval{font-family:'DM Mono',ui-monospace,monospace;font-size:15px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin:14px 0;word-break:break-all;letter-spacing:.5px}
+.keybox .keyval{font-family:Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums;font-size:15px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin:14px 0;word-break:break-all;letter-spacing:.5px}
 .keybox p{color:var(--mut);font-size:12.5px;margin:6px 0}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(720px,100vw);background:var(--bg);border-left:1px solid var(--line);z-index:21;display:flex;flex-direction:column}
 .dhead{padding:18px 22px 0;border-bottom:1px solid var(--line)}

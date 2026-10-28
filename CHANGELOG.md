@@ -2,6 +2,16 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.13.0] - 2026-10-28 - Brandbook de Kerma Games 2026
+
+### Cambiado
+- **Colores y letra del Brandbook 2026**: fondo #0A0712, superficies #110C1F / #161029, bordes #353041, texto blanco y gris #CFCED2, y acento naranja #EA7F2B (Pantone 158 C) en lugar del dorado. Sora como letra principal y Orbitron en los títulos.
+  - **Panel de estado y página de bienvenida.** Los avisos pasan a amarillo (#F4C95D) para no confundirse con el naranja. El verde y el rojo de los estados se quedan: en un panel de vigilancia, rojo significa que algo falla.
+  - **Windows:** el color de énfasis pasa a ser el naranja Kerma.
+  - **Fondo de pantalla:** la tarjeta usa los colores del brandbook. Por juego: Blackjack naranja, Blackjack Unlimited amarillo, Ruleta crema y Craps naranja claro; supervisores, MCR y oficina en gris.
+  - **Tema Kerma de OBS:** mismos colores. El identificador del tema no cambia.
+- No cambia ninguna función. En los PCs, el fondo, el color de Windows y el tema de OBS se aplican la próxima vez que se pase el setup.
+
 ## [5.12.8] - 2026-10-20 - Favoritos de RustDesk al repetir el setup
 
 ### Corregido

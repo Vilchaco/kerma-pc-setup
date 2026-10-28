@@ -7,29 +7,30 @@
 <link rel="icon" href="icon.jpg"><link rel="apple-touch-icon" href="icon.jpg">
 <meta name="robots" content="noindex">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
-:root{--bg:#0a0a0f;--card:#12121a;--card2:#181824;--line:#1e1e2e;--txt:#e8e4dc;--mut:#8a88a0;--mut2:#5a5870;--acc:#c8a96e;--acc-ink:#0a0a0f;--acc-soft:rgba(200,169,110,.1);--ok:#5fb878}
+/* Brandbook Kerma Games 2026 (pags. 21 y 26): Sora principal, Orbitron solo en titulos; fondo #0A0712, acento #EA7F2B */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Sora:wght@400;500;600;700&display=swap');
+:root{--bg:#0A0712;--card:#110C1F;--card2:#161029;--line:#353041;--txt:#FFFFFF;--mut:#CFCED2;--mut2:#56525F;--acc:#EA7F2B;--acc-ink:#0A0712;--acc-soft:rgba(234,127,43,.12);--ok:#5fb878}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 Inter,system-ui,sans-serif}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 Sora,system-ui,sans-serif}
 .wrap{max-width:860px;margin:0 auto;padding:48px 24px 64px}
 header{display:flex;align-items:center;gap:16px;margin-bottom:36px}
 header img{height:44px}
-h1{font-size:26px;font-weight:600;margin:0;letter-spacing:.2px}
+h1{font-family:Orbitron,Sora,sans-serif;font-size:26px;font-weight:800;margin:0;letter-spacing:.4px}
 h1 span{color:var(--acc)}
-.ver{margin-left:auto;font:500 12.5px 'DM Mono',monospace;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:5px 12px;white-space:nowrap}
+.ver{margin-left:auto;font:500 12.5px Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:5px 12px;white-space:nowrap}
 .ver b{color:var(--acc);font-weight:500}
 .lead{color:var(--mut);margin:0 0 28px;font-size:16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 22px 20px;margin-bottom:18px}
 .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--acc);font-weight:500;margin:0 0 12px}
 .cmd{display:flex;align-items:stretch;gap:10px}
-.cmd code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font:500 15px 'DM Mono',monospace;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:13px 14px;color:var(--txt)}
+.cmd code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font:500 15px Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:13px 14px;color:var(--txt)}
 .cmd.small code{font-size:12.5px}
 button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--acc);background:var(--acc);color:var(--acc-ink);font-weight:600;padding:0 16px;min-width:92px}
 button.done{background:var(--ok);border-color:var(--ok)}
 ol{margin:4px 0 0;padding-left:20px}
 ol li{margin:6px 0}
 .note{color:var(--mut);font-size:13.5px;margin:12px 0 0}
-kbd{font:500 12px 'DM Mono',monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--card2);color:var(--txt)}
+kbd{font:500 12px Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--card2);color:var(--txt)}
 .links{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .links a{display:block;text-decoration:none;color:var(--txt);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
 .links a:hover{border-color:var(--acc)}

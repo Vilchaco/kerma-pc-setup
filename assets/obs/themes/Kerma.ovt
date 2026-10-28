@@ -7,34 +7,34 @@
 }
 
 /*
-  Kerma Games look for OBS (same palette as Kerma Shifts).
+  Kerma Games look for OBS (Kerma Games Brandbook 2026 palette).
   A variant of OBS's default theme (Yami): only the colors change, the
   layout stays the stock one, so it keeps working across OBS updates.
   If OBS cannot load it, it simply falls back to its default theme.
 */
 
 @OBSThemeVars {
-    /* Kerma backgrounds: --bg #0a0a0f, --surface #12121a, --surface2 #181824, --border #1e1e2e */
-    --grey1: #5a5870;
-    --grey2: #4a485e;
-    --grey3: #3a394d;
-    --grey4: #2a2a3c;
-    --grey5: #1e1e2e;
-    --grey6: #181824;
-    --grey7: #12121a;
-    --grey8: #0a0a0f;
+    /* Brandbook backgrounds: --bg #0A0712, surfaces #110C1F / #161029, borders #353041, greys #4D4957 / #56525F */
+    --grey1: #56525F;
+    --grey2: #4D4957;
+    --grey3: #403A4F;
+    --grey4: #353041;
+    --grey5: #241D35;
+    --grey6: #161029;
+    --grey7: #110C1F;
+    --grey8: #0A0712;
 
-    /* Kerma gold (#c8a96e). Selected rows/tabs carry light text, so they use
-       a darker gold; the real gold is kept for borders and highlights. */
-    --primary: #7d6638;
-    --primary_light: #957a46;
-    --primary_lighter: #c8a96e;
-    --primary_dark: #64512c;
-    --primary_darker: #4a3c21;
+    /* Kerma orange (#EA7F2B, Pantone 158 C). Selected rows/tabs carry light text, so
+       they use the darker brand oranges; the real orange is kept for borders and highlights. */
+    --primary: #BA6622;
+    --primary_light: #D2742A;
+    --primary_lighter: #EA7F2B;
+    --primary_dark: #96521C;
+    --primary_darker: #764016;
 
-    --text: #e8e4dc;
+    --text: #FFFFFF;
     --text_light: #ffffff;
-    --text_muted: #8a88a0;
+    --text_muted: #CFCED2;
 
     --border_color: var(--grey5);
 
