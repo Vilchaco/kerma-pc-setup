@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.14.2] - 2026-10-28 - OBS seguía «en uso»
+
+### Corregido
+- **OBS seguía sin actualizarse en BJUNL01**: con 5.14.1 solo se cerró `obs64` y el instalador de OBS volvió a decir que estaba en uso (código 6). El instalador también se niega si alguna app tiene cargada la DLL de la **captura de juego** de OBS (`graphics-hook`, en `C:\ProgramData\obs-studio-hook`, que OBS mete en la ventana que captura, p. ej. la Dealer App) o la de la **cámara virtual**. Ahora también se cierran esas apps antes de actualizar; vuelven a abrirse al reiniciar.
+
 ## [5.14.1] - 2026-10-28 - OBS no se actualizaba "en uso"
 
 ### Corregido

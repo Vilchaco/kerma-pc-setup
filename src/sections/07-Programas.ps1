@@ -109,21 +109,29 @@ $WingetUpToDate = @('8A15002B', '8A15004F') | ForEach-Object { [Convert]::ToInt3
 $WingetNoUpgrade = @('8A150014', '8A150050', '8A150068', '8A15008E', '8A150114') | ForEach-Object { [Convert]::ToInt32($_, 16) }   # winget no sabe actualizarlo
 $WingetRebootOk = @('8A150109', '8A15010B') | ForEach-Object { [Convert]::ToInt32($_, 16) }                         # actualizado, falta reiniciar
 
-# Cierra el programa antes de instalar encima: sus procesos (Process) y, con ProcessDir,
-# todo lo que corre desde su carpeta o tiene cargado algo de ella (OBS: obs-browser-page,
-# o su camara virtual dentro de otra app). Si no, su instalador falla "en uso" (BJUNL01).
+# Cierra el programa antes de instalar encima: sus procesos (Process) y, con ProcessDir /
+# ProcessModules, todo lo que corre desde esas carpetas o tiene cargada una DLL suya. OBS:
+# su instalador se niega (codigo 6, winget 0x8A150111) si la captura de juego dejo su
+# graphics-hook en otra app (la Dealer App) o la camara virtual esta cargada (BJUNL01).
 function Stop-PackageProcesses($p) {
     $closed = @()
     if ($p.Process) {
         foreach ($x in @(Get-Process -Name $p.Process -ErrorAction SilentlyContinue)) { $closed += $x.ProcessName; Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue }
     }
-    if ($p.ProcessDir) {
-        $dir = $p.ProcessDir.TrimEnd('\') + '\'
+    $dirs = @($p.ProcessDir | Where-Object { $_ } | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_).TrimEnd('\') + '\' })
+    $mods = @($p.ProcessModules | Where-Object { $_ })
+    if ($dirs.Count -or $mods.Count) {
         foreach ($x in @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID -and $_.Id -gt 4 })) {
+            $files = @()
+            try { if ($x.Path) { $files += $x.Path } } catch { }
+            try { $files += @($x.Modules | ForEach-Object { $_.FileName }) } catch { }
             $hit = $false
-            try { $hit = [bool]($x.Path -and $x.Path.StartsWith($dir, [StringComparison]::OrdinalIgnoreCase)) } catch { }
-            if (-not $hit) {
-                try { $hit = [bool](@($x.Modules | Where-Object { $_.FileName -and $_.FileName.StartsWith($dir, [StringComparison]::OrdinalIgnoreCase) }).Count) } catch { }
+            foreach ($f in $files) {
+                if (-not $f) { continue }
+                foreach ($d in $dirs) { if ($f.StartsWith($d, [StringComparison]::OrdinalIgnoreCase)) { $hit = $true } }
+                $leaf = [IO.Path]::GetFileName($f)
+                foreach ($m in $mods) { if ($leaf -like $m) { $hit = $true } }
+                if ($hit) { break }
             }
             if ($hit) { $closed += $x.ProcessName; Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue }
         }
