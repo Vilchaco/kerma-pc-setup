@@ -25,6 +25,8 @@
     #  ProcessDir      : y tambien todo lo que corre desde esas carpetas o tiene algo suyo
     #  ProcessModules    cargado, o una DLL con ese nombre (OBS: navegador interno, captura
     #                    de juego dentro de la Dealer App, camara virtual en otras apps)
+    #  InUseFiles      : archivos que el instalador comprueba antes de negarse por "en uso":
+    #                    se cierra lo que los tenga abiertos (Restart Manager de Windows)
     #  File / FileAs   : (github .zip) copiar solo ese archivo del zip (regex sobre su
     #                    ruta dentro del zip) a InstallTo con el nombre FileAs
     # -----------------------------------------------------------------
@@ -38,7 +40,14 @@
         HdmiMirror = @{ Name = 'HDMI Mirror';   Source = 'github'; Repo = 'Vilchaco/kerma-hdmi-mirror'; Asset = '^HdmiMirror-v[0-9.]+\.zip$'
                         InstallTo = 'C:\Kerma'; Check = 'C:\Kerma\HdmiMirror\HdmiMirror.exe'; Process = 'HdmiMirror'; UserWritable = 'C:\Kerma\HdmiMirror' }
         OBS        = @{ Name = 'OBS Studio';    Source = 'winget'; Id = 'OBSProject.OBSStudio'; Check = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Process = 'obs64'
-                        ProcessDir = @('C:\Program Files\obs-studio', '%ProgramData%\obs-studio-hook'); ProcessModules = @('graphics-hook*.dll', 'obs-virtualcam-module*.dll') }
+                        ProcessDir = @('C:\Program Files\obs-studio', '%ProgramData%\obs-studio-hook'); ProcessModules = @('graphics-hook*.dll', 'obs-virtualcam-module*.dll')
+                        # los archivos que el instalador de OBS mira antes de negarse por "en uso" (mp-installer.nsi de obsproject/bouf)
+                        InUseFiles = @('%ProgramFiles%\obs-studio\bin\64bit\avutil-57.dll', '%ProgramFiles%\obs-studio\bin\64bit\swscale-6.dll',
+                            '%ProgramFiles%\obs-studio\core\win-capture\data\graphics-hook32.dll', '%ProgramFiles%\obs-studio\core\win-capture\data\graphics-hook64.dll',
+                            '%ProgramFiles%\obs-studio\core\win-dshow\data\obs-virtualcam-module32.dll', '%ProgramFiles%\obs-studio\core\win-dshow\data\obs-virtualcam-module64.dll',
+                            '%ProgramFiles%\obs-studio\data\obs-plugins\win-capture\graphics-hook32.dll', '%ProgramFiles%\obs-studio\data\obs-plugins\win-capture\graphics-hook64.dll',
+                            '%ProgramFiles%\obs-studio\data\obs-plugins\win-dshow\obs-virtualcam-module32.dll', '%ProgramFiles%\obs-studio\data\obs-plugins\win-dshow\obs-virtualcam-module64.dll',
+                            '%ProgramData%\obs-studio-hook\graphics-hook32.dll', '%ProgramData%\obs-studio-hook\graphics-hook64.dll') }
         # atkAudio: VST3 dentro de OBS (gratis, AGPL). El zip de la release trae un zip por
         # plataforma; el portable de Windows se extrae en la carpeta de OBS.
         AtkAudio   = @{ Name = 'atkAudio (VST3 in OBS)'; Source = 'github'; Repo = 'atkAudio/PluginForObsRelease'; Asset = '^atkAudio-PluginForObs\.zip$'

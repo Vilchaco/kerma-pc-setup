@@ -122,6 +122,62 @@ $WingetRebootOk = @('8A150109', '8A15010B') | ForEach-Object { [Convert]::ToInt3
 # ProcessModules, todo lo que corre desde esas carpetas o tiene cargada una DLL suya. OBS:
 # su instalador se niega (codigo 6, winget 0x8A150111) si la captura de juego dejo su
 # graphics-hook en otra app (la Dealer App) o la camara virtual esta cargada (BJUNL01).
+# Quien tiene abiertos unos archivos, segun el Restart Manager de Windows: es lo
+# que mira el instalador de OBS antes de negarse con "en uso" (codigo 6), y ve
+# tambien procesos de 32 bits, protegidos y servicios que Get-Process no deja leer.
+function Get-FileLockers([string[]]$files) {
+    if (-not ('K.Rm' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+namespace K {
+    public static class Rm {
+        [StructLayout(LayoutKind.Sequential)]
+        struct UNIQUE { public int Pid; public System.Runtime.InteropServices.ComTypes.FILETIME Start; }
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct INFO {
+            public UNIQUE Process;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string AppName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)] public string ServiceName;
+            public int AppType; public uint AppStatus; public uint TSSessionId;
+            [MarshalAs(UnmanagedType.Bool)] public bool Restartable;
+        }
+        [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)] static extern int RmStartSession(out uint h, int flags, StringBuilder key);
+        [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)] static extern int RmRegisterResources(uint h, uint nFiles, string[] files, uint nApps, UNIQUE[] apps, uint nSvc, string[] svcs);
+        [DllImport("rstrtmgr.dll")] static extern int RmGetList(uint h, out uint needed, ref uint n, [In, Out] INFO[] info, ref uint reasons);
+        [DllImport("rstrtmgr.dll")] static extern int RmEndSession(uint h);
+        // "pid|nombre|servicio|tipo" por cada proceso que usa alguno de los archivos
+        public static string[] Get(string[] files) {
+            var res = new List<string>();
+            uint h; var key = new StringBuilder(33);
+            if (RmStartSession(out h, 0, key) != 0) return res.ToArray();
+            try {
+                if (RmRegisterResources(h, (uint)files.Length, files, 0, null, 0, null) != 0) return res.ToArray();
+                uint needed = 0, n = 0, reasons = 0; INFO[] info = null;
+                int rc = RmGetList(h, out needed, ref n, null, ref reasons);
+                if (rc == 234 && needed > 0) { // ERROR_MORE_DATA
+                    info = new INFO[needed]; n = needed;
+                    rc = RmGetList(h, out needed, ref n, info, ref reasons);
+                }
+                if (rc != 0 || info == null) return res.ToArray();
+                for (int i = 0; i < n; i++) res.Add(info[i].Process.Pid + "|" + info[i].AppName + "|" + info[i].ServiceName + "|" + info[i].AppType);
+            } finally { RmEndSession(h); }
+            return res.ToArray();
+        }
+    }
+}
+'@
+    }
+    $have = @($files | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_) } | Where-Object { Test-Path -LiteralPath $_ })
+    if (-not $have.Count) { return @() }
+    return @([K.Rm]::Get([string[]]$have) | ForEach-Object {
+        $f = $_ -split '\|', 4
+        [pscustomobject]@{ Id = [int]$f[0]; Name = $f[1]; Service = $f[2]; Critical = ($f[3] -eq '1000') }
+    })
+}
+
 function Stop-PackageProcesses($p) {
     $closed = @()
     if ($p.Process) {
@@ -143,6 +199,27 @@ function Stop-PackageProcesses($p) {
                 if ($hit) { break }
             }
             if ($hit) { $closed += $x.ProcessName; Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue }
+        }
+    }
+    # lo que el instalador comprobara (InUseFiles): lo que siga abierto, fuera
+    if (@($p.InUseFiles).Count) {
+        $lockers = @()
+        try { $lockers = @(Get-FileLockers @($p.InUseFiles)) } catch { Write-Warn ((L 'Could not check files in use: {0}' 'No se pudo comprobar qué archivos están en uso: {0}') -f $_.Exception.Message) }
+        foreach ($k in $lockers) {
+            if ($k.Id -eq $PID) { continue }
+            # nunca se cierra algo critico de Windows (RmCritical, o el escritorio): mejor reiniciar
+            $pn = (Get-Process -Id $k.Id -ErrorAction SilentlyContinue).ProcessName
+            if ($k.Critical -or $pn -in @('csrss', 'wininit', 'winlogon', 'services', 'lsass', 'smss', 'dwm', 'explorer')) {
+                Write-Warn ((L "{0} has OBS files open and cannot be closed - restart the PC and run the setup again." "{0} tiene archivos de OBS abiertos y no se puede cerrar: reinicia el PC y vuelve a pasar el setup.") -f $k.Name)
+                continue
+            }
+            if ($k.Service) {
+                Stop-Service -Name $k.Service -Force -ErrorAction SilentlyContinue
+                $closed += ('{0} (servicio {1})' -f $k.Name, $k.Service)
+            } else {
+                Stop-Process -Id $k.Id -Force -ErrorAction SilentlyContinue
+                $closed += $k.Name
+            }
         }
     }
     $closed = @($closed | Select-Object -Unique)

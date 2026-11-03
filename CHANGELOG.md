@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.15.3] - 2026-11-02 - OBS «en uso»: se pregunta a Windows quién tiene sus archivos
+
+### Corregido
+- **OBS seguía sin actualizarse con «en uso» (0x8A150111) en BJ01 y BAC01**, aunque el script cerraba OBS y lo que tuviera cargada la captura de juego. El instalador de OBS revisa una lista fija de archivos (FFmpeg, `graphics-hook32/64.dll`, `obs-virtualcam-module32/64.dll`, en la carpeta de OBS y en `ProgramData\obs-studio-hook`) con el Restart Manager de Windows. El script solo leía los módulos de los procesos, y desde PowerShell de 64 bits no se ven los de los programas de 32 bits ni los de procesos protegidos o servicios. Ahora pregunta lo mismo y con los mismos archivos al Restart Manager (`InUseFiles` en `programas.psd1`) y cierra lo que salga. Nunca cierra procesos críticos de Windows ni el escritorio: si son ellos, avisa para reiniciar.
+
 ## [5.15.2] - 2026-11-02 - winget daba el catálogo por roto sin estarlo
 
 ### Corregido
