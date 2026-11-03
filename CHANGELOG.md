@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.15.4] - 2026-11-02 - OBS: también lo que vuelve a abrirse solo
+
+### Corregido
+- **OBS seguía «en uso» en BJ01 y BAC01.** La 5.15.3 ya veía quién bloqueaba (Intel Arc Control Assist) y lo cerraba, pero algo lo volvía a abrir y cargaba de nuevo la captura de OBS. Ahora se comprueba hasta 4 veces. Si un proceso ha vuelto, se para también quien lo abre: si es un servicio, se detiene; si es un programa, se cierra. Después de actualizar se vuelven a arrancar los dos; el programa se abre como el usuario, no como administrador. Si aun así falla, el log dice quién sigue con los archivos abiertos.
+- Los programas sin lista de archivos (Stream Deck, Focusrite) mostraban «No se pudo comprobar qué archivos están en uso».
+
 ## [5.15.3] - 2026-11-02 - OBS «en uso»: se pregunta a Windows quién tiene sus archivos
 
 ### Corregido
