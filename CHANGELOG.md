@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.15.2] - 2026-11-02 - winget daba el catálogo por roto sin estarlo
+
+### Corregido
+- **«El catálogo de winget sigue sin funcionar» en todos los PCs desde el 2 de noviembre.** El script comprobaba el catálogo buscando el paquete `Google.Chrome`, y Microsoft lo borró ese día (ahora solo existe `Google.Chrome.EXE`). Por eso no se instalaba ni se actualizaba nada de winget: OBS, Stream Deck, Focusrite Control 2. La prueba ahora busca `Microsoft.PowerShell`.
+- Chrome se instala con `Google.Chrome.EXE` (para todo el equipo, como antes) en los PCs nuevos.
+
 ## [5.15.1] - 2026-11-02 - Tareas de arranque duplicadas al renombrar
 
 ### Corregido

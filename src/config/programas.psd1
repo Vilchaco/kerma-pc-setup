@@ -29,7 +29,7 @@
     #                    ruta dentro del zip) a InstallTo con el nombre FileAs
     # -----------------------------------------------------------------
     Packages = @{
-        Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome';        Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe'; NoUpdate = $true   # se actualiza solo (Google Update)
+        Chrome     = @{ Name = 'Google Chrome'; Source = 'winget'; Id = 'Google.Chrome.EXE';    Check = 'C:\Program Files\Google\Chrome\Application\chrome.exe'; NoUpdate = $true   # se actualiza solo (Google Update)
                         FallbackMsi = 'https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi' }
         RustDesk   = @{ Name = 'RustDesk';      Source = 'github'; Repo = 'rustdesk/rustdesk';  Asset = '^rustdesk-[0-9.]+-x86_64\.msi$';  Check = 'C:\Program Files\RustDesk\rustdesk.exe'
                         NoUpdate = $true }   # actualizarlo corta la conexion de RustDesk y reinstala su servicio: a mano

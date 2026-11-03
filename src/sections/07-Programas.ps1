@@ -34,9 +34,11 @@ function Initialize-Winget {
 
 # El catalogo de winget puede no estar listo en un PC recien instalado
 # (error 0x8a15000f "Data required by the source is missing"). Se prueba
-# una busqueda y, si falla, se reinicia y se reinstala el catalogo.
+# una busqueda (de un paquete de Microsoft: Google.Chrome desaparecio del
+# catalogo el 2-nov-2026 y la prueba fallaba con todo bien) y, si falla,
+# se reinicia y se reinstala el catalogo.
 function Initialize-WingetSource([string]$w) {
-    $probe = @('search', '--id', 'Google.Chrome', '--exact', '--accept-source-agreements', '--disable-interactivity')
+    $probe = @('search', '--id', 'Microsoft.PowerShell', '--exact', '--accept-source-agreements', '--disable-interactivity')
     if ((Invoke-Native $w $probe).ExitCode -eq 0) { return $true }
     Write-Host (L '  The winget catalog is not ready - repairing it (can take a minute)...' '  El catálogo de winget no está listo: reparándolo (puede tardar un minuto)...')
     Invoke-Native $w @('source', 'reset', '--force', '--disable-interactivity') | Out-Null
