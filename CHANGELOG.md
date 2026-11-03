@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.15.1] - 2026-11-02 - Tareas de arranque duplicadas al renombrar
+
+### Corregido
+- **Al renombrar un PC quedaban las tareas de arranque del nombre viejo** (`KG-TBL-BJUNL-01 - OBS Startup`, etc.) junto a las nuevas, y cada app se abría dos veces. Ahora el arranque de apps borra las tareas `<otro nombre> - <App> Startup` de las apps de Kerma y su carpeta en `C:\KermaStartup`.
+- **Catálogo de winget vacío mientras Microsoft lo actualiza** (código 0x8A150014, visto en BAC01 y BJ01 a la vez): tras la reparación se espera y se vuelve a probar hasta 3 veces antes de rendirse.
+- Al renombrar el usuario, el aviso de la carpeta del perfil mostraba el nombre de usuario en vez de la carpeta real (`C:\Users\BJ UNL`).
+
 ## [5.15.0] - 2026-11-02 - Blackjack Unlimited 01 pasa a Baccarat 01
 
 ### Cambiado

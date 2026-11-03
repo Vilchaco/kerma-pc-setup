@@ -98,6 +98,19 @@ function Invoke-AppAutostart($pc) {
     Write-Host ((L "  Tasks: '{0} - <App> Startup', scripts in {1}" "  Tareas: '{0} - <App> Startup', scripts en {1}") -f $tableName, $dir)
     $saved = Get-SavedAppPaths
 
+    # tareas de un nombre anterior del equipo (PC renombrado): fuera, o la app arrancaria dos veces
+    $appNames = @($Apps.Values | ForEach-Object { $_.Name })
+    foreach ($t in @(Get-ScheduledTask -TaskName '* Startup' -ErrorAction SilentlyContinue)) {
+        if ($t.TaskName -notmatch '^(.+) - (.+) Startup$') { continue }
+        $prefix = $Matches[1]
+        if ($prefix -eq $tableName -or $appNames -notcontains $Matches[2]) { continue }
+        Unregister-ScheduledTask -TaskName $t.TaskName -Confirm:$false -ErrorAction SilentlyContinue
+        Write-Ok ((L "Old autostart task '{0}' removed (previous PC name)." "Tarea de arranque antigua '{0}' quitada (nombre anterior del PC).") -f $t.TaskName)
+        Add-Change ((L 'Autostart removed: {0}' 'Arranque quitado: {0}') -f $t.TaskName)
+        $oldDir = "C:\KermaStartup\$prefix"
+        if (Test-Path -LiteralPath $oldDir) { Remove-Item -LiteralPath $oldDir -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     # apps del perfil que este PC no lleva (Without): fuera su tarea si la tenia
     foreach ($k in @($pc.Without | Where-Object { $Apps.ContainsKey($_) })) {
         $old = "$tableName - $($Apps[$k].Name) Startup"

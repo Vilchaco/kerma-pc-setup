@@ -36,7 +36,7 @@ function Invoke-RenameApply($pc) {
             Rename-LocalUser -Name $env:USERNAME -NewName $pc.Username
             $State.UserRenamed = $true
             Write-Ok ((L 'Username renamed to {0}.' 'Usuario renombrado a {0}.') -f $pc.Username)
-            Write-Note ((L 'The profile folder stays as C:\Users\{0} - normal Windows behavior.' 'La carpeta del perfil sigue siendo C:\Users\{0}: es lo normal en Windows.') -f $env:USERNAME)
+            Write-Note ((L 'The profile folder stays as C:\Users\{0} - normal Windows behavior.' 'La carpeta del perfil sigue siendo C:\Users\{0}: es lo normal en Windows.') -f (Split-Path -Path $env:USERPROFILE -Leaf))
             Add-Change ((L 'Username: {0} -> {1}' 'Usuario: {0} -> {1}') -f $env:USERNAME, $pc.Username)
         } catch {
             Write-Fail ((L 'Username rename: {0}' 'Renombrar usuario: {0}') -f $_.Exception.Message)
