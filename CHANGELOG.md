@@ -2,6 +2,16 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.15.0] - 2026-11-02 - Blackjack Unlimited 01 pasa a Baccarat 01
+
+### Cambiado
+- **La mesa Blackjack Unlimited 01 ahora es Baccarat 01.** En el inventario pasa a `BAC01`: equipo `KG-TBL-BAC-01`, usuario `kg-tbl-bac-01`, «Baccarat Table 01». Sigue con la IP 192.168.0.155 y con el Card Scanner. Al pasar el setup se renombran el equipo y el usuario de Windows; la carpeta del usuario sigue siendo la de antes.
+- **Juego `baccarat`** en lugar de `blackjack-unlimited`. De momento lleva lo mismo que Blackjack: el perfil de Stream Deck (`assets/streamdeck/baccarat.streamDeckProfile`, copia del de Blackjack) y las órdenes de Kerma Remote (burn_hand, pause, resume, start_betting, kickstart_round). En el fondo de pantalla, «Baccarat» en amarillo #FEE396.
+- En el panel aparecerá como Baccarat 01 cuando se pase el setup; la ficha vieja de Blackjack Unlimited 01 se borra entonces.
+
+### Corregido
+- El resumen del setup decía «modo oscuro + dorado Kerma»; ahora dice naranja, que es el color del brandbook desde la 5.13.0.
+
 ## [5.14.2] - 2026-10-28 - OBS seguía «en uso»
 
 ### Corregido

@@ -224,7 +224,7 @@ function Test-KermaConfig {
                 # KERMA_WALLPAPER_OUT se guardan ahi (GitHub los adjunta al resultado).
                 $outDir = if ($env:KERMA_WALLPAPER_OUT) { $env:KERMA_WALLPAPER_OUT } else { [IO.Path]::GetTempPath() }
                 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
-                $samples = @($PCs | Where-Object { @('BJ01', 'BJUNL01', 'CR01', 'MCR', 'SUP01') -contains $_.Key })
+                $samples = @($PCs | Where-Object { @('BJ01', 'BAC01', 'CR01', 'MCR', 'SUP01') -contains $_.Key })
                 $samples += @{ Key = 'MANUAL'; Label = 'Office | Manager'; Game = ''; Profile = 'Office'; Hostname = 'KG-OFC-MANAGER'; Net = @{ IP = '192.168.1.120' } }
                 foreach ($sp in $samples) {
                     $tg = Get-WallpaperTag $sp

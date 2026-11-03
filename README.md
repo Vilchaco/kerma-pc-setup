@@ -131,7 +131,7 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 
 | Tipo | PCs | Comportamiento |
 |---|---|---|
-| Mesa | Ruleta, Blackjack, Blackjack Unlimited, Craps | Sin contraseña y actualizaciones manuales. Instala Chrome, RustDesk, Stream Deck, HDMI Mirror, OBS, atkAudio y Alt Denoiser, con el perfil de Stream Deck de su juego y Kerma Remote. Configura el autoarranque de Dealer App y, en blackjack, del Card Scanner, que se instalan a mano. |
+| Mesa | Ruleta, Blackjack, Baccarat, Craps | Sin contraseña y actualizaciones manuales. Instala Chrome, RustDesk, Stream Deck, HDMI Mirror, OBS, atkAudio y Alt Denoiser, con el perfil de Stream Deck de su juego y Kerma Remote. Configura el autoarranque de Dealer App y, en blackjack, del Card Scanner, que se instalan a mano. |
 | Supervisor | Supervisor 01 y 02 | Recomienda mantener la contraseña y las actualizaciones automáticas. Instala Chrome, RustDesk y Companion Satellite, que arranca con Windows y conecta su Stream Deck al Companion central. Sin la app de Stream Deck de Elgato. IPs 192.168.0.200 y .202. |
 | Oficina | PC de Hector | Igual que una mesa, pero instala Chrome y RustDesk, y su app de inicio es el programa de cámaras. |
 

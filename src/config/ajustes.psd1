@@ -45,7 +45,7 @@
         Accent = '#EA7F2B'
         Tags = @{
             'blackjack'           = @{ Text = 'Blackjack';           Color = '#EA7F2B' }
-            'blackjack-unlimited' = @{ Text = 'Blackjack Unlimited'; Color = '#FEE396' }
+            'baccarat'            = @{ Text = 'Baccarat';            Color = '#FEE396' }
             'roulette'            = @{ Text = 'Roulette';            Color = '#FFDFAC' }
             'craps'               = @{ Text = 'Craps';               Color = '#EE9956' }
             'Supervisor'          = @{ Text = 'Supervisor';          Color = '#CFCED2' }
@@ -70,7 +70,8 @@
             'craps'               = @{ atem_auto = '{ATEM_AUTO}'; pause = '{PAUSE}'; resume = '{RESUME}'; timer_start = '{TIMER_START}'; close_betting = '{CLOSE_BETTING}'; refresh_table = '{REFRESH_TABLE}' }
             'roulette'            = @{ atem_auto = '{ATEM_AUTO}'; make_cut = '{MAKE_CUT}'; pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; close_betting = '{CLOSE_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
             'blackjack'           = @{ burn_hand = '{BURN_HAND}'; pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
-            'blackjack-unlimited' = @{ burn_hand = '{BURN_HAND}'; pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
+            # Baccarat: de momento las mismas que Blackjack (y su perfil de Stream Deck)
+            'baccarat'            = @{ burn_hand = '{BURN_HAND}'; pause = '{PAUSE}'; resume = '{RESUME}'; start_betting = '{START_BETTING}'; kickstart_round = '{KICKSTART_ROUND}' }
         }
     }
 

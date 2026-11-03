@@ -7,7 +7,7 @@ Un perfil por juego para el Stream Deck del dealer (MK.2 de 15 teclas). Se gener
 | `craps.streamDeckProfile` | Craps | Craps |
 | `roulette.streamDeckProfile` | Roulette | Ruleta |
 | `blackjack.streamDeckProfile` | Blackjack | Blackjack 01 a 04 |
-| `blackjack-unlimited.streamDeckProfile` | Blackjack | Blackjack Unlimited (copia del de Blackjack) |
+| `baccarat.streamDeckProfile` | Blackjack | Baccarat (copia del de Blackjack hasta que tenga perfil propio) |
 
 Las teclas pegan el comando en la Dealer App sin Enter, salvo ENTRAR (`{SIGN_IN}`, en el teclado del PIN), que pulsa Enter después. En la última columna van siempre EMERGENCY, PIT MANAGER y SIGN, que abre el teclado del PIN.
 

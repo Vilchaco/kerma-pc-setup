@@ -131,7 +131,7 @@ function New-KermaWallpaper([string]$template, [string]$name, [string]$tag, [str
     $bmp.Dispose()
 }
 
-# Aspecto Kerma de Windows: modo oscuro y color de enfasis dorado (como la web
+# Aspecto Kerma de Windows: modo oscuro y color de enfasis naranja (como la web
 # y OBS). Paleta de 8 tonos (mas claros -> color -> mas oscuros) que usa Windows.
 function Set-KermaColors([string]$hex) {
     Add-Type -AssemblyName System.Drawing
@@ -161,7 +161,7 @@ function Set-KermaColors([string]$hex) {
     Set-ItemProperty -Path $dwm -Name AccentColor -Value (& $abgr 3) -Type DWord
     Set-ItemProperty -Path $dwm -Name ColorizationColor -Value $argb -Type DWord
     Set-ItemProperty -Path $dwm -Name ColorizationAfterglow -Value $argb -Type DWord
-    Set-ItemProperty -Path $dwm -Name ColorPrevalence -Value 1 -Type DWord        # barras de titulo en dorado
+    Set-ItemProperty -Path $dwm -Name ColorPrevalence -Value 1 -Type DWord        # barras de titulo en el color de enfasis
     Set-ItemProperty -Path 'HKCU:\Control Panel\Desktop' -Name AutoColorization -Value '0' -Type String
 }
 
@@ -231,8 +231,8 @@ public static class KermaWallpaperApi {
     if ($AccentColor) {
         try {
             Set-KermaColors $AccentColor
-            Write-Ok ((L 'Windows look: dark mode and Kerma gold accent ({0}). Fully applied after the restart.' 'Aspecto de Windows: modo oscuro y dorado Kerma ({0}). Queda del todo al reiniciar.') -f $AccentColor)
-            Add-Change (L 'Look: dark mode + Kerma gold' 'Aspecto: modo oscuro + dorado Kerma')
+            Write-Ok ((L 'Windows look: dark mode and Kerma orange accent ({0}). Fully applied after the restart.' 'Aspecto de Windows: modo oscuro y naranja Kerma ({0}). Queda del todo al reiniciar.') -f $AccentColor)
+            Add-Change (L 'Look: dark mode + Kerma orange' 'Aspecto: modo oscuro + naranja Kerma')
         } catch { Write-Warn ((L 'Windows colors: {0}' 'Colores de Windows: {0}') -f $_.Exception.Message) }
     }
     try {
