@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.15.5] - 2026-11-02 - La 5.15.4 salió sin su arreglo
+
+### Corregido
+- La 5.15.4 se publicó sin el cambio de `07-Programas.ps1` que describe su entrada: se quedó en una rama de pruebas. Esta versión lo lleva de verdad: OBS «en uso» con un proceso que se vuelve a abrir solo, y quitado el aviso falso de «No se pudo comprobar qué archivos están en uso».
+
 ## [5.15.4] - 2026-11-02 - OBS: también lo que vuelve a abrirse solo
 
 ### Corregido

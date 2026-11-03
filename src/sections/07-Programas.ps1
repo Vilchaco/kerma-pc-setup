@@ -201,25 +201,53 @@ function Stop-PackageProcesses($p) {
             if ($hit) { $closed += $x.ProcessName; Stop-Process -Id $x.Id -Force -ErrorAction SilentlyContinue }
         }
     }
-    # lo que el instalador comprobara (InUseFiles): lo que siga abierto, fuera
-    if (@($p.InUseFiles).Count) {
-        $lockers = @()
-        try { $lockers = @(Get-FileLockers @($p.InUseFiles)) } catch { Write-Warn ((L 'Could not check files in use: {0}' 'No se pudo comprobar qué archivos están en uso: {0}') -f $_.Exception.Message) }
-        foreach ($k in $lockers) {
-            if ($k.Id -eq $PID) { continue }
-            # nunca se cierra algo critico de Windows (RmCritical, o el escritorio): mejor reiniciar
-            $pn = (Get-Process -Id $k.Id -ErrorAction SilentlyContinue).ProcessName
-            if ($k.Critical -or $pn -in @('csrss', 'wininit', 'winlogon', 'services', 'lsass', 'smss', 'dwm', 'explorer')) {
-                Write-Warn ((L "{0} has OBS files open and cannot be closed - restart the PC and run the setup again." "{0} tiene archivos de OBS abiertos y no se puede cerrar: reinicia el PC y vuelve a pasar el setup.") -f $k.Name)
-                continue
-            }
-            if ($k.Service) {
-                Stop-Service -Name $k.Service -Force -ErrorAction SilentlyContinue
-                $closed += ('{0} (servicio {1})' -f $k.Name, $k.Service)
-            } else {
+    # lo que el instalador comprobara (InUseFiles): lo que siga abierto, fuera.
+    # Hay apps que vuelven a abrirse al cerrarlas (Intel Arc Control Assist en BJ01 y
+    # BAC01, que carga la captura de OBS): entonces se para tambien quien la relanza
+    # (servicio o programa) y se vuelve a arrancar despues de actualizar.
+    $inUse = @($p.InUseFiles | Where-Object { $_ })
+    if ($inUse.Count) {
+        $script:PausedServices = @(); $script:PausedApps = @()
+        $critical = @('csrss', 'wininit', 'winlogon', 'services', 'lsass', 'smss', 'dwm', 'explorer', 'svchost')
+        $seen = @{}
+        for ($round = 0; $round -lt 4; $round++) {
+            $lockers = @()
+            try { $lockers = @(Get-FileLockers $inUse | Where-Object { $_.Id -ne $PID }) } catch { Write-Warn ((L 'Could not check files in use: {0}' 'No se pudo comprobar qué archivos están en uso: {0}') -f $_.Exception.Message); break }
+            if (-not $lockers.Count) { break }
+            if ($round -gt 0) { Start-Sleep -Seconds 2 }
+            foreach ($k in $lockers) {
+                $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $($k.Id)" -ErrorAction SilentlyContinue
+                $pn = if ($proc) { [IO.Path]::GetFileNameWithoutExtension($proc.Name) } else { '' }
+                if ($k.Critical -or $pn -in $critical) {
+                    Write-Warn ((L "{0} has {1} files open and cannot be closed - restart the PC and run the setup again." "{0} tiene archivos de {1} abiertos y no se puede cerrar: reinicia el PC y vuelve a pasar el setup.") -f $k.Name, $p.Name)
+                    continue
+                }
+                if ($k.Service) {
+                    Stop-Service -Name $k.Service -Force -ErrorAction SilentlyContinue
+                    if ($script:PausedServices -notcontains $k.Service) { $script:PausedServices += $k.Service }
+                    $closed += ('{0} (servicio {1})' -f $k.Name, $k.Service)
+                    continue
+                }
+                # ya se cerro antes y ha vuelto: parar a quien la abre
+                if ($seen[$pn] -and $proc) {
+                    $parent = Get-CimInstance Win32_Process -Filter "ProcessId = $($proc.ParentProcessId)" -ErrorAction SilentlyContinue
+                    $svc = @(Get-CimInstance Win32_Service -Filter "ProcessId = $($proc.ParentProcessId)" -ErrorAction SilentlyContinue)
+                    $ppn = if ($parent) { [IO.Path]::GetFileNameWithoutExtension($parent.Name) } else { '' }
+                    if ($svc.Count -eq 1 -and $ppn -notin $critical) {
+                        Stop-Service -Name $svc[0].Name -Force -ErrorAction SilentlyContinue
+                        if ($script:PausedServices -notcontains $svc[0].Name) { $script:PausedServices += $svc[0].Name }
+                        $closed += ('{0} (servicio {1}, que abre {2})' -f $svc[0].DisplayName, $svc[0].Name, $pn)
+                    } elseif ($parent -and $svc.Count -eq 0 -and $ppn -and $ppn -notin $critical) {
+                        if ($parent.ExecutablePath -and $script:PausedApps -notcontains $parent.ExecutablePath) { $script:PausedApps += $parent.ExecutablePath }
+                        Stop-Process -Id $parent.ProcessId -Force -ErrorAction SilentlyContinue
+                        $closed += ('{0} (abre {1})' -f $ppn, $pn)
+                    }
+                }
+                $seen[$pn] = $true
                 Stop-Process -Id $k.Id -Force -ErrorAction SilentlyContinue
-                $closed += $k.Name
+                $closed += $(if ($pn) { $pn } else { $k.Name })
             }
+            Start-Sleep -Seconds 3
         }
     }
     $closed = @($closed | Select-Object -Unique)
@@ -258,7 +286,30 @@ function Update-WingetPackage($key, $p) {
     } else {
         Write-Fail ((L '{0} not updated (winget code {1}); the installed version stays.' '{0} no se actualizó (código de winget {1}); se queda la versión instalada.') -f $p.Name, $r.Code)
         if ($r.Tail) { Write-Host $r.Tail }
+        # quien sigue con archivos abiertos, para saber que cerrar la proxima vez
+        $inUse = @($p.InUseFiles | Where-Object { $_ })
+        if ($inUse.Count) {
+            $left = @(try { Get-FileLockers $inUse } catch { })
+            if ($left.Count) { Write-Note ((L 'Still using its files: {0}' 'Siguen usando sus archivos: {0}') -f (($left | ForEach-Object { '{0} (PID {1})' -f $_.Name, $_.Id }) -join ', ')) }
+        }
     }
+    Resume-PausedApps
+}
+
+# Vuelve a arrancar lo que Stop-PackageProcesses paro para poder actualizar
+function Resume-PausedApps {
+    foreach ($svc in @($script:PausedServices)) {
+        if (-not $svc) { continue }
+        Start-Service -Name $svc -ErrorAction SilentlyContinue
+        Write-Host ((L '  Started again: service {0}' '  Arrancado de nuevo: servicio {0}') -f $svc)
+    }
+    foreach ($exe in @($script:PausedApps)) {
+        if (-not $exe -or -not (Test-Path -LiteralPath $exe)) { continue }
+        # por el explorador: se abre como el usuario, no como administrador
+        Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$exe`"" -ErrorAction SilentlyContinue
+        Write-Host ((L '  Started again: {0}' '  Arrancado de nuevo: {0}') -f [IO.Path]::GetFileNameWithoutExtension($exe))
+    }
+    $script:PausedServices = @(); $script:PausedApps = @()
 }
 
 # Version de un programa instalado sin marca del script (instalado a mano): la del exe
