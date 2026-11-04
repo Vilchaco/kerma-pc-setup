@@ -1,24 +1,32 @@
 // Kerma PC Setup - status of every PC, stored in Netlify Blobs (store "kerma-status").
+// People sign in with Google (session cookie, any @kermagames.com account: ../shared/auth.mjs).
+// "(people)" below = that session or the x-pin header (machines: setup script, terminal).
+//   GET    /api/config                       -> { googleClientId, domain } for the sign-in button
+//   POST   /api/login         { credential } -> Google ID token -> session cookie
+//   POST   /api/logout                       -> clears it
+//   GET    /api/me            (session)      -> { email, name }
 //   POST   /api/register      (x-pin)        -> { key }  write key for a PC (the setup script asks for the PIN once)
 //   POST   /api/status        (x-kerma-key)  -> a PC reports its status (Kerma-Status.ps1, every 5 min)
-//   GET    /api/status        (x-pin)        -> { now, pcs: [...] }
-//   DELETE /api/status?id=... (x-pin)        -> forget a PC (renamed / retired)
+//   GET    /api/status        (people)       -> { now, pcs: [...] }
+//   DELETE /api/status?id=... (people)       -> forget a PC (renamed / retired)
 //   POST   /api/log?id=KEY    (x-kerma-key)  -> a PC uploads the log of a setup run (text, last 10 kept per PC)
-//   GET    /api/log?id=KEY    (x-pin)        -> { logs: [{ at, size }] } newest first
-//   GET    /api/log?id=KEY&at=ISO (x-pin)    -> that log as text
-//   POST   /api/command?id=KEY (x-pin)       -> queue an action for that PC, body { action } (only ACTIONS)
-//   DELETE /api/command?id=KEY (x-pin)       -> cancel it
-//   GET    /api/remote-key (x-pin or x-kerma-key) -> { remoteKey } common Kerma Remote key of the tables
+//   GET    /api/log?id=KEY    (people)       -> { logs: [{ at, size }] } newest first
+//   GET    /api/log?id=KEY&at=ISO (people)    -> that log as text
+//   POST   /api/command?id=KEY (people)      -> queue an action for that PC, body { action } (only ACTIONS)
+//   DELETE /api/command?id=KEY (people)      -> cancel it
+//   GET    /api/remote-key (people or x-kerma-key) -> { remoteKey } common Kerma Remote key of the tables
 //          (env KERMA_REMOTE_KEY): the setup takes it from here, the panel shows it to set up Companion
-//   POST   /api/alerts-test (x-pin)          -> test message to the alert channels (Telegram / Slack)
+//   POST   /api/alerts-test (people)         -> test message to the alert channels (Telegram / Slack)
 // The PCs cannot be reached from here (casino LAN): a queued action goes back in the answer
 // to the next POST /api/status of that PC (every 5 min) and is deleted then.
-// Environment: STATUS_PIN (people) and STATUS_WRITE_KEY (PCs). Never in the repo: it is public.
+// Environment: STATUS_PIN (machines), STATUS_WRITE_KEY (PCs), and the Google ones of auth.mjs. Never in the repo: it is public.
 // 5 wrong PINs in 15 min lock the PIN for 15 min (blob lock/fails), same as Kerma Tips.
 import { getStore } from '@netlify/blobs';
 import { notify } from '../shared/notify.mjs';
+import { AuthError, readSession, verifyGoogleToken, makeCookie, clearCookie, googleClientId, domain } from '../shared/auth.mjs';
 
-export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command', '/api/remote-key', '/api/alerts-test'] };
+export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command', '/api/remote-key', '/api/alerts-test',
+  '/api/config', '/api/login', '/api/logout', '/api/me'] };
 
 const ACTIONS = ['timesync', 'watch_pause', 'watch_resume'];
 
@@ -41,6 +49,16 @@ async function checkPin(req, store) {
   return null;
 }
 
+// A person signed in with Google, or a machine with the PIN. With the cookie, changes need the
+// x-kerma-web header (another site cannot send it without a CORS preflight that we never allow).
+async function checkAccess(req, store) {
+  if (req.headers.get('x-pin')) return checkPin(req, store);
+  const user = readSession(req);
+  if (!user) return json({ error: 'login', msg: 'Sign in with your Kerma Google account' }, 401);
+  if (req.method !== 'GET' && req.headers.get('x-kerma-web') !== '1') return json({ error: 'csrf' }, 403);
+  return null;
+}
+
 const cleanId = (v) => (typeof v === 'string' ? v.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 40) : '');
 
 export default async (req) => {
@@ -48,6 +66,24 @@ export default async (req) => {
   const url = new URL(req.url);
   const path = url.pathname.replace(/\/+$/, '');
   try {
+    if (path === '/api/config' && req.method === 'GET') return json({ googleClientId: googleClientId(), domain: domain() });
+    if (path === '/api/me' && req.method === 'GET') {
+      const user = readSession(req);
+      return user ? json(user) : json({ error: 'login' }, 401);
+    }
+    if (path === '/api/login' && req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      try {
+        const user = await verifyGoogleToken(body.credential);
+        return new Response(JSON.stringify(user), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'set-cookie': makeCookie(user) } });
+      } catch (e) {
+        if (e instanceof AuthError) return json({ error: 'login', msg: e.message }, e.status);
+        throw e;
+      }
+    }
+    if (path === '/api/logout' && req.method === 'POST') {
+      return new Response('{"ok":true}', { headers: { 'content-type': 'application/json', 'set-cookie': clearCookie() } });
+    }
     if (path === '/api/register' && req.method === 'POST') {
       const bad = await checkPin(req, store); if (bad) return bad;
       const key = process.env.STATUS_WRITE_KEY;
@@ -72,7 +108,7 @@ export default async (req) => {
         return json({ ok: true, id, commands: cmd ? [cmd] : [] });
       }
       if (req.method === 'GET') {
-        const bad = await checkPin(req, store); if (bad) return bad;
+        const bad = await checkAccess(req, store); if (bad) return bad;
         const { blobs } = await store.list({ prefix: 'pc/' });
         const pcs = (await Promise.all(blobs.map((b) => store.get(b.key, { type: 'json' })))).filter(Boolean);
         const { blobs: cmds } = await store.list({ prefix: 'cmd/' });
@@ -82,7 +118,7 @@ export default async (req) => {
         return json({ now: new Date().toISOString(), pcs });
       }
       if (req.method === 'DELETE') {
-        const bad = await checkPin(req, store); if (bad) return bad;
+        const bad = await checkAccess(req, store); if (bad) return bad;
         const id = cleanId(url.searchParams.get('id'));
         if (!id) return json({ error: 'id' }, 400);
         await store.delete('pc/' + id);
@@ -107,7 +143,7 @@ export default async (req) => {
         return json({ ok: true, at });
       }
       if (req.method === 'GET') {
-        const bad = await checkPin(req, store); if (bad) return bad;
+        const bad = await checkAccess(req, store); if (bad) return bad;
         const at = url.searchParams.get('at');
         if (at) {
           const text = await store.get(prefix + at.replace(/[^0-9TZ:.\-]/g, ''), { type: 'text' });
@@ -120,7 +156,7 @@ export default async (req) => {
       }
     }
     if (path === '/api/alerts-test' && req.method === 'POST') {
-      const bad = await checkPin(req, store); if (bad) return bad;
+      const bad = await checkAccess(req, store); if (bad) return bad;
       const sent = await notify('🧪 <b>Prueba de avisos</b> del panel de estado de Kerma. Si ves esto, funcionan.');
       return json({ ok: sent.length > 0, sent });
     }
@@ -128,14 +164,14 @@ export default async (req) => {
     if (path === '/api/remote-key' && req.method === 'GET') {
       const wk = process.env.STATUS_WRITE_KEY;
       const byPc = wk && req.headers.get('x-kerma-key') === wk;
-      if (!byPc) { const bad = await checkPin(req, store); if (bad) return bad; }
+      if (!byPc) { const bad = await checkAccess(req, store); if (bad) return bad; }
       const remoteKey = process.env.KERMA_REMOTE_KEY;
       if (!remoteKey) return json({ error: 'not-configured', msg: 'KERMA_REMOTE_KEY is missing in Netlify' }, 503);
       return json({ remoteKey });
     }
 
     if (path === '/api/command') {
-      const bad = await checkPin(req, store); if (bad) return bad;
+      const bad = await checkAccess(req, store); if (bad) return bad;
       const id = cleanId(url.searchParams.get('id'));
       if (!id) return json({ error: 'id' }, 400);
       if (req.method === 'POST') {
