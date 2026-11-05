@@ -13,10 +13,12 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 Sora,system-ui,sans-serif}
 .wrap{max-width:860px;margin:0 auto;padding:48px 24px 64px}
-header{display:flex;align-items:center;gap:16px;margin-bottom:36px}
-header img{height:44px}
-h1{font-family:Orbitron,Sora,sans-serif;font-size:26px;font-weight:800;margin:0;letter-spacing:.4px}
-h1 span{color:var(--acc)}
+header{display:flex;align-items:center;gap:16px;margin-bottom:32px}
+/* marca estandar de las apps de Kerma (como .lat-marca de Tech Inventory): logo 26 px + nombre corto en Orbitron 12 px gris */
+.marca{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
+.marca img{height:26px;width:auto;opacity:.92;display:block;flex:none}
+.marca span{font-family:Orbitron,Sora,sans-serif;font-size:12px;font-weight:700;color:#949298;white-space:nowrap}
+h1{font-family:Orbitron,Sora,sans-serif;font-size:22px;font-weight:700;line-height:1.2;margin:0 0 10px}
 .ver{margin-left:auto;font:500 12.5px Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:5px 12px;white-space:nowrap}
 .ver b{color:var(--acc);font-weight:500}
 .lead{color:var(--mut);margin:0 0 28px;font-size:16px}
@@ -44,11 +46,11 @@ footer{color:var(--mut2);font-size:12.5px;margin-top:32px;text-align:center}
 <body>
 <div class="wrap">
   <header>
-    <img src="logo.png" alt="Kerma Games">
-    <h1>PC <span>Setup</span></h1>
+    <div class="marca"><img src="logo.png" alt="Kerma Games"><span>PC Setup</span></div>
     <div class="ver" id="ver">última versión: <b>…</b></div>
   </header>
 
+  <h1>Preparar un PC</h1>
   <p class="lead">Deja listo un PC de Kerma Games con una sola línea: hora sincronizada, nombre estándar, inicio automático, programas, RustDesk, fondo de pantalla y panel de estado.</p>
 
   <div class="card">
@@ -71,7 +73,7 @@ footer{color:var(--mut2);font-size:12.5px;margin-top:32px;text-align:center}
   </div>
 
   <div class="links">
-    <a href="/estado"><b>Panel de estado</b><small>Cómo están todos los PCs ahora. Con PIN.</small></a>
+    <a href="/estado"><b>Panel de estado</b><small>Cómo están todos los PCs ahora. Entra con tu cuenta de Kerma.</small></a>
     <a href="https://github.com/Vilchaco/kerma-pc-setup#readme"><b>Manual</b><small>Qué hace cada sección y cómo se configura.</small></a>
     <a href="https://github.com/Vilchaco/kerma-pc-setup/releases/latest"><b>Novedades</b><small>Notas de la última versión y descarga del zip.</small></a>
   </div>

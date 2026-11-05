@@ -13,13 +13,15 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 Sora,system-ui,sans-serif}
 .mono{font-family:Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums}
-button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line2);background:var(--card2);color:var(--txt);padding:7px 12px;transition:border-color .15s,background .15s}
-button:hover{border-color:var(--acc)}
+button{font:500 13px/1.2 Sora,system-ui,sans-serif;cursor:pointer;border-radius:10px;border:1px solid transparent;background:var(--card2);color:var(--txt);min-height:34px;padding:0 12px;transition:background .15s,border-color .15s,filter .15s}
+button:hover{background:#242432}
 button:disabled{opacity:.5;cursor:default}
 button.acc{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
-button.ghost{background:transparent}
+button.acc:hover{background:var(--acc);filter:brightness(1.07)}
+button.ghost{background:transparent;border-color:var(--line2)}
+button.ghost:hover{background:var(--card2)}
 button.danger{color:var(--bad)}
-button.mini{padding:3px 9px;font-size:12px;border-radius:6px}
+button.mini{min-height:0;padding:3px 9px;font-size:12px;border-radius:6px}
 input.search{font:inherit;background:var(--card);border:1px solid var(--line2);color:var(--txt);border-radius:8px;padding:7px 12px;min-width:200px}
 input.search:focus{outline:none;border-color:var(--acc)}
 .ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.mut{color:var(--mut)}.info{color:var(--info)}
@@ -28,9 +30,11 @@ input.search:focus{outline:none;border-color:var(--acc)}
 
 /* header */
 header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:rgba(10,7,18,.92);backdrop-filter:blur(8px);flex-wrap:wrap}
-header img{height:32px}
-header h1{font-family:Orbitron,Sora,sans-serif;font-size:16px;font-weight:800;margin:0;letter-spacing:.4px}
-header h1 span{color:var(--acc)}
+/* marca estandar de las apps de Kerma (como .lat-marca de Tech Inventory): logo 26 px + nombre corto en Orbitron 12 px gris */
+.marca{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
+.marca img{height:26px;width:auto;opacity:.92;display:block;flex:none}
+.marca span{font-family:Orbitron,Sora,sans-serif;font-size:12px;font-weight:700;color:#949298;white-space:nowrap}
+h1.vista{font-family:Orbitron,Sora,sans-serif;font-size:22px;font-weight:700;line-height:1.2;margin:0 0 18px}
 .spacer{flex:1}
 .meta{color:var(--mut);font-size:12.5px}
 main{padding:22px 24px 70px;max-width:1500px;margin:0 auto}
@@ -121,7 +125,8 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:10px;paddi
 
 /* login */
 .login{max-width:360px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;text-align:center}
-.login img{height:46px;margin-bottom:12px}
+.login .marca{justify-content:center;margin-bottom:18px}
+.login h1.vista{font-size:18px;margin-bottom:4px}
 .login .hint{color:var(--mut);font-size:13px;margin:6px 0 18px}
 .login .gbtn{display:flex;justify-content:center;min-height:44px;margin-bottom:10px}
 .err{color:var(--bad);min-height:20px;font-size:13px}
@@ -141,8 +146,8 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:10px;paddi
 </head>
 <body>
 <div id="login" class="login" hidden>
-  <img src="logo.png" alt="Kerma Games">
-  <div>Estado de los PCs</div>
+  <div class="marca"><img src="logo.png" alt="Kerma Games"><span>PC Setup</span></div>
+  <h1 class="vista">Estado de los PCs</h1>
   <div class="hint" id="hint">Entra con tu cuenta de Kerma (@kermagames.com).</div>
   <div class="gbtn" id="gbtn"></div>
   <div class="err" id="err"></div>
@@ -150,16 +155,16 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:10px;paddi
 
 <div id="app" hidden>
 <header>
-  <img src="logo.png" alt="Kerma Games">
-  <h1>Estado de los <span>PCs</span></h1>
+  <a class="marca" href="/"><img src="logo.png" alt="Kerma Games"><span>PC Setup</span></a>
   <div class="spacer"></div>
   <div class="meta" id="updated"></div>
   <div class="meta" id="who"></div>
   <button id="remotekey" class="ghost" title="Clave común de Kerma Remote, para configurar Companion">Clave Kerma Remote</button>
-  <button id="refresh">Actualizar</button>
+  <button id="refresh" class="ghost">Actualizar</button>
   <button id="logout" class="ghost">Salir</button>
 </header>
 <main>
+  <h1 class="vista">Estado de los PCs</h1>
   <section class="overview">
     <div class="counts" id="counts"></div>
     <div class="attention" id="attention"></div>
