@@ -17,15 +17,18 @@
 //   GET    /api/remote-key (people or x-kerma-key) -> { remoteKey } common Kerma Remote key of the tables
 //          (env KERMA_REMOTE_KEY): the setup takes it from here, the panel shows it to set up Companion
 //   POST   /api/alerts-test (people)         -> test message to the alert channels (Telegram / Slack)
+//   GET    /api/inventory (x-inventory-key)  -> { now, pcs: [...] } only the equipment data of each PC (hardware,
+//          Windows, disk, network), read by Kerma Tech Inventory to keep its PCs up to date. Its own read-only
+//          key (env INVENTORY_KEY): it cannot change anything here, unlike the PIN.
 // The PCs cannot be reached from here (casino LAN): a queued action goes back in the answer
 // to the next POST /api/status of that PC (every 5 min) and is deleted then.
-// Environment: STATUS_PIN (machines), STATUS_WRITE_KEY (PCs), and the Google ones of auth.mjs. Never in the repo: it is public.
+// Environment: STATUS_PIN (machines), STATUS_WRITE_KEY (PCs), INVENTORY_KEY (Tech Inventory), and the Google ones of auth.mjs. Never in the repo: it is public.
 // 5 wrong PINs in 15 min lock the PIN for 15 min (blob lock/fails), same as Kerma Tips.
 import { getStore } from '@netlify/blobs';
 import { notify } from '../shared/notify.mjs';
 import { AuthError, readSession, verifyGoogleToken, makeCookie, clearCookie, googleClientId, domain } from '../shared/auth.mjs';
 
-export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command', '/api/remote-key', '/api/alerts-test',
+export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command', '/api/remote-key', '/api/alerts-test', '/api/inventory',
   '/api/config', '/api/login', '/api/logout', '/api/me'] };
 
 const ACTIONS = ['timesync', 'watch_pause', 'watch_resume'];
@@ -33,6 +36,16 @@ const ACTIONS = ['timesync', 'watch_pause', 'watch_resume'];
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// What Tech Inventory gets of a PC: who it is and its equipment, nothing about apps, users or commands.
+const inventoryView = (s) => ({
+  id: s.id, key: s.key || null, label: s.label || null, type: s.type || null, game: s.game || null, hostname: s.hostname || null,
+  script_version: s.script_version || null, collected_at: s.collected_at || null, received_at: s.received_at || null,
+  windows: s.windows || null, hardware: s.hardware || null, disk: s.disk || null,
+  network: (Array.isArray(s.network) ? s.network : []).map((n) => ({
+    name: n.name || null, desc: n.desc || null, status: n.status || null, mac: n.mac || null, ip: n.ip || null, dhcp: n.dhcp ?? null,
+  })),
+});
 
 async function checkPin(req, store) {
   const pin = process.env.STATUS_PIN;
@@ -124,6 +137,14 @@ export default async (req) => {
         await store.delete('pc/' + id);
         return json({ ok: true });
       }
+    }
+    if (path === '/api/inventory' && req.method === 'GET') {
+      const key = process.env.INVENTORY_KEY;
+      if (!key) return json({ error: 'not-configured', msg: 'INVENTORY_KEY is missing in Netlify' }, 503);
+      if (req.headers.get('x-inventory-key') !== key) { await wait(500); return json({ error: 'key' }, 401); }
+      const { blobs } = await store.list({ prefix: 'pc/' });
+      const pcs = (await Promise.all(blobs.map((b) => store.get(b.key, { type: 'json' })))).filter(Boolean);
+      return json({ now: new Date().toISOString(), pcs: pcs.map(inventoryView) });
     }
     if (path === '/api/log') {
       const id = cleanId(url.searchParams.get('id'));
