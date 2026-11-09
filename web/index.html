@@ -9,7 +9,7 @@
 <style>
 /* Brandbook Kerma Games 2026 (pags. 21 y 26): Sora principal, Orbitron solo en titulos; fondo #0A0712, acento #EA7F2B */
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Sora:wght@400;500;600;700&display=swap');
-:root{--bg:#0A0712;--card:#110C1F;--card2:#161029;--line:#353041;--txt:#FFFFFF;--mut:#CFCED2;--mut2:#56525F;--acc:#EA7F2B;--acc-ink:#0A0712;--acc-soft:rgba(234,127,43,.12);--ok:#5fb878}
+:root{--bg:#0A0712;--card:#110C1F;--card2:#161029;--line:#353041;--line2:#4D4957;--txt:#FFFFFF;--mut:#CFCED2;--mut2:#56525F;--acc:#EA7F2B;--acc-ink:#0A0712;--acc-soft:rgba(234,127,43,.12);--ok:#5fb878;--toque:44px}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 Sora,system-ui,sans-serif}
 .wrap{max-width:860px;margin:0 auto;padding:48px 24px 64px}
@@ -24,11 +24,19 @@ h1{font-family:Orbitron,Sora,sans-serif;font-size:22px;font-weight:700;line-heig
 .lead{color:var(--mut);margin:0 0 28px;font-size:16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 22px 20px;margin-bottom:18px}
 .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--acc);font-weight:500;margin:0 0 12px}
-.cmd{display:flex;align-items:stretch;gap:10px}
-.cmd code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font:500 15px Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:13px 14px;color:var(--txt)}
+.cmd{display:flex;align-items:stretch;gap:8px}
+.cmd code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font:500 15px Sora,system-ui,sans-serif;font-variant-numeric:tabular-nums;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:0 14px;min-height:var(--toque);display:flex;align-items:center;color:var(--txt)}
 .cmd.small code{font-size:12.5px}
-button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--acc);background:var(--acc);color:var(--acc-ink);font-weight:600;padding:0 16px;min-width:92px}
-button.done{background:var(--ok);border-color:var(--ok)}
+/* Botones: estandar de las apps Kerma (como .btn de Tech Inventory): 38 px en PC / 44 px tactil, 14 px.
+   Neutro por defecto; .principal naranja, uno por pantalla. min-width para que «Copiado» no mueva la fila. */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--toque);min-width:92px;padding:0 16px;border-radius:10px;border:1px solid transparent;background:var(--card2);color:var(--txt);font:500 14px/1.2 Sora,system-ui,sans-serif;white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s,filter .15s}
+.btn:hover{background:#242432}
+.btn.principal{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+.btn.principal:hover{background:var(--acc);filter:brightness(1.07)}
+.btn.ghost{background:transparent;border-color:var(--line2)}
+.btn.ghost:hover{background:var(--card2)}
+.btn.done,.btn.done:hover{background:var(--ok);border-color:var(--ok);color:var(--acc-ink);filter:none}
+@media (min-width:861px) and (pointer:fine){.btn,.cmd code{min-height:38px}}
 ol{margin:4px 0 0;padding-left:20px}
 ol li{margin:6px 0}
 .note{color:var(--mut);font-size:13.5px;margin:12px 0 0}
@@ -55,7 +63,7 @@ footer{color:var(--mut2);font-size:12.5px;margin-top:32px;text-align:center}
 
   <div class="card">
     <h2>Instalar en un PC</h2>
-    <div class="cmd"><code id="ps">irm https://kermasetup.netlify.app | iex</code><button data-copy="ps">Copiar</button></div>
+    <div class="cmd"><code id="ps">irm https://kermasetup.netlify.app | iex</code><button class="btn principal" data-copy="ps">Copiar</button></div>
     <ol>
       <li>Conecta el PC a internet, mejor con cable.</li>
       <li>Clic derecho en el botón de Inicio y abre <b>Terminal</b> o <b>Windows PowerShell</b>.</li>
@@ -68,7 +76,7 @@ footer{color:var(--mut2);font-size:12.5px;margin-top:32px;text-align:center}
   <div class="card">
     <details>
       <summary>Desde CMD, en lugar de PowerShell</summary>
-      <div class="cmd small"><code id="cmd">powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://kermasetup.netlify.app | iex"</code><button data-copy="cmd">Copiar</button></div>
+      <div class="cmd small"><code id="cmd">powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol='Tls12'; irm https://kermasetup.netlify.app | iex"</code><button class="btn ghost" data-copy="cmd">Copiar</button></div>
     </details>
   </div>
 
