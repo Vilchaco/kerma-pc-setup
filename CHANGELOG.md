@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.16.1] - 2026-11-11 - Pantalla principal en el Stream Deck del Sandbox
+
+### Añadido
+- **Sandbox 01**: el Stream Deck arranca en una **pantalla principal** con una tecla por mesa (Blackjack, Baccarat, Roulette y Craps) que abre su perfil. En cada perfil, la tecla de arriba a la derecha (EMERGENCY en las mesas) pasa a ser **MENÚ** y vuelve a la pantalla principal. Así no hay que tocar la app en el PC. Los perfiles de las mesas no cambian: el cambio se hace solo en la copia que se instala en el Sandbox.
+- `assets/streamdeck/sandbox.streamDeckProfile` y `sandbox-menu.png`, generados con `build_sandbox_menu.py` (en la carpeta del generador de perfiles).
+
 ## [5.16.0] - 2026-11-11 - Sandbox del training room
 
 ### Añadido

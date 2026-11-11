@@ -114,7 +114,7 @@ function Start-StreamDeckApp([string]$exe) { Start-Process -FilePath 'explorer.e
 # <UUID>.sdProfile del .streamDeckProfile (un zip) en ProfilesV3 y le pone el id
 # del Stream Deck de este PC. En un PC nuevo abre antes la app una vez para que
 # cree su carpeta y reconozca el aparato. $false = no se pudo (sin Stream Deck).
-function Install-StreamDeckProfileDirect([string]$file, [string]$exe, [string]$target) {
+function Install-StreamDeckProfileDirect([string]$file, [string]$exe, [string]$target, [hashtable]$sandbox = $null) {
     $tmp = Get-KermaTemp ('sdprofile-' + [IO.Path]::GetFileNameWithoutExtension($file))
     try {
         if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
@@ -138,6 +138,7 @@ function Install-StreamDeckProfileDirect([string]$file, [string]$exe, [string]$t
         $text = [IO.File]::ReadAllText($manifest)
         $text = [regex]::Replace($text, '("Device"\s*:\s*\{[^}]*?"UUID"\s*:\s*")[^"]*(")', [Text.RegularExpressions.MatchEvaluator] { param($m) $m.Groups[1].Value + $dev + $m.Groups[2].Value })
         [IO.File]::WriteAllText($manifest, $text, (New-Object Text.UTF8Encoding $false))
+        if ($sandbox) { Set-StreamDeckSandboxKeys $src.FullName $dev $sandbox }
         # en la carpeta del perfil que ya usa el Stream Deck: la app recuerda el perfil
         # elegido por esa carpeta, asi que el aparato sigue mostrandolo (BJ01)
         $dst = if ($target) { $target } else { Join-Path $env:APPDATA "Elgato\StreamDeck\ProfilesV3\$($src.Name)" }
@@ -153,13 +154,67 @@ function Install-StreamDeckProfileDirect([string]$file, [string]$exe, [string]$t
     }
 }
 
+# Carpeta <UUID>.sdProfile que trae un .streamDeckProfile
+function Get-StreamDeckProfileFolder([string]$file) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [IO.Compression.ZipFile]::OpenRead($file)
+    try {
+        foreach ($e in $zip.Entries) { if ($e.FullName -match '^Profiles/([^/]+\.sdProfile)/manifest\.json$') { return $Matches[1] } }
+        return ''
+    } finally { $zip.Dispose() }
+}
+
+# Sandbox: las teclas de la pantalla principal llevan "KERMA:<juego>" en ProfileUUID; aqui se
+# cambia por la carpeta real del perfil de ese juego y DeviceUUID por el Stream Deck del PC.
+# En los perfiles de juego ($s.Menu) la tecla 4,0 (EMERGENCY) pasa a ser MENU, que vuelve
+# a la pantalla principal. Los perfiles de las mesas no se tocan: solo esta copia.
+function Set-StreamDeckSandboxKeys([string]$dir, [string]$dev, [hashtable]$s) {
+    $utf8 = New-Object Text.UTF8Encoding $false
+    foreach ($m in @(Get-ChildItem -LiteralPath $dir -Recurse -Filter 'manifest.json')) {
+        $t = [IO.File]::ReadAllText($m.FullName)
+        $n = [regex]::Replace($t, '"ProfileUUID"\s*:\s*"KERMA:([a-z0-9_-]+)"', [Text.RegularExpressions.MatchEvaluator] {
+            param($x) $u = $s.Map[$x.Groups[1].Value]; if ($u) { '"ProfileUUID":"' + $u + '"' } else { $x.Value } })
+        $n = [regex]::Replace($n, '"DeviceUUID"\s*:\s*""', ('"DeviceUUID":"' + $dev + '"'))
+        if ($n -ne $t) { [IO.File]::WriteAllText($m.FullName, $n, $utf8) }
+    }
+    if (-not $s.Menu) { return }
+    $root = Get-Content -LiteralPath (Join-Path $dir 'manifest.json') -Raw | ConvertFrom-Json
+    $pageDir = Join-Path $dir ('Profiles\' + ([string]$root.Pages.Current).ToUpper())
+    $pageFile = Join-Path $pageDir 'manifest.json'
+    $page = Get-Content -LiteralPath $pageFile -Raw | ConvertFrom-Json
+    $img = 'KERMAMENU0000000000000000Z'
+    New-Item -ItemType Directory -Path (Join-Path $pageDir 'Images') -Force | Out-Null
+    Copy-Item -LiteralPath $s.Png -Destination (Join-Path $pageDir "Images\$img.png") -Force
+    $rot = 'com.elgato.streamdeck.profile.rotate'
+    $key = ('{"ActionID":"' + [guid]::NewGuid() + '","LinkedTitle":true,"Name":"Switch Profile","Plugin":{"Name":"Switch Profile","UUID":"' + $rot +
+        '","Version":"1.0"},"Resources":null,"Settings":{"DeviceUUID":"' + $dev + '","ProfileUUID":"' + $s.Menu +
+        '"},"State":0,"States":[{"FontFamily":"","FontSize":12,"FontStyle":"","FontUnderline":false,"Image":"Images/' + $img +
+        '.png","OutlineThickness":2,"ShowTitle":false,"Title":"MENU","TitleAlignment":"bottom","TitleColor":"#ffffff"}],"UUID":"' + $rot + '"}') | ConvertFrom-Json
+    $ctl = @($page.Controllers)[0]
+    if ($null -eq $ctl.Actions) { $ctl.Actions = New-Object PSObject }
+    $ctl.Actions | Add-Member -NotePropertyName '4,0' -NotePropertyValue $key -Force
+    [IO.File]::WriteAllText($pageFile, (ConvertTo-Json -InputObject $page -Depth 30 -Compress), $utf8)
+}
+
 # Varios juegos en un PC (Sandbox del training room): un perfil de Stream Deck por juego,
-# cada uno en su carpeta, y la app los guarda todos (se cambia de perfil en la app).
+# cada uno en su carpeta, mas la pantalla principal (sandbox.streamDeckProfile) que cambia
+# entre ellos; en cada juego, MENU (en lugar de EMERGENCY) vuelve a ella.
 # Los perfiles iguales (baccarat es hoy copia del de Blackjack) se instalan una vez.
 # Los de otros nombres se quitan, como en las mesas; el primero va donde estaba el
 # "Default Profile", que es el que muestra el aparato.
 function Install-StreamDeckSet($pc, [string]$exe, [string]$assets, [string]$stamp) {
-    $set = @(); $names = @()
+    $set = @(); $names = @(); $gameName = @{}
+    # pantalla principal (assets\streamdeck\sandbox.streamDeckProfile + sandbox-menu.png): va la primera
+    $menuFile = Join-Path $assets "streamdeck\$($pc.Game).streamDeckProfile"
+    $menuPng = Join-Path $assets "streamdeck\$($pc.Game)-menu.png"
+    $hasMenu = (@($pc.Games) -notcontains $pc.Game) -and (Test-Path -LiteralPath $menuFile) -and (Test-Path -LiteralPath $menuPng)
+    if ($hasMenu) {
+        $n = Get-StreamDeckProfileName $menuFile
+        if ($n) {
+            $names += $n
+            $set += @{ Game = ''; File = $menuFile; Name = $n; Hash = 'menu1-' + (Get-FileHash -LiteralPath $menuFile -Algorithm SHA256).Hash + '-' + (Get-FileHash -LiteralPath $menuPng -Algorithm SHA256).Hash }
+        } else { $hasMenu = $false }
+    }
     foreach ($g in @($pc.Games)) {
         $f = Join-Path $assets "streamdeck\$g.streamDeckProfile"
         if (-not (Test-Path -LiteralPath $f)) {
@@ -167,6 +222,7 @@ function Install-StreamDeckSet($pc, [string]$exe, [string]$assets, [string]$stam
             continue
         }
         $n = Get-StreamDeckProfileName $f
+        if ($n) { $gameName[$g] = $n }
         if (-not $n -or $names -contains $n) { continue }
         $names += $n
         $set += @{ Game = $g; File = $f; Name = $n; Hash = (Get-FileHash -LiteralPath $f -Algorithm SHA256).Hash }
@@ -196,20 +252,35 @@ function Install-StreamDeckSet($pc, [string]$exe, [string]$assets, [string]$stam
         foreach ($d in $others) { Remove-Item -LiteralPath $d -Recurse -Force }
         Write-Note ((L '  Other Stream Deck profiles removed (copy kept): {0}' '  Otros perfiles de Stream Deck quitados (con copia): {0}') -f ($otherNames -join ', '))
     }
-    $failed = @()
+    # primero, donde va cada uno: las teclas de cambio de perfil necesitan el UUID de su carpeta
+    $byName = @{}
     for ($i = 0; $i -lt $set.Count; $i++) {
         $one = $set[$i]
         $existing = @(Get-StreamDeckProfileDirs $one.Name)
-        $target = if ($i -eq 0 -and $defaults.Count) { $defaults[0] } elseif ($existing.Count) { $existing[0] } else { '' }
+        $one.Target = if ($i -eq 0 -and $defaults.Count) { $defaults[0] } elseif ($existing.Count) { $existing[0] } else { '' }
         # copias repetidas con ese nombre: fuera, que quede una
-        foreach ($d in @($existing | Where-Object { $_ -ne $target })) { Remove-Item -LiteralPath $d -Recurse -Force }
-        if (Install-StreamDeckProfileDirect $one.File $exe ([string]$target)) {
+        foreach ($d in @($existing | Where-Object { $_ -ne $one.Target })) { Remove-Item -LiteralPath $d -Recurse -Force }
+        $folder = if ($one.Target) { Split-Path -Path $one.Target -Leaf } else { Get-StreamDeckProfileFolder $one.File }
+        $byName[$one.Name] = $folder -replace '\.sdProfile$', ''
+    }
+    $map = @{}
+    foreach ($g in $gameName.Keys) { if ($byName[$gameName[$g]]) { $map[$g] = $byName[$gameName[$g]] } }
+    $failed = @()
+    for ($i = 0; $i -lt $set.Count; $i++) {
+        $one = $set[$i]
+        $sb = $null
+        if ($hasMenu) { $sb = @{ Map = $map; Png = $menuPng; Menu = $(if ($i -eq 0) { '' } else { $byName[$set[0].Name] }) } }
+        if (Install-StreamDeckProfileDirect $one.File $exe ([string]$one.Target) $sb) {
             Write-Ok ((L "Stream Deck: profile '{0}' installed." "Stream Deck: perfil '{0}' instalado.") -f $one.Name)
         } else { $failed += $one }
     }
     if (-not $failed.Count) {
         Set-Content -LiteralPath $hashFile -Value $hash -Encoding Ascii
-        Write-Note (L '  The Stream Deck shows one profile at a time: to practise another table, pick its profile in the Stream Deck app.' '  El Stream Deck muestra un perfil cada vez: para practicar otra mesa, elige su perfil en la app de Stream Deck.')
+        if ($hasMenu) {
+            Write-Note (L '  On the Stream Deck: the main screen picks the table; MENU (top right) goes back to it.' '  En el Stream Deck: la pantalla principal elige la mesa y MENÚ (arriba a la derecha) vuelve a ella.')
+        } else {
+            Write-Note (L '  The Stream Deck shows one profile at a time: to practise another table, pick its profile in the Stream Deck app.' '  El Stream Deck muestra un perfil cada vez: para practicar otra mesa, elige su perfil en la app de Stream Deck.')
+        }
         Add-Change ((L 'Settings: Stream Deck profiles {0}' 'Configuración: perfiles de Stream Deck {0}') -f ($names -join ', '))
         return
     }
