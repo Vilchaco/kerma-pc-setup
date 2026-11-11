@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.16.2] - 2026-11-11 - Arreglos del primer pase en el Sandbox (Windows Home)
+
+### Corregido
+- **«La sección se paró por un error: Error formatting a string»**: si un mensaje de error traía llaves `{ }`, las funciones que escriben `[ERROR]`, `[AVISO]` y `[OMITIDO]` fallaban y paraban toda la sección (en el Sandbox, la de programas).
+- **winget que no arranca** («The file cannot be accessed by the system», Sandbox 01 con Windows Home): ahora se prueba cada copia de winget (el alias del usuario y la del App Installer) y se usa la primera que funciona; si ninguna va, se intenta reparar. Un programa que no arranca ya no para la sección.
+- **Stream Deck que parecía colgado**: si la app no veía el aparato, cada perfil esperaba 60 s sin decir nada (4 minutos en el Sandbox). Ahora espera una sola vez, avisando, y si no lo ve dice qué modelos tiene la app y que hay que conectarlo y volver a pasar el setup. Si el aparato es otro modelo de 15 teclas, el perfil se adapta a él.
+
 ## [5.16.1] - 2026-11-11 - Pantalla principal en el Stream Deck del Sandbox
 
 ### Añadido

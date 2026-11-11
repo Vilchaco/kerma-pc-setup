@@ -3,15 +3,22 @@
 #  GitHub), mas Focusrite Control 2 si hay una Scarlett conectada.
 # =====================================================================
 
+# Que winget arranque de verdad: el alias puede existir y estar roto para este usuario
+# ("The file cannot be accessed by the system", Sandbox 01, 11-nov-2026).
+function Test-WingetPath([string]$p) {
+    try { $null = & $p --version 2>$null; return ($LASTEXITCODE -eq 0) } catch { return $false }
+}
 function Get-WingetPath {
+    $cands = @()
     $cmd = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
-    $alias = Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe'
-    if (Test-Path -LiteralPath $alias) { return $alias }
-    # En ventanas elevadas a veces falta el alias: usar la carpeta del App Installer
-    $pkg = Get-ChildItem -Path "$env:ProgramFiles\WindowsApps" -Filter 'Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe' -Directory -ErrorAction SilentlyContinue |
-        Sort-Object -Property Name -Descending | Select-Object -First 1
-    if ($pkg -and (Test-Path -LiteralPath (Join-Path $pkg.FullName 'winget.exe'))) { return (Join-Path $pkg.FullName 'winget.exe') }
+    if ($cmd) { $cands += $cmd.Source }
+    $cands += Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe'
+    # En ventanas elevadas a veces falta el alias o no va: usar la carpeta del App Installer
+    $cands += @(Get-ChildItem -Path "$env:ProgramFiles\WindowsApps" -Filter 'Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe' -Directory -ErrorAction SilentlyContinue |
+        Sort-Object -Property Name -Descending | ForEach-Object { Join-Path $_.FullName 'winget.exe' })
+    foreach ($c in ($cands | Select-Object -Unique)) {
+        if ((Test-Path -LiteralPath $c) -and (Test-WingetPath $c)) { return $c }
+    }
     return $null
 }
 

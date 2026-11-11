@@ -21,9 +21,10 @@ function Write-Phase([string]$title) {
     Write-Host "#################  $title  #################" -ForegroundColor Magenta
 }
 function Write-Ok($m)   { Write-Host "  [OK] $m"                          -ForegroundColor Green }
-function Write-Skip($m) { Write-Host ("  [{0}] $m" -f (L 'SKIPPED' 'OMITIDO')) -ForegroundColor DarkGray }
-function Write-Warn($m) { Write-Host ("  [{0}] $m" -f (L 'WARN' 'AVISO'))      -ForegroundColor Yellow }
-function Write-Fail($m) { Write-Host ("  [{0}] $m" -f (L 'FAILED' 'ERROR'))    -ForegroundColor Red }
+# sin -f con el mensaje dentro: un mensaje con llaves { } (p. ej. un error de PowerShell) rompia el formato
+function Write-Skip($m) { Write-Host ('  [' + (L 'SKIPPED' 'OMITIDO') + '] ' + $m) -ForegroundColor DarkGray }
+function Write-Warn($m) { Write-Host ('  [' + (L 'WARN' 'AVISO') + '] ' + $m)      -ForegroundColor Yellow }
+function Write-Fail($m) { Write-Host ('  [' + (L 'FAILED' 'ERROR') + '] ' + $m)    -ForegroundColor Red }
 function Write-Note($m) { Write-Host "  $m"                               -ForegroundColor Yellow }
 function Add-Change($m) { $State.Changes += $m }
 
@@ -39,6 +40,9 @@ function Invoke-Native([string]$exe, [string[]]$arguments) {
                 if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ }
             } | Out-String)
         $code = $LASTEXITCODE
+    } catch {
+        # el programa ni arranca (p. ej. alias de winget roto: "The file cannot be accessed by the system")
+        $out = $_.Exception.Message; $code = -1
     } finally { $ErrorActionPreference = $prev }
     return @{ Output = $out; ExitCode = $code; Text = (($out -replace '\s+', ' ').Trim()) }
 }

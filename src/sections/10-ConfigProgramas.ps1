@@ -96,15 +96,40 @@ function Get-StreamDeckDirName([string]$dir) {
     try { return [string](Get-Content -LiteralPath (Join-Path $dir 'manifest.json') -Raw | ConvertFrom-Json).Name } catch { return (Split-Path -Path $dir -Leaf) }
 }
 
-function Get-StreamDeckDeviceId([string]$model) {
+# Stream Deck que ya conoce la app (sacado de sus perfiles): { UUID; Model }. Mejor el del
+# modelo pedido; si no hay, otro de 15 teclas (MK.2, original...) y se le adapta el perfil.
+function Get-StreamDeckDevice([string]$model) {
     $root = Join-Path $env:APPDATA 'Elgato\StreamDeck\ProfilesV3'
+    $found = @()
     foreach ($d in @(Get-ChildItem -LiteralPath $root -Directory -Filter '*.sdProfile' -ErrorAction SilentlyContinue)) {
         try {
             $m = Get-Content -LiteralPath (Join-Path $d.FullName 'manifest.json') -Raw | ConvertFrom-Json
-            if ($m.Device -and [string]$m.Device.UUID -and (-not $model -or $m.Device.Model -eq $model)) { return [string]$m.Device.UUID }
+            if ($m.Device -and [string]$m.Device.UUID) { $found += @{ UUID = [string]$m.Device.UUID; Model = [string]$m.Device.Model } }
         } catch { }
     }
-    return ''
+    $same = @($found | Where-Object { -not $model -or $_.Model -eq $model })
+    if ($same.Count) { return $same[0] }
+    $fifteen = @($found | Where-Object { $_.Model -match '^20G[AB]' })
+    if ($fifteen.Count) { return $fifteen[0] }
+    return $null
+}
+# Modelos que la app tiene vistos (para el aviso cuando no se encuentra el aparato)
+function Get-StreamDeckSeenModels {
+    $root = Join-Path $env:APPDATA 'Elgato\StreamDeck\ProfilesV3'
+    $models = @()
+    foreach ($d in @(Get-ChildItem -LiteralPath $root -Directory -Filter '*.sdProfile' -ErrorAction SilentlyContinue)) {
+        try { $m = Get-Content -LiteralPath (Join-Path $d.FullName 'manifest.json') -Raw | ConvertFrom-Json; if ($m.Device) { $models += ('{0}{1}' -f $m.Device.Model, $(if ([string]$m.Device.UUID) { '' } else { ' (sin aparato)' })) } } catch { }
+    }
+    return @($models | Select-Object -Unique)
+}
+# Espera (como mucho $secs) a que la app vea el Stream Deck; la abre si esta cerrada.
+function Wait-StreamDeckDevice([string]$model, [string]$exe, [int]$secs = 60) {
+    $d = Get-StreamDeckDevice $model
+    if ($d) { return $d }
+    Write-Host ((L '  Waiting for the Stream Deck app to see the device (up to {0} s)...' '  Esperando a que la app de Stream Deck vea el aparato (como mucho {0} s)...') -f $secs)
+    if (-not (Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue)) { Start-StreamDeckApp $exe }
+    for ($i = 0; $i -lt ($secs / 2) -and -not $d; $i++) { Start-Sleep -Seconds 2; $d = Get-StreamDeckDevice $model }
+    return $d
 }
 
 # Abre la app de Stream Deck como el usuario (no elevada)
@@ -125,18 +150,20 @@ function Install-StreamDeckProfileDirect([string]$file, [string]$exe, [string]$t
         $manifest = Join-Path $src.FullName 'manifest.json'
         $model = [string]((Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json).Device.Model)
 
-        $dev = Get-StreamDeckDeviceId $model
-        if (-not $dev) {
-            # app recien instalada: que arranque una vez y vea el Stream Deck
-            if (-not (Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue)) { Start-StreamDeckApp $exe }
-            for ($i = 0; $i -lt 30 -and -not $dev; $i++) { Start-Sleep -Seconds 2; $dev = Get-StreamDeckDeviceId $model }
-        }
-        if (-not $dev) { return $false }
+        # app recien instalada: que arranque una vez y vea el Stream Deck
+        $device = Wait-StreamDeckDevice $model $exe
+        if (-not $device) { return $false }
+        $dev = $device.UUID
 
         Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 3
         $text = [IO.File]::ReadAllText($manifest)
         $text = [regex]::Replace($text, '("Device"\s*:\s*\{[^}]*?"UUID"\s*:\s*")[^"]*(")', [Text.RegularExpressions.MatchEvaluator] { param($m) $m.Groups[1].Value + $dev + $m.Groups[2].Value })
+        if ($device.Model -and $device.Model -ne $model) {
+            # otro modelo de 15 teclas: el perfil se pone a nombre de ese aparato
+            $dm = $device.Model
+            $text = [regex]::Replace($text, '("Device"\s*:\s*\{[^}]*?"Model"\s*:\s*")[^"]*(")', [Text.RegularExpressions.MatchEvaluator] { param($m) $m.Groups[1].Value + $dm + $m.Groups[2].Value })
+        }
         [IO.File]::WriteAllText($manifest, $text, (New-Object Text.UTF8Encoding $false))
         if ($sandbox) { Set-StreamDeckSandboxKeys $src.FullName $dev $sandbox }
         # en la carpeta del perfil que ya usa el Stream Deck: la app recuerda el perfil
@@ -152,6 +179,19 @@ function Install-StreamDeckProfileDirect([string]$file, [string]$exe, [string]$t
     } finally {
         if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
     }
+}
+
+# Modelo (Device.Model) de un .streamDeckProfile
+function Get-StreamDeckProfileModel([string]$file) {
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $zip = [IO.Compression.ZipFile]::OpenRead($file)
+        try {
+            $e = $zip.Entries | Where-Object { $_.FullName -match '^Profiles/[^/]+\.sdProfile/manifest\.json$' } | Select-Object -First 1
+            $r = New-Object IO.StreamReader($e.Open())
+            try { return [string]($r.ReadToEnd() | ConvertFrom-Json).Device.Model } finally { $r.Dispose() }
+        } finally { $zip.Dispose() }
+    } catch { return '' }
 }
 
 # Carpeta <UUID>.sdProfile que trae un .streamDeckProfile
@@ -238,6 +278,15 @@ function Install-StreamDeckSet($pc, [string]$exe, [string]$assets, [string]$stam
         Write-Ok ((L 'Stream Deck: profiles {0} are already the current ones.' 'Stream Deck: los perfiles {0} ya son los actuales.') -f ($names -join ', '))
         return
     }
+    # el aparato, una vez y avisando (antes cada perfil esperaba 60 s en silencio y parecia colgado)
+    $model = [string](Get-StreamDeckProfileModel $set[0].File)
+    if (-not (Wait-StreamDeckDevice $model $exe)) {
+        $seen = @(Get-StreamDeckSeenModels)
+        Write-Warn (L 'Stream Deck: the app does not see the device, profiles NOT installed.' 'Stream Deck: la app no ve el aparato; NO se instalan los perfiles.')
+        Write-Note (L '  Plug in the Stream Deck, check that it shows in the Stream Deck app, then run the setup again.' '  Conecta el Stream Deck, comprueba que sale en la app de Stream Deck y vuelve a pasar el setup.')
+        Write-Note ((L '  Models in the app: {0} (expected {1}).' '  Modelos en la app: {0} (se espera {1}).') -f $(if ($seen.Count) { $seen -join ', ' } else { '-' }), $model)
+        return
+    }
     $all = @(Get-StreamDeckAllProfileDirs)
     if ($all.Count) {
         Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -282,6 +331,11 @@ function Install-StreamDeckSet($pc, [string]$exe, [string]$assets, [string]$stam
             Write-Note (L '  The Stream Deck shows one profile at a time: to practise another table, pick its profile in the Stream Deck app.' '  El Stream Deck muestra un perfil cada vez: para practicar otra mesa, elige su perfil en la app de Stream Deck.')
         }
         Add-Change ((L 'Settings: Stream Deck profiles {0}' 'Configuración: perfiles de Stream Deck {0}') -f ($names -join ', '))
+        return
+    }
+    if ($hasMenu) {
+        # con pantalla principal no vale importar a mano: sus teclas se completan al instalar
+        Write-Warn ((L 'Stream Deck: profiles {0} could not be installed; plug in the Stream Deck and run the setup again.' 'Stream Deck: no se pudieron instalar los perfiles {0}; conecta el Stream Deck y vuelve a pasar el setup.') -f (($failed | ForEach-Object { $_.Name }) -join ', '))
         return
     }
     # sin Stream Deck conectado no se puede directo: se abren los archivos y la app pregunta
