@@ -2,6 +2,14 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.17.0] - 2026-11-11 - WebSocket de OBS y «Mic Dealer»
+
+### Añadido
+- **WebSocket de OBS activado** en todos los PCs con OBS, en el puerto 4455 y **con contraseña propia de cada PC**. La Dealer App se conecta con ella para leer el nivel del micrófono y avisar al dealer si habla fuerte. Si el PC ya tenía contraseña, se mantiene (la Dealer App ya la tiene puesta); si no, se crea una de 16 caracteres. El setup la muestra en pantalla para ponerla a mano en la Dealer App; también se ve en OBS, en *Herramientas › Ajustes del servidor WebSocket › Mostrar información de conexión*.
+
+### Cambiado
+- La fuente del micrófono en OBS se llama **«Mic Dealer»** (antes *Audio Input Capture*), que es el nombre que busca la Dealer App.
+
 ## [5.16.3] - 2026-11-11 - winget roto en Windows Home
 
 ### Corregido

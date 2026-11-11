@@ -55,6 +55,32 @@ function Set-ObsTheme([string]$obsDir, [string]$themeId) {
     return $true
 }
 
+# Servidor WebSocket de OBS (obs-websocket, incluido en OBS 28+): encendido, puerto 4455 y con
+# contraseña propia de cada PC. Si ya tenia una se respeta (la Dealer App ya la tiene puesta);
+# si no, se crea. Se escribe en plugin_config\obs-websocket\config.json con OBS cerrado.
+# Devuelve @{ Port; Password; New }.
+function Set-ObsWebSocket([string]$obsDir) {
+    $dir = Join-Path $obsDir 'plugin_config\obs-websocket'
+    $file = Join-Path $dir 'config.json'
+    $cfg = $null
+    if (Test-Path -LiteralPath $file) { try { $cfg = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json } catch { $cfg = $null } }
+    $pass = if ($cfg -and [string]$cfg.server_password) { [string]$cfg.server_password } else { '' }
+    $port = if ($cfg -and [int]$cfg.server_port -gt 0) { [int]$cfg.server_port } else { 4455 }
+    $new = -not $pass
+    if ($new) {
+        # 16 letras y numeros, sin los que se confunden al copiarla a mano (0/O, 1/l/I)
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'.ToCharArray()
+        $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+        $bytes = New-Object byte[] 16
+        $rng.GetBytes($bytes)
+        $pass = -join ($bytes | ForEach-Object { $chars[$_ % $chars.Length] })
+    }
+    $out = [ordered]@{ alerts_enabled = $false; auth_required = $true; first_load = $false; server_enabled = $true; server_password = $pass; server_port = $port }
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    [IO.File]::WriteAllText($file, (ConvertTo-Json -InputObject $out), (New-Object Text.UTF8Encoding $false))
+    return @{ Port = $port; Password = $pass; New = $new }
+}
+
 # Nombre del perfil dentro de un .streamDeckProfile (zip: Profiles\<UUID>.sdProfile\manifest.json)
 function Get-StreamDeckProfileName([string]$file) {
     try {
@@ -457,6 +483,14 @@ function Invoke-ProgramSettings($pc) {
                     } catch { Write-Fail ((L 'OBS theme: {0}' 'Tema de OBS: {0}') -f $_.Exception.Message) }
                 } else { Write-Skip (L 'OBS: theme left as it was (Kerma is in Settings > Appearance).' 'OBS: tema sin cambios (Kerma está en Ajustes > Apariencia).') }
             }
+            # WebSocket: la Dealer App lee el nivel de "Mic Dealer" para avisar al dealer si habla fuerte
+            try {
+                $ws = Set-ObsWebSocket $obsDst
+                Write-Ok ((L 'OBS: WebSocket on (port {0}, with password).' 'OBS: WebSocket activado (puerto {0}, con contraseña).') -f $ws.Port)
+                Write-Note ((L '  Password for the Dealer App: {0}{1}' '  Contraseña para la Dealer App: {0}{1}') -f $ws.Password, $(if ($ws.New) { (L '  (new)' '  (nueva)') } else { (L '  (the one it already had)' '  (la que ya tenía)') }))
+                Write-Note (L '  Also in OBS: Tools > WebSocket Server Settings > Show Connect Info.' '  También en OBS: Herramientas > Ajustes del servidor WebSocket > Mostrar información de conexión.')
+                if ($ws.New) { Add-Change (L 'Settings: OBS WebSocket (new password: put it in the Dealer App)' 'Configuración: WebSocket de OBS (contraseña nueva: ponla en la Dealer App)') }
+            } catch { Write-Fail ((L 'OBS WebSocket: {0}' 'WebSocket de OBS: {0}') -f $_.Exception.Message) }
         }
     }
 

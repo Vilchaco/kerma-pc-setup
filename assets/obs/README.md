@@ -23,7 +23,7 @@ Para probar cambios de colores en una mesa sin pasar el script: copia `Kerma.ovt
 
 ## Lo que hay ahora (exportado de BJ01, 9-oct-2026)
 
-- **Escenas** `basic/scenes/Untitled.json`: una escena con una fuente *Audio Input Capture*. La fuente usa el dispositivo **Predeterminado** (la Scarlett, porque el setup la deja como micro predeterminado), con monitorización *Monitor and Output* y dos filtros: **Compressor** y **atkAudio PluginHost** con **Alt Denoiser**.
+- **Escenas** `basic/scenes/Untitled.json`: una escena con una fuente de audio llamada **Mic Dealer** (la Dealer App la busca por ese nombre; no la renombres). La fuente usa el dispositivo **Predeterminado** (la Scarlett, porque el setup la deja como micro predeterminado), con monitorización *Monitor and Output* y dos filtros: **Compressor** y **atkAudio PluginHost** con **Alt Denoiser**.
 - **Perfil** `basic/profiles/Untitled/`: 1920x1080 a 30 fps y monitorización por la salida predeterminada.
 - **Ventanas** `user.ini`: posición de la ventana y de los paneles, incluido el de Alt Denoiser, y el tema Kerma.
 - `global.ini` sin la sección `[Locations]` (eran rutas del usuario de BJ01) y sin actualizaciones automáticas.
@@ -35,3 +35,7 @@ Alt Denoiser no tiene licencia publicada, así que no se sube aquí. El script l
 Para cambiar la configuración: déjala como quieras en una mesa, cierra OBS y vuelve a exportar `basic`, `global.ini` y `user.ini`.
 
 No copies `service.json`: guarda la clave de emisión y el repositorio es público. El script lo ignora y la comprobación automática lo rechaza.
+
+## WebSocket
+
+El setup enciende el servidor WebSocket de OBS (puerto 4455, con contraseña) en `plugin_config/obs-websocket/config.json`. La contraseña es propia de cada PC y **no va en este repositorio**: si el PC ya tenía una, se respeta; si no, se crea. Sale en pantalla al pasar el setup y en OBS, en *Herramientas › Ajustes del servidor WebSocket › Mostrar información de conexión*. Se pone a mano en la configuración de la Dealer App.

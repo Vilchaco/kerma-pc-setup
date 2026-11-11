@@ -3,7 +3,7 @@
     "sources": [
         {
             "prev_ver": 536936450,
-            "name": "Audio Input Capture",
+            "name": "Mic Dealer",
             "uuid": "34e598d5-08e5-44f8-b36e-2db9d7850dfe",
             "id": "wasapi_input_capture",
             "versioned_id": "wasapi_input_capture",
@@ -101,7 +101,7 @@
                 "custom_size": false,
                 "items": [
                     {
-                        "name": "Audio Input Capture",
+                        "name": "Mic Dealer",
                         "source_uuid": "34e598d5-08e5-44f8-b36e-2db9d7850dfe",
                         "visible": true,
                         "locked": false,
