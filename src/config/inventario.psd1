@@ -10,6 +10,11 @@
 #  Username     usuario de Windows estandar
 #  FullName     nombre completo de la cuenta (y del fondo si no hay plantilla)
 #  Game         perfil de Stream Deck: assets\streamdeck\<Game>.streamDeckProfile
+#               (y ordenes de Kerma Remote y texto del fondo de ese juego)
+#  Games        (opcional) varios juegos en un PC (Sandbox del training room):
+#               instala el perfil de Stream Deck de cada uno y junta sus
+#               ordenes de Kerma Remote. Game queda para el fondo y el panel.
+#  Adapter      (opcional) 'Wi-Fi' = la IP fija va en el adaptador Wi-Fi
 #  Scanner      $true = la mesa usa el scanner de cartas (se configura su arranque)
 #  IP           IP fija de respaldo. La buena vive en el repositorio de David
 #               (ver ajustes.psd1, RustDesk.PeersUrl) y gana sobre esta.
@@ -28,9 +33,11 @@
         @{ Key = 'BJ04';    Group = 'Table PCs';      Label = 'Blackjack 04';           Profile = 'Table';      Hostname = 'KG-TBL-BJ-04';    Username = 'kg-tbl-bj-04';    FullName = 'Blackjack Table 04';     Game = 'blackjack';           Scanner = $true;  IP = '192.168.0.154' }
         # antes Blackjack Unlimited 01 (BJUNL01, KG-TBL-BJUNL-01): pasa a Baccarat (Fran, 2-nov)
         @{ Key = 'BAC01';   Group = 'Table PCs';      Label = 'Baccarat 01';            Profile = 'Table';      Hostname = 'KG-TBL-BAC-01';   Username = 'kg-tbl-bac-01';   FullName = 'Baccarat Table 01';      Game = 'baccarat';            Scanner = $true;  IP = '192.168.0.155'; DavidName = 'BJ UNL 01' }
+        # Sandbox del training room: todas las mesas en un PC para practicar, por Wi-Fi (Fran, 11-nov).
+        # El perfil de baccarat es hoy una copia exacta del de Blackjack: se instala una sola vez.
+        @{ Key = 'SBX01';   Group = 'Table PCs';      Label = 'Sandbox 01';             Profile = 'Table';      Hostname = 'KG-TBL-SBX-01';   Username = 'kg-tbl-sbx-01';   FullName = 'Sandbox Table 01';       Game = 'sandbox';             Scanner = $true;  IP = '192.168.0.202'; Games = @('blackjack', 'roulette', 'craps', 'baccarat'); Adapter = 'Wi-Fi' }
         @{ Key = 'CR01';    Group = 'Table PCs';      Label = 'Craps 01';               Profile = 'Table';      Hostname = 'KG-TBL-CR-01';    Username = 'kg-tbl-cr-01';    FullName = 'Craps Table 01';         Game = 'craps';               Scanner = $false; IP = '192.168.0.150'; DavidName = 'CRAPS 01'; Without = @('HdmiMirror') }
         @{ Key = 'SUP01';   Group = 'Supervisor PCs'; Label = 'Supervisor 01';          Profile = 'Supervisor'; Hostname = 'KG-SUP-01';       Username = 'kg-sup-01';       FullName = 'Supervisor 01';          Game = '';                    Scanner = $false; IP = '192.168.0.200' }
-        @{ Key = 'SUP02';   Group = 'Supervisor PCs'; Label = 'Supervisor 02';          Profile = 'Supervisor'; Hostname = 'KG-SUP-02';       Username = 'kg-sup-02';       FullName = 'Supervisor 02';          Game = '';                    Scanner = $false; IP = '192.168.0.202' }
         @{ Key = 'MCR';     Group = 'Control room';   Label = 'Master Control Room';    Profile = 'MCR';        Hostname = 'KG-MCR-01';       Username = 'kg-mcr-01';       FullName = 'Master Control Room';    Game = '';                    Scanner = $false; IP = '192.168.0.101' }
         @{ Key = 'HECTOR';  Group = 'Office PCs';     Label = 'Hector office PC';       Profile = 'Office';     Hostname = 'KG-OFC-HECTOR';   Username = 'kg-ofc-hector';   FullName = 'Hector Office PC';       Game = '';                    Scanner = $false; IP = '' }
     )

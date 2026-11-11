@@ -2,6 +2,18 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.16.0] - 2026-11-11 - Sandbox del training room
+
+### Añadido
+- **Sandbox 01 (`SBX01`)**, el PC del training room para practicar cualquier mesa: equipo `KG-TBL-SBX-01`, usuario `kg-tbl-sbx-01`, IP 192.168.0.202 en el **Wi-Fi**. Lleva lo mismo que una mesa (Dealer App, Card Scanner, OBS, HDMI Mirror, RustDesk) más:
+  - **Los perfiles de Stream Deck de todas las mesas** (Blackjack, Roulette y Craps; Baccarat es hoy el mismo que Blackjack y se instala una vez). Cada uno va en su carpeta de la app y ya no se borran entre ellos. Para practicar otra mesa se elige su perfil en la app de Stream Deck.
+  - **Todas las órdenes de Kerma Remote** de los cuatro juegos.
+  - Fondo «Sandbox 01».
+- Inventario: campos opcionales `Games`, para varios juegos en un PC, y `Adapter = 'Wi-Fi'`. En modo automático la IP fija se pone en el Wi-Fi conectado; si el Wi-Fi no está conectado, la red no se toca y el script avisa.
+
+### Quitado
+- `SUP02` (Supervisor 02) del inventario: ese PC no existe y su IP, la .202, pasa al Sandbox.
+
 ## [5.15.5] - 2026-11-02 - La 5.15.4 salió sin su arreglo
 
 ### Corregido

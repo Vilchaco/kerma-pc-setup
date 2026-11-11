@@ -48,6 +48,7 @@
             'baccarat'            = @{ Text = 'Baccarat';            Color = '#FEE396' }
             'roulette'            = @{ Text = 'Roulette';            Color = '#FFDFAC' }
             'craps'               = @{ Text = 'Craps';               Color = '#EE9956' }
+            'sandbox'             = @{ Text = 'Sandbox';             Color = '#CFCED2' }
             'Supervisor'          = @{ Text = 'Supervisor';          Color = '#CFCED2' }
             'MCR'                 = @{ Text = 'Control room';        Color = '#CFCED2' }
             'Office'              = @{ Text = 'Office';              Color = '#CFCED2' }

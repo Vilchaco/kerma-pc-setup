@@ -153,6 +153,75 @@ function Install-StreamDeckProfileDirect([string]$file, [string]$exe, [string]$t
     }
 }
 
+# Varios juegos en un PC (Sandbox del training room): un perfil de Stream Deck por juego,
+# cada uno en su carpeta, y la app los guarda todos (se cambia de perfil en la app).
+# Los perfiles iguales (baccarat es hoy copia del de Blackjack) se instalan una vez.
+# Los de otros nombres se quitan, como en las mesas; el primero va donde estaba el
+# "Default Profile", que es el que muestra el aparato.
+function Install-StreamDeckSet($pc, [string]$exe, [string]$assets, [string]$stamp) {
+    $set = @(); $names = @()
+    foreach ($g in @($pc.Games)) {
+        $f = Join-Path $assets "streamdeck\$g.streamDeckProfile"
+        if (-not (Test-Path -LiteralPath $f)) {
+            Write-Skip ((L 'Stream Deck: no saved profile (assets\streamdeck\{0}.streamDeckProfile).' 'Stream Deck: no hay perfil guardado (assets\streamdeck\{0}.streamDeckProfile).') -f $g)
+            continue
+        }
+        $n = Get-StreamDeckProfileName $f
+        if (-not $n -or $names -contains $n) { continue }
+        $names += $n
+        $set += @{ Game = $g; File = $f; Name = $n; Hash = (Get-FileHash -LiteralPath $f -Algorithm SHA256).Hash }
+    }
+    if (-not $set.Count) { return }
+    $hash = ($set | ForEach-Object { $_.Hash }) -join '+'
+    $hashFile = Join-Path (Initialize-KermaDataDir) "streamdeck-$($pc.Game).sha256"
+    $oldHash = if (Test-Path -LiteralPath $hashFile) { (Get-Content -LiteralPath $hashFile -Raw).Trim() } else { '' }
+    $missing = @($set | Where-Object { -not @(Get-StreamDeckProfileDirs $_.Name).Count })
+    $defaults = @(Get-StreamDeckProfileDirs 'Default Profile')
+    $others = @(Get-StreamDeckAllProfileDirs | Where-Object { $names -notcontains (Get-StreamDeckDirName $_) -and $defaults -notcontains $_ })
+    if (-not $missing.Count -and $oldHash -eq $hash -and -not $defaults.Count -and -not $others.Count) {
+        Write-Ok ((L 'Stream Deck: profiles {0} are already the current ones.' 'Stream Deck: los perfiles {0} ya son los actuales.') -f ($names -join ', '))
+        return
+    }
+    $all = @(Get-StreamDeckAllProfileDirs)
+    if ($all.Count) {
+        Get-Process -Name 'StreamDeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 3
+        $bak = "C:\KermaSetup\backup\streamdeck-$stamp"
+        New-Item -ItemType Directory -Path $bak -Force | Out-Null
+        foreach ($d in $all) { Copy-Item -LiteralPath $d -Destination $bak -Recurse -Force }
+        Write-Ok ((L 'Stream Deck: previous profiles saved in {0}.' 'Stream Deck: perfiles anteriores guardados en {0}.') -f $bak)
+    }
+    if ($others.Count) {
+        $otherNames = @($others | ForEach-Object { Get-StreamDeckDirName $_ })
+        foreach ($d in $others) { Remove-Item -LiteralPath $d -Recurse -Force }
+        Write-Note ((L '  Other Stream Deck profiles removed (copy kept): {0}' '  Otros perfiles de Stream Deck quitados (con copia): {0}') -f ($otherNames -join ', '))
+    }
+    $failed = @()
+    for ($i = 0; $i -lt $set.Count; $i++) {
+        $one = $set[$i]
+        $existing = @(Get-StreamDeckProfileDirs $one.Name)
+        $target = if ($i -eq 0 -and $defaults.Count) { $defaults[0] } elseif ($existing.Count) { $existing[0] } else { '' }
+        # copias repetidas con ese nombre: fuera, que quede una
+        foreach ($d in @($existing | Where-Object { $_ -ne $target })) { Remove-Item -LiteralPath $d -Recurse -Force }
+        if (Install-StreamDeckProfileDirect $one.File $exe ([string]$target)) {
+            Write-Ok ((L "Stream Deck: profile '{0}' installed." "Stream Deck: perfil '{0}' instalado.") -f $one.Name)
+        } else { $failed += $one }
+    }
+    if (-not $failed.Count) {
+        Set-Content -LiteralPath $hashFile -Value $hash -Encoding Ascii
+        Write-Note (L '  The Stream Deck shows one profile at a time: to practise another table, pick its profile in the Stream Deck app.' '  El Stream Deck muestra un perfil cada vez: para practicar otra mesa, elige su perfil en la app de Stream Deck.')
+        Add-Change ((L 'Settings: Stream Deck profiles {0}' 'Configuración: perfiles de Stream Deck {0}') -f ($names -join ', '))
+        return
+    }
+    # sin Stream Deck conectado no se puede directo: se abren los archivos y la app pregunta
+    Write-Note (L '  Could not install directly (is the Stream Deck plugged in?): the app will ask to import each one - accept.' '  No se pudo instalar directamente (¿está conectado el Stream Deck?): la app preguntará si importar cada uno; acepta.')
+    foreach ($one in $failed) {
+        Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$($one.File)`""
+        Start-Sleep -Seconds 5
+    }
+    Write-Warn ((L 'Stream Deck: check that the app has the profiles {0}; run the setup again to confirm.' 'Stream Deck: comprueba que la app tiene los perfiles {0}; vuelve a pasar el setup para confirmarlo.') -f (($failed | ForEach-Object { $_.Name }) -join ', '))
+}
+
 function Invoke-ProgramSettings($pc) {
     Write-Section (L 'PROGRAM SETTINGS  (HDMI Mirror, OBS, VST3, Stream Deck)' 'CONFIGURACIÓN DE PROGRAMAS  (HDMI Mirror, OBS, VST3, Stream Deck)')
     $assets = Get-AssetsDir
@@ -287,6 +356,8 @@ function Invoke-ProgramSettings($pc) {
     $sdProfile = if ($pc.Game) { Join-Path $assets "streamdeck\$($pc.Game).streamDeckProfile" } else { '' }
     if (-not (Test-Path -LiteralPath $sdExe)) {
         Write-Skip (L 'Stream Deck: not installed on this PC.' 'Stream Deck: no está instalado en este PC.')
+    } elseif (@($pc.Games).Count -gt 1) {
+        Install-StreamDeckSet $pc $sdExe $assets $stamp
     } elseif (-not $pc.Game) {
         Write-Skip (L 'Stream Deck: no game set for this PC.' 'Stream Deck: este PC no tiene juego asignado.')
     } elseif (-not (Test-Path -LiteralPath $sdProfile)) {

@@ -52,6 +52,8 @@ function Import-KermaConfig {
             Hostname = $row.Hostname; Username = $row.Username; FullName = $row.FullName; Game = $row.Game
             Apps = $apps; Net = @{ IP = [string]$row.IP }; IPSource = if ($row.IP) { 'inventory' } else { '' }
             DavidName = $row.DavidName; WallpaperText = $row.WallpaperText; Without = $without
+            # Games: varios juegos en un PC (Sandbox); si no, el de Game
+            Games = @(if ($row.Games) { $row.Games } elseif ($row.Game) { $row.Game }); Adapter = [string]$row.Adapter
             RustDesk = ($prof -and $prof.RustDesk -ne 'None')
         }
     }

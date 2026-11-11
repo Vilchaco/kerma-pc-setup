@@ -57,6 +57,12 @@ function Invoke-NetworkSetup($pc) {
         $why = ''
         $nic = $cands | Where-Object { Get-NetIPAddress -InterfaceIndex $_.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -eq $net.IP } } | Select-Object -First 1
         if ($nic) { $why = L 'it already has this IP' 'ya tiene esta IP' }
+        # el inventario dice Wi-Fi (Sandbox del training room): el Wi-Fi conectado, aunque haya cable
+        if (-not $nic -and $pc.Adapter -eq 'Wi-Fi') {
+            $nic = $cands | Where-Object { $_.MediaType -eq 'Native 802.11' -or $_.PhysicalMediaType -match '802\.11' } | Select-Object -First 1
+            if ($nic) { $why = L 'Wi-Fi, as set in the inventory' 'Wi-Fi, como dice el inventario' }
+            else { Write-Fail (L 'This PC goes on Wi-Fi but the Wi-Fi is not connected: connect it to the casino network and run the setup again. Network left unchanged.' 'Este PC va por Wi-Fi pero el Wi-Fi no está conectado: conéctalo a la red del casino y vuelve a pasar el setup. La red queda como está.'); return }
+        }
         if (-not $nic) {
             $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object -Property RouteMetric |
                 Where-Object { $cands.ifIndex -contains $_.InterfaceIndex } | Select-Object -First 1

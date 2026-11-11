@@ -9,8 +9,17 @@
 $RemoteDir = 'C:\ProgramData\Kerma\remote'
 
 function Get-RemoteCommands($pc) {
-    if (-not $RemoteCfg -or -not $pc.Game) { return $null }
-    return $RemoteCfg.Commands[$pc.Game]
+    if (-not $RemoteCfg) { return $null }
+    # Sandbox (varios juegos): las ordenes de todos juntas; el texto es el mismo en todos
+    $games = @(if ($pc.Games) { $pc.Games } elseif ($pc.Game) { $pc.Game })
+    if (-not $games.Count) { return $null }
+    if ($games.Count -eq 1) { return $RemoteCfg.Commands[$games[0]] }
+    $all = @{}
+    foreach ($g in $games) {
+        $c = $RemoteCfg.Commands[$g]
+        if ($c) { foreach ($k in $c.Keys) { if (-not $all.ContainsKey($k)) { $all[$k] = $c[$k] } } }
+    }
+    if ($all.Count) { return $all } else { return $null }
 }
 
 # Clave que ya tiene este PC (se mantiene entre pasadas del setup)
