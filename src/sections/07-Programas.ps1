@@ -22,14 +22,57 @@ function Get-WingetPath {
     return $null
 }
 
-# Busca winget; en un PC nuevo intenta activarlo o repararlo antes.
+# Repara winget con la release oficial de GitHub (microsoft/winget-cli): primero sus
+# dependencias (VCLibs y Windows App Runtime, la que faltaba en el Sandbox con Windows Home:
+# 0x80073CF3 "Microsoft.WindowsAppRuntime.1.8"), y si no basta, el App Installer entero.
+function Repair-WingetFromGitHub {
+    $tmp = Get-KermaTemp 'winget-repair'
+    try {
+        New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+        $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/microsoft/winget-cli/releases/latest' -UseBasicParsing -Headers @{ 'User-Agent' = 'Kerma-PCSetup' }
+        $deps = $rel.assets | Where-Object { $_.name -eq 'DesktopAppInstaller_Dependencies.zip' } | Select-Object -First 1
+        $bundle = $rel.assets | Where-Object { $_.name -like '*.msixbundle' } | Select-Object -First 1
+        if ($deps) {
+            Write-Host ((L '  Downloading the winget dependencies ({0})...' '  Descargando las dependencias de winget ({0})...') -f $rel.tag_name)
+            $zip = Join-Path $tmp 'deps.zip'
+            Invoke-WebRequest -Uri $deps.browser_download_url -OutFile $zip -UseBasicParsing
+            Expand-Archive -LiteralPath $zip -DestinationPath (Join-Path $tmp 'deps') -Force
+            foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $tmp 'deps\x64') -Filter '*.appx' -ErrorAction SilentlyContinue)) {
+                try { Add-AppxPackage -Path $f.FullName -ErrorAction Stop } catch { }
+            }
+            try { Add-AppxPackage -RegisterByFamilyName -MainPackage 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe' -ErrorAction Stop } catch { }
+            Start-Sleep -Seconds 3
+            $w = Get-WingetPath
+            if ($w) { return $w }
+        }
+        if ($bundle) {
+            Write-Host ((L '  Downloading the App Installer (winget {0}, about {1} MB)...' '  Descargando el App Installer (winget {0}, unos {1} MB)...') -f $rel.tag_name, [int]($bundle.size / 1MB))
+            $b = Join-Path $tmp $bundle.name
+            Invoke-WebRequest -Uri $bundle.browser_download_url -OutFile $b -UseBasicParsing
+            try { Add-AppxPackage -Path $b -ForceApplicationShutdown -ErrorAction Stop } catch { Write-Warn ((L 'App Installer: {0}' 'App Installer: {0}') -f $_.Exception.Message) }
+            Start-Sleep -Seconds 3
+            return (Get-WingetPath)
+        }
+    } catch {
+        Write-Warn ((L 'Could not repair winget from GitHub: {0}' 'No se pudo reparar winget desde GitHub: {0}') -f $_.Exception.Message)
+    } finally {
+        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+    return $null
+}
+
+# Busca winget; en un PC nuevo intenta activarlo o repararlo antes (una vez por pase).
 function Initialize-Winget {
     $w = Get-WingetPath
     if ($w) { return $w }
+    if ($script:WingetRepairTried) { return $null }
+    $script:WingetRepairTried = $true
     Write-Host (L '  winget not found - trying to activate it (can take a minute)...' '  No se encuentra winget: intentando activarlo (puede tardar un minuto)...')
     try { Add-AppxPackage -RegisterByFamilyName -MainPackage 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe' -ErrorAction Stop; Start-Sleep -Seconds 3 } catch { }
     $w = Get-WingetPath
     if ($w) { return $w }
+    $w = Repair-WingetFromGitHub
+    if ($w) { Write-Ok (L 'winget repaired.' 'winget reparado.'); return $w }
     try {
         Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers | Out-Null
         Install-Module -Name Microsoft.WinGet.Client -Repository PSGallery -Force -Scope AllUsers -AllowClobber

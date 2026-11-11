@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.16.3] - 2026-11-11 - winget roto en Windows Home
+
+### Corregido
+- **winget sin una pieza de Windows** (Sandbox 01, Windows Home): el App Installer necesitaba «Microsoft.WindowsAppRuntime.1.8» y no estaba (0x80073CF3). Ahora, si winget no arranca, el script descarga de la release oficial de winget en GitHub sus dependencias (VCLibs y Windows App Runtime) y, si no basta, el App Installer entero.
+- La reparación de winget se intenta **una sola vez por pase**; antes se repetía con cada programa (2,5 minutos cada vez).
+
 ## [5.16.2] - 2026-11-11 - Arreglos del primer pase en el Sandbox (Windows Home)
 
 ### Corregido
