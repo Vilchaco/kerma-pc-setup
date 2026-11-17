@@ -404,8 +404,8 @@ function renderDrawer(full) {
       <div class="dbody" id="dbody"></div></aside>`;
   }
   $('tabs').innerHTML = TABS.map(([k, t]) => `<button class="tab ${drawer.tab === k ? 'on' : ''}" data-tab="${k}">${t}</button>`).join('');
-  if (drawer.tab === 'logs' && !full && $('dbody').dataset.tab === 'logs') return; // no recargar el log abierto
-  $('dbody').dataset.tab = drawer.tab;
+  if (drawer.tab === 'logs' && !full && $('dbody').dataset.shown === 'logs') return; // no recargar el log abierto
+  $('dbody').dataset.shown = drawer.tab;
   $('dbody').innerHTML = ({ resumen: tabResumen, apps: tabApps, red: tabRed, logs: tabLogs, datos: tabDatos })[drawer.tab](p, now, a);
   if (drawer.tab === 'logs') loadLogs(p.id);
 }
