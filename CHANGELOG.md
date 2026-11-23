@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.17.2] - 2026-11-23 - CHANGE SHOE en Blackjack y Baccarat
+
+### Añadido
+- Tecla **CHANGE SHOE** (`{CHANGE_SHOE}`, comando nuevo de la Dealer App) en los Stream Deck de **Blackjack y Baccarat**, entre SHUFFLE y BURN HAND. Empieza el cambio de zapato: se escanea la primera carta y luego las quemadas. Las mesas de Blackjack y Baccarat cambian su perfil al repasar el setup (con copia en `C:\KermaSetup\backup`); Craps y Ruleta no cambian.
+
 ## [5.17.1] - 2026-11-23 - SUBMIT en el Stream Deck de Baccarat
 
 ### Cambiado

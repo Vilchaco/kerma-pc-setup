@@ -6,8 +6,8 @@ Un perfil por juego para el Stream Deck del dealer (MK.2 de 15 teclas). Se gener
 |---|---|---|
 | `craps.streamDeckProfile` | Craps | Craps |
 | `roulette.streamDeckProfile` | Roulette | Ruleta |
-| `blackjack.streamDeckProfile` | Blackjack | Blackjack 01 a 04 |
-| `baccarat.streamDeckProfile` | Baccarat | Baccarat (lo de Blackjack + SUBMIT en 3,2, que pulsa Enter: envía la mano) |
+| `blackjack.streamDeckProfile` | Blackjack | Blackjack 01 a 04 (SHUFFLE, CHANGE SHOE y BURN HAND en la primera columna) |
+| `baccarat.streamDeckProfile` | Baccarat | Baccarat (lo de Blackjack, con CHANGE SHOE, + SUBMIT en 3,2, que pulsa Enter: envía la mano) |
 
 **Sandbox 01** (training room) lleva todos: un perfil por juego, cada uno en su carpeta de la app (`Games` en el inventario). Si dos juegos tuvieran el mismo perfil (el mismo nombre), se instalaría una vez. El aparato arranca en la **pantalla principal** (`sandbox.streamDeckProfile`, perfil «Sandbox»), con una tecla por mesa. Al instalar, el setup cambia en cada tecla el marcador `KERMA:<juego>` por la carpeta del perfil de ese juego y, solo en esta copia, pone **MENÚ** (`sandbox-menu.png`) en la tecla 4,0 (EMERGENCY) de cada juego para volver. Se generan con `~/Kerma/streamdeck/build_sandbox_menu.py`. La huella de todos va en `streamdeck-sandbox.sha256`.
 
