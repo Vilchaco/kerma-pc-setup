@@ -2,6 +2,11 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.17.3] - 2026-11-23 - Iconos en las teclas del Stream Deck
+
+### Cambiado
+- Las teclas del Stream Deck que solo tenían texto llevan ahora **icono**, con el mismo estilo que PIT MANAGER (dibujo arriba y nombre abajo): EMERGENCY (señal de aviso), SUBMIT (visto bueno), ROLL DICE (dados), CHANGE SHOE (carta con flechas de cambio) y, en el teclado del PIN, SALIR y ENTRAR (flecha que sale o entra por una puerta). Ninguna tecla cambia de sitio ni de comando. Todas las mesas cambian su perfil al repasar el setup (con copia en `C:\KermaSetup\backup`).
+
 ## [5.17.2] - 2026-11-23 - CHANGE SHOE en Blackjack y Baccarat
 
 ### Añadido
