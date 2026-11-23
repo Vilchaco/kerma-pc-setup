@@ -7,11 +7,11 @@ Un perfil por juego para el Stream Deck del dealer (MK.2 de 15 teclas). Se gener
 | `craps.streamDeckProfile` | Craps | Craps |
 | `roulette.streamDeckProfile` | Roulette | Ruleta |
 | `blackjack.streamDeckProfile` | Blackjack | Blackjack 01 a 04 |
-| `baccarat.streamDeckProfile` | Blackjack | Baccarat (copia del de Blackjack hasta que tenga perfil propio) |
+| `baccarat.streamDeckProfile` | Baccarat | Baccarat (lo de Blackjack + SUBMIT en 3,2, que pulsa Enter: envía la mano) |
 
-**Sandbox 01** (training room) lleva todos: un perfil por juego, cada uno en su carpeta de la app (`Games` en el inventario). Los repetidos, como baccarat hoy, se instalan una vez. El aparato arranca en la **pantalla principal** (`sandbox.streamDeckProfile`, perfil «Sandbox»), con una tecla por mesa. Al instalar, el setup cambia en cada tecla el marcador `KERMA:<juego>` por la carpeta del perfil de ese juego y, solo en esta copia, pone **MENÚ** (`sandbox-menu.png`) en la tecla 4,0 (EMERGENCY) de cada juego para volver. Se generan con `~/Kerma/streamdeck/build_sandbox_menu.py`. La huella de todos va en `streamdeck-sandbox.sha256`.
+**Sandbox 01** (training room) lleva todos: un perfil por juego, cada uno en su carpeta de la app (`Games` en el inventario). Si dos juegos tuvieran el mismo perfil (el mismo nombre), se instalaría una vez. El aparato arranca en la **pantalla principal** (`sandbox.streamDeckProfile`, perfil «Sandbox»), con una tecla por mesa. Al instalar, el setup cambia en cada tecla el marcador `KERMA:<juego>` por la carpeta del perfil de ese juego y, solo en esta copia, pone **MENÚ** (`sandbox-menu.png`) en la tecla 4,0 (EMERGENCY) de cada juego para volver. Se generan con `~/Kerma/streamdeck/build_sandbox_menu.py`. La huella de todos va en `streamdeck-sandbox.sha256`.
 
-Las teclas pegan el comando en la Dealer App sin Enter, salvo ENTRAR (`{SIGN_IN}`, en el teclado del PIN), que pulsa Enter después. En la última columna van siempre EMERGENCY, PIT MANAGER y SIGN, que abre el teclado del PIN.
+Las teclas pegan el comando en la Dealer App sin Enter, salvo ENTRAR (`{SIGN_IN}`, en el teclado del PIN), que pulsa Enter después, y SUBMIT de Baccarat, que solo pulsa Enter. En la última columna van siempre EMERGENCY, PIT MANAGER y SIGN, que abre el teclado del PIN.
 
 El script abre el perfil con la app de Stream Deck, que lo importa. Guarda la huella del perfil importado en `C:\ProgramData\Kerma\streamdeck-<juego>.sha256`:
 

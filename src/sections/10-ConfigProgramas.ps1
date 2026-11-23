@@ -265,7 +265,7 @@ function Set-StreamDeckSandboxKeys([string]$dir, [string]$dev, [hashtable]$s) {
 # Varios juegos en un PC (Sandbox del training room): un perfil de Stream Deck por juego,
 # cada uno en su carpeta, mas la pantalla principal (sandbox.streamDeckProfile) que cambia
 # entre ellos; en cada juego, MENU (en lugar de EMERGENCY) vuelve a ella.
-# Los perfiles iguales (baccarat es hoy copia del de Blackjack) se instalan una vez.
+# Los perfiles con el mismo nombre (dos juegos con el mismo perfil) se instalan una vez.
 # Los de otros nombres se quitan, como en las mesas; el primero va donde estaba el
 # "Default Profile", que es el que muestra el aparato.
 function Install-StreamDeckSet($pc, [string]$exe, [string]$assets, [string]$stamp) {

@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.17.1] - 2026-11-23 - SUBMIT en el Stream Deck de Baccarat
+
+### Cambiado
+- **Baccarat tiene su propio perfil de Stream Deck** («Baccarat»; antes era una copia del de Blackjack). Lleva lo mismo que el de Blackjack y además **SUBMIT** abajo, en el mismo sitio y con el mismo dibujo que en Craps y Ruleta. En Baccarat, SUBMIT pulsa **Enter**, que es lo que envía la mano en la Dealer App.
+- En Baccarat 01, al repasar el setup, el perfil «Blackjack» se sustituye por «Baccarat» (con copia en `C:\KermaSetup\backup`). En el Sandbox 01, Baccarat pasa a tener su propio perfil detrás de su tecla de la pantalla principal.
+
 ## [5.17.0] - 2026-11-11 - WebSocket de OBS y «Mic Dealer»
 
 ### Añadido
