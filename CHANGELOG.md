@@ -2,6 +2,14 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.18.1] - 2026-11-23 - El perro de Kerma en la pantalla de arranque
+
+### Cambiado
+- La pantalla «PREPARING THE TABLE» enseña **el perro de Kerma corriendo**, el mismo bucle que el arranque de KermaOS en las teles, sobre el fondo de marca. En «TABLE READY» sale el logo.
+- Títulos en **Orbitron Bold** (700), como el panel y KermaOS; textos en Sora; colores del Brandbook 2026 (#0A0712, #EA7F2B, #CFCED2).
+- **Arranque limpio:** la tarea de la Dealer App ya no abre una ventana de CMD al iniciar sesión (corre con `conhost --headless`). Lo primero que ve el dealer es la pantalla de arranque.
+- Al quitarse la pantalla, abrir la Dealer App va lo primero: ningún error posterior puede impedirlo.
+
 ## [5.18.0] - 2026-11-23 - Pantalla de arranque en las mesas
 
 ### Añadido

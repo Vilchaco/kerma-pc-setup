@@ -92,7 +92,7 @@ function Install-TableStartupScreen([string]$dir, $pc, [string]$tableName, $focu
         Copy-Item -LiteralPath (Join-Path $Root 'startup\Kerma-TableStartup.ps1') -Destination $sdir -Force -ErrorAction Stop
         $assets = Get-AssetsDir
         if ($assets) {
-            foreach ($f in @('startup\logo.png', 'fonts\Orbitron-Black.ttf', 'fonts\Sora-Regular.ttf')) {
+            foreach ($f in @('startup\logo.png', 'startup\perro.png', 'fonts\Orbitron-Bold.ttf', 'fonts\Sora-Regular.ttf')) {
                 $src = Join-Path $assets $f
                 if (Test-Path -LiteralPath $src) { Copy-Item -LiteralPath $src -Destination $sdir -Force }
             }
@@ -224,7 +224,7 @@ function Invoke-AppAutostart($pc) {
             # (espera a las demas apps, maximiza y da el foco). Si el script falla, se abre
             # aqui a la antigua para que la mesa nunca se quede sin ella.
             $exe = Split-Path -Path $path -Leaf
-            $lines = @('@echo off', 'timeout /t 2 /nobreak >nul',
+            $lines = @('@echo off',
                 "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$dir\startup\Kerma-TableStartup.ps1`"",
                 "tasklist /fi `"imagename eq $exe`" | find /i `"$exe`" >nul || (cd /d `"$(Split-Path -Path $path -Parent)`" & $start)")
             $focusApp = @{ Key = $k; Path = $path }
@@ -259,6 +259,10 @@ function Invoke-AppAutostart($pc) {
         $created = $false
         try {
             $taskAction    = New-ScheduledTaskAction -Execute $bat -WorkingDirectory $dir
+            if ($focusApp -and $focusApp.Key -eq $k) {
+                # sin ventana de CMD al iniciar sesion: el dealer no ve nada de Windows antes de la pantalla de arranque
+                $taskAction = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless cmd.exe /c `"$bat`"" -WorkingDirectory $dir
+            }
             $taskTrigger   = New-ScheduledTaskTrigger -AtLogOn
             $taskPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Highest
             $taskSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero)

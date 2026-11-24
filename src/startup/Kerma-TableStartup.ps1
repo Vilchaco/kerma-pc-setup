@@ -113,7 +113,7 @@ $script:pulse = $true
 $pfc = New-Object System.Drawing.Text.PrivateFontCollection
 $famTitle = $null; $famText = $null
 try {
-    foreach ($f in @('Orbitron-Black.ttf', 'Sora-Regular.ttf')) {
+    foreach ($f in @('Orbitron-Bold.ttf', 'Sora-Regular.ttf')) {   # titulos en Orbitron Bold (700) como el panel y KermaOS; texto en Sora
         $p = Join-Path $PSScriptRoot $f
         if (Test-Path -LiteralPath $p) { $pfc.AddFontFile($p) }
     }
@@ -124,6 +124,13 @@ if (-not $famText)  { $famText  = New-Object System.Drawing.FontFamily 'Segoe UI
 $logo = $null
 $logoPath = Join-Path $PSScriptRoot 'logo.png'
 if (Test-Path -LiteralPath $logoPath) { try { $logo = [System.Drawing.Image]::FromFile($logoPath) } catch { $logo = $null } }
+# Perro de Kerma corriendo (el mismo bucle que el arranque de KermaOS): hoja de 59 fotogramas
+# de 273x221 en 8 columnas, 24 fps. Sin el archivo, sale el logo.
+$dog = $null
+$dogPath = Join-Path $PSScriptRoot 'perro.png'
+if (Test-Path -LiteralPath $dogPath) { try { $dog = New-Object System.Drawing.Bitmap $dogPath } catch { $dog = $null } }
+$DogSheet = @{ W = 273; H = 221; Cols = 8; N = 59; Fps = 24 }   # OJO: no llamarlo $DOG (PowerShell no distingue mayusculas)
+$script:dogRect = [System.Drawing.Rectangle]::Empty
 
 $C = @{
     Bg = [System.Drawing.ColorTranslator]::FromHtml('#0A0712'); Txt = [System.Drawing.Color]::White
@@ -170,16 +177,25 @@ $form.add_Paint({
     $center = New-Object System.Drawing.StringFormat; $center.Alignment = 'Center'
     $title = if ($ready) { 'TABLE READY' } else { 'PREPARING THE TABLE' }
     $sub   = if ($ready) { 'You can log in to the Dealer App now.' } else { "Please don't touch anything. This takes about a minute and a half." }
-    $logoH = 46 * $k
+    $showDog = ($dog -and -not $ready)
+    $logoH = if ($showDog) { 110 * $k } else { 46 * $k }
     $rowH = 22 * $k; $rowGap = 12 * $k
     $listH = if ($ready) { 0 } else { $script:items.Count * $rowH + ($script:items.Count - 1) * $rowGap + 36 * $k }
-    $total = $logoH + 44 * $k + 38 * $k + 10 * $k + 22 * $k + $listH
+    $gapTop = if ($showDog) { 28 * $k } else { 44 * $k }
+    $total = $logoH + $gapTop + 38 * $k + 10 * $k + 22 * $k + $listH
     $y = ($H - $total) / 2
-    if ($logo) {
+    if ($showDog) {
+        $i = [int][Math]::Floor(((Get-Date) - $start).TotalSeconds * $DogSheet.Fps) % $DogSheet.N
+        $src = New-Object System.Drawing.Rectangle (($i % $DogSheet.Cols) * $DogSheet.W), ([Math]::Floor($i / $DogSheet.Cols) * $DogSheet.H), $DogSheet.W, $DogSheet.H
+        $dw = [int]($DogSheet.W * ($logoH / $DogSheet.H))
+        $script:dogRect = New-Object System.Drawing.Rectangle ([int](($W - $dw) / 2)), ([int]$y), $dw, ([int]$logoH)
+        $g.InterpolationMode = 'HighQualityBicubic'
+        $g.DrawImage($dog, $script:dogRect, $src, [System.Drawing.GraphicsUnit]::Pixel)
+    } elseif ($logo) {
         $lw = $logo.Width * ($logoH / $logo.Height)
         $g.DrawImage($logo, [float](($W - $lw) / 2), [float]$y, [float]$lw, [float]$logoH)
     }
-    $y += $logoH + 44 * $k
+    $y += $logoH + $gapTop
     $tb = New-Object System.Drawing.SolidBrush ($(if ($ready) { $C.Acc } else { $C.Txt }))
     $g.DrawString($title, $fTitle, $tb, [System.Drawing.RectangleF]::new(0, [float]$y, [float]$W, [float](40 * $k)), $center)
     $y += 38 * $k + 10 * $k
@@ -239,18 +255,24 @@ $timer.add_Tick({
         $form.Invalidate()
     } catch { $script:state = 'done'; $form.Close() }
 })
+# animacion del perro: solo se repinta su recuadro
+$anim = New-Object System.Windows.Forms.Timer
+$anim.Interval = 42
+$anim.add_Tick({ if ($dog -and ($script:state -eq 'waiting' -or $script:state -eq 'launching')) { if (-not $script:dogRect.IsEmpty) { $form.Invalidate($script:dogRect) } } })
 $form.add_DoubleClick({ $form.Close() })
 $form.add_Shown({
     if (-not $cfg.allowCapture) { try { [void][KS.W]::SetWindowDisplayAffinity($form.Handle, 0x11) } catch { } }   # WDA_EXCLUDEFROMCAPTURE (allowCapture: solo pruebas)
     $form.Activate()
     $timer.Start()
+    $anim.Start()
 })
 
 try {
     [System.Windows.Forms.Application]::Run($form)
 } finally {
-    $timer.Stop()
-    if ($logo) { $logo.Dispose() }
-    Complete-Dealer
+    try { $timer.Stop(); $anim.Stop(); $form.Hide() } catch { }
+    # lo primero: la Dealer App (nada de lo que hay detras puede impedirlo)
+    try { Complete-Dealer } catch { }
+    try { if ($logo) { $logo.Dispose() }; if ($dog) { $dog.Dispose() } } catch { }
 }
 $pfc.Dispose()

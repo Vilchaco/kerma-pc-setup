@@ -1,9 +1,10 @@
-# Fuentes del fondo de pantalla
+# Fuentes del fondo de pantalla y de la pantalla de arranque
 
 | Archivo | Uso | Origen |
 |---|---|---|
 | `Orbitron-Black.ttf` | Nombre del PC en el fondo | [Orbitron](https://fonts.google.com/specimen/Orbitron), peso 900 |
-| `Sora-Regular.ttf` | Línea con el nombre del equipo, la IP y la versión | [Sora](https://fonts.google.com/specimen/Sora), peso 400 |
+| `Orbitron-Bold.ttf` | Títulos de la pantalla de arranque de las mesas («PREPARING THE TABLE»), igual que el panel y KermaOS | [Orbitron](https://fonts.google.com/specimen/Orbitron), peso 700 |
+| `Sora-Regular.ttf` | Línea con el nombre del equipo, la IP y la versión; textos de la pantalla de arranque | [Sora](https://fonts.google.com/specimen/Sora), peso 400 |
 
 Son las fuentes que usa el MCR. Las dos tienen licencia SIL Open Font License 1.1, que permite redistribuirlas: el texto está en `OFL-Orbitron.txt` y `OFL-Sora.txt`.
 
