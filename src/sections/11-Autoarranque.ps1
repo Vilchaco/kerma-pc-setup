@@ -81,6 +81,41 @@ if (`$$max) { [void][K.W]::ShowWindow(`$h, 3) }
 "@
 }
 
+# Pantalla de arranque de la mesa ("PREPARING THE TABLE"): copia el script, el logo y
+# las fuentes a <dir>\startup y escribe startup.json con las apps a esperar, que son
+# las que de verdad tienen tarea de arranque en este pase (las .exe; el .bat del
+# scanner no se puede vigilar). Si falta algo, el .bat abre la Dealer App igual.
+function Install-TableStartupScreen([string]$dir, $pc, [string]$tableName, $focusApp, $createdApps) {
+    $sdir = Join-Path $dir 'startup'
+    try {
+        New-Item -ItemType Directory -Path $sdir -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $Root 'startup\Kerma-TableStartup.ps1') -Destination $sdir -Force -ErrorAction Stop
+        $assets = Get-AssetsDir
+        if ($assets) {
+            foreach ($f in @('startup\logo.png', 'fonts\Orbitron-Black.ttf', 'fonts\Sora-Regular.ttf')) {
+                $src = Join-Path $assets $f
+                if (Test-Path -LiteralPath $src) { Copy-Item -LiteralPath $src -Destination $sdir -Force }
+            }
+        }
+        $waits = @()
+        foreach ($k in @($createdApps | Where-Object { $_ -ne $focusApp.Key })) {
+            $p = [string]$Apps[$k].Path
+            if ($p -notmatch '\.exe$') { continue }
+            $name = if ($Apps[$k].Name -eq 'StreamDeck') { 'Stream Deck' } else { [string]$Apps[$k].Name }
+            $waits += [ordered]@{ name = $name; proc = [IO.Path]::GetFileNameWithoutExtension($p) }
+        }
+        $cfg = [ordered]@{
+            app = $focusApp.Path; proc = [IO.Path]::GetFileNameWithoutExtension($focusApp.Path)
+            label = [string]$pc.Label; host = $tableName
+            waits = @($waits); timeoutSec = 180; readySec = 5; maxSec = 420
+        }
+        $cfg | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $sdir 'startup.json') -Encoding UTF8
+        Write-Ok ((L 'Startup screen: {0} waits for {1}.' 'Pantalla de arranque: {0} espera a {1}.') -f $Apps[$focusApp.Key].Name, ((@($waits | ForEach-Object { $_.name }) + @()) -join ', '))
+    } catch {
+        Write-Warn ((L 'Startup screen not installed ({0}); {1} opens the old way.' 'Pantalla de arranque sin instalar ({0}); {1} se abre como antes.') -f $_.Exception.Message, $Apps[$focusApp.Key].Name)
+    }
+}
+
 function Invoke-AppAutostart($pc) {
     Write-Section (L 'APP AUTOSTART' 'ARRANQUE DE APPS')
     if (@($pc.Apps).Count -eq 0) { Write-Skip (L 'No apps start with Windows on this PC.' 'En este PC no arranca ninguna app con Windows.'); return }
@@ -121,6 +156,8 @@ function Invoke-AppAutostart($pc) {
         }
     }
 
+    $createdApps = @()
+    $focusApp = $null
     foreach ($k in $pc.Apps) {
         $app      = $Apps[$k]
         $taskName = "$tableName - $($app.Name) Startup"
@@ -180,11 +217,21 @@ function Invoke-AppAutostart($pc) {
         $flag = if ($max) { '/max' } else { '' }
 
         # .bat en ASCII; PreLaunch va literal (%APPDATA% lo resuelve cmd del usuario)
+        $start = "start $flag `"`" `"$path`""
+        if ($app.Args) { $start += " $($app.Args)" }
+        if ($app.FocusLast -and $path -match '\.exe$') {
+            # Dealer App: la abre Kerma-TableStartup.ps1 con la pantalla "PREPARING THE TABLE"
+            # (espera a las demas apps, maximiza y da el foco). Si el script falla, se abre
+            # aqui a la antigua para que la mesa nunca se quede sin ella.
+            $exe = Split-Path -Path $path -Leaf
+            $lines = @('@echo off', 'timeout /t 2 /nobreak >nul',
+                "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$dir\startup\Kerma-TableStartup.ps1`"",
+                "tasklist /fi `"imagename eq $exe`" | find /i `"$exe`" >nul || (cd /d `"$(Split-Path -Path $path -Parent)`" & $start)")
+            $focusApp = @{ Key = $k; Path = $path }
+        } else {
         $lines = @('@echo off', "timeout /t $($app.Delay) /nobreak >nul")
         $lines += "cd /d `"$(Split-Path -Path $path -Parent)`""
         if ($app.PreLaunch) { $lines += $app.PreLaunch }
-        $start = "start $flag `"`" `"$path`""
-        if ($app.Args) { $start += " $($app.Args)" }
         $lines += $start
         if ($app.ShowAfter) {
             # arranca en la bandeja: abrirla otra vez trae su ventana delante (solo admite una copia)
@@ -202,6 +249,7 @@ function Invoke-AppAutostart($pc) {
             $ps = Get-LaunchHelperScript $proc ([bool]$max) ([bool]$app.FocusLast) ($others -join ',')
             $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($ps))
             $lines += "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand $enc"
+        }
         }
         $bat = Join-Path $dir "$($app.Id).bat"
         Set-Content -LiteralPath $bat -Value $lines -Encoding Ascii
@@ -223,6 +271,7 @@ function Invoke-AppAutostart($pc) {
             if ($r.ExitCode -eq 0) { $created = $true } else { $err2 = $r.Text }
         }
         if ($created) {
+            $createdApps += $k
             $maxTxt = if ($max) { L ', maximized' ', maximizada' } else { '' }
             Write-Ok ((L '{0} task created (delay {1}s{2}).' 'Tarea de {0} creada (espera {1} s{2}).') -f $app.Name, $app.Delay, $maxTxt)
             Add-Change ((L 'Autostart: {0}' 'Arranque: {0}') -f $app.Name)
@@ -232,6 +281,7 @@ function Invoke-AppAutostart($pc) {
             Write-Note "  schtasks.exe  : $err2"
         }
     }
+    if ($focusApp -and $createdApps -contains $focusApp.Key) { Install-TableStartupScreen $dir $pc $tableName $focusApp $createdApps }
     Write-Host ''
     Write-Note (L 'To make an app open on the right monitor, move its window there by hand once - most apps (OBS included) remember it.' 'Para que una app se abra en el monitor correcto, mueve su ventana allí una vez: la mayoría (OBS incluido) lo recuerdan.')
 }

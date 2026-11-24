@@ -2,6 +2,13 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.18.0] - 2026-11-23 - Pantalla de arranque en las mesas
+
+### Añadido
+- **Pantalla «PREPARING THE TABLE»** al encender una mesa. Tapa la pantalla principal, también la barra de Windows, mientras arrancan Stream Deck, HDMI Mirror y OBS, y enseña cuáles están listas. Cuando todo está listo (OBS con su WebSocket escuchando), abre la **Dealer App la última**, enseña «TABLE READY» 5 segundos, se quita sola y deja el foco en el login. Así OBS ya no le quita el foco a la Dealer App mientras el dealer escribe.
+- Si alguna app no arranca en 3 minutos, abre la Dealer App igual. Si la Dealer App ya está abierta, o la relanza el vigilante a mitad de turno, no sale la pantalla. Doble clic en ella la quita al momento (para técnicos); no se quita con el teclado, porque el lector de cartas escribe como un teclado. No sale en el prompter (está excluida de la captura). Si el script falla, el `.bat` abre la Dealer App como antes.
+- Va en `C:\KermaStartup\<equipo>\startup\`. Las mesas la reciben al repasar el setup (arranque de apps).
+
 ## [5.17.3] - 2026-11-23 - Iconos en las teclas del Stream Deck
 
 ### Cambiado

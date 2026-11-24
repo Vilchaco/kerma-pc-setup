@@ -1,0 +1,256 @@
+# =====================================================================
+#  Kerma - arranque de la mesa (pantalla "PREPARING THE TABLE")
+#  Lo lanza el .bat de arranque de la Dealer App (11-Autoarranque.ps1) al
+#  iniciar sesion. Tapa la pantalla principal (encima de todo, tambien de la
+#  barra de Windows) mientras arrancan las demas apps del PC; cuando estan
+#  listas (OBS: con su WebSocket escuchando) abre la Dealer App, la maximiza,
+#  ensena "TABLE READY" unos segundos, se quita y deja el foco en el login.
+#  - Si las apps no estan en TimeoutSec, abre la Dealer App igual.
+#  - Si la Dealer App ya esta abierta: solo le da el foco. Si la relanza el
+#    vigilante a mitad de turno (todo lo demas ya abierto): sin pantalla.
+#  - Doble clic en la pantalla = quitarla ya (para tecnicos). No se cierra con
+#    teclas: el lector de cartas escribe como un teclado.
+#  - Excluida de captura: el HDMI Mirror no la lleva al prompter.
+#  - Si este script falla, el .bat abre la Dealer App a la antigua.
+#  Config: startup.json al lado (lo escribe el setup). Textos en ASCII.
+# =====================================================================
+param([string]$Config = (Join-Path $PSScriptRoot 'startup.json'))
+
+$ErrorActionPreference = 'Stop'
+$cfg = Get-Content -LiteralPath $Config -Raw | ConvertFrom-Json
+$proc      = [string]$cfg.proc
+$timeout   = if ($cfg.timeoutSec) { [int]$cfg.timeoutSec } else { 180 }
+$readySec  = if ($cfg.readySec)   { [int]$cfg.readySec }   else { 5 }
+$maxSec    = if ($cfg.maxSec)     { [int]$cfg.maxSec }     else { 420 }
+$waits     = @($cfg.waits | Where-Object { $_ -and $_.proc })
+
+Add-Type -Namespace KS -Name W -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool ShowWindow(System.IntPtr h, int c);
+[DllImport("user32.dll")] public static extern bool SetForegroundWindow(System.IntPtr h);
+[DllImport("user32.dll")] public static extern bool BringWindowToTop(System.IntPtr h);
+[DllImport("user32.dll")] public static extern System.IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(System.IntPtr h, out uint p);
+[DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool x);
+[DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+[DllImport("user32.dll")] public static extern void keybd_event(byte v, byte s, uint f, System.UIntPtr e);
+[DllImport("user32.dll")] public static extern bool SetWindowDisplayAffinity(System.IntPtr h, uint a);
+'@
+
+function Get-Win([string]$n) { Get-Process -Name $n -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1 }
+function Test-Running([string]$n) { [bool](Get-Process -Name $n -ErrorAction SilentlyContinue) }
+
+# Puerto del WebSocket de OBS (el setup conserva el que tuviera): de su config.json
+$obsPort = 0
+try {
+    $wsCfg = Join-Path $env:APPDATA 'obs-studio\plugin_config\obs-websocket\config.json'
+    if (Test-Path -LiteralPath $wsCfg) {
+        $ws = Get-Content -LiteralPath $wsCfg -Raw | ConvertFrom-Json
+        if ($ws.server_enabled -and $ws.server_port) { $obsPort = [int]$ws.server_port }
+    }
+} catch { $obsPort = 0 }
+
+$script:firstWin = @{}
+function Test-Ready($w) {
+    $win = Get-Win ([string]$w.proc)
+    if ([string]$w.proc -ne 'obs64') { return (Test-Running ([string]$w.proc)) }
+    if (-not $win) { return $false }
+    if (-not $script:firstWin.ContainsKey('obs64')) { $script:firstWin['obs64'] = Get-Date }
+    if ($obsPort -gt 0) {
+        $listen = $false
+        try { $listen = [bool](Get-NetTCPConnection -LocalPort $obsPort -State Listen -ErrorAction Stop) } catch { }
+        if ($listen) { return $true }
+        return (((Get-Date) - $script:firstWin['obs64']).TotalSeconds -ge 30)
+    }
+    return $true
+}
+
+function Start-Dealer {
+    if (Test-Running $proc) { return }
+    $path = [Environment]::ExpandEnvironmentVariables([string]$cfg.app)
+    Start-Process -FilePath $path -WorkingDirectory (Split-Path -Path $path -Parent) -WindowStyle Maximized
+}
+
+function Set-DealerFocus {
+    $p = Get-Win $proc
+    if (-not $p) { return }
+    $h = $p.MainWindowHandle
+    [void][KS.W]::ShowWindow($h, 3)
+    $fp = [uint32]0
+    $ft = [KS.W]::GetWindowThreadProcessId([KS.W]::GetForegroundWindow(), [ref]$fp)
+    $me = [KS.W]::GetCurrentThreadId()
+    $at = ($ft -ne 0 -and $ft -ne $me) -and [KS.W]::AttachThreadInput($me, $ft, $true)
+    [void][KS.W]::BringWindowToTop($h); [void][KS.W]::SetForegroundWindow($h)
+    if ($at) { [void][KS.W]::AttachThreadInput($me, $ft, $false) }
+    Start-Sleep -Milliseconds 200
+    if ([KS.W]::GetForegroundWindow() -ne $h) { [KS.W]::keybd_event(0x12, 0, 0, [System.UIntPtr]::Zero); [void][KS.W]::SetForegroundWindow($h); [KS.W]::keybd_event(0x12, 0, 2, [System.UIntPtr]::Zero) }
+    [void][KS.W]::ShowWindow($h, 3)
+}
+
+# Abre (si hace falta), espera su ventana, maximiza y da el foco (otra vez a los 5 s: las apps tipo Electron se redimensionan al cargar)
+function Complete-Dealer {
+    Start-Dealer
+    for ($i = 0; $i -lt 120 -and -not (Get-Win $proc); $i++) { Start-Sleep -Seconds 1 }
+    if (-not (Get-Win $proc)) { return }
+    Start-Sleep -Seconds 1
+    Set-DealerFocus
+    Start-Sleep -Seconds 5
+    Set-DealerFocus
+}
+
+# ---- ya abierta: solo el foco. Relanzada a mitad de turno: sin pantalla.
+if (Test-Running $proc) { Set-DealerFocus; exit 0 }
+$pending = @($waits | Where-Object { -not (Test-Running ([string]$_.proc)) })
+if ($pending.Count -eq 0) { Complete-Dealer; exit 0 }
+
+# ------------------------------------------------------------- pantalla
+Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+$start = Get-Date
+$script:state = 'waiting'   # waiting -> launching -> ready -> done
+$script:launchedAt = $null
+$script:readyAt = $null
+$script:pulse = $true
+
+$pfc = New-Object System.Drawing.Text.PrivateFontCollection
+$famTitle = $null; $famText = $null
+try {
+    foreach ($f in @('Orbitron-Black.ttf', 'Sora-Regular.ttf')) {
+        $p = Join-Path $PSScriptRoot $f
+        if (Test-Path -LiteralPath $p) { $pfc.AddFontFile($p) }
+    }
+    foreach ($fam in $pfc.Families) { if ($fam.Name -like 'Orbitron*') { $famTitle = $fam } elseif ($fam.Name -like 'Sora*') { $famText = $fam } }
+} catch { }
+if (-not $famTitle) { $famTitle = New-Object System.Drawing.FontFamily 'Segoe UI' }
+if (-not $famText)  { $famText  = New-Object System.Drawing.FontFamily 'Segoe UI' }
+$logo = $null
+$logoPath = Join-Path $PSScriptRoot 'logo.png'
+if (Test-Path -LiteralPath $logoPath) { try { $logo = [System.Drawing.Image]::FromFile($logoPath) } catch { $logo = $null } }
+
+$C = @{
+    Bg = [System.Drawing.ColorTranslator]::FromHtml('#0A0712'); Txt = [System.Drawing.Color]::White
+    Mut = [System.Drawing.ColorTranslator]::FromHtml('#CFCED2'); Mut2 = [System.Drawing.ColorTranslator]::FromHtml('#56525F')
+    Acc = [System.Drawing.ColorTranslator]::FromHtml('#EA7F2B')
+}
+
+$screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$form = New-Object System.Windows.Forms.Form
+$form.FormBorderStyle = 'None'
+$form.StartPosition = 'Manual'
+$form.Bounds = $screen
+$form.TopMost = $true
+$form.ShowInTaskbar = $false
+$form.BackColor = $C.Bg
+$form.Cursor = [System.Windows.Forms.Cursors]::Default
+[System.Windows.Forms.Form].GetProperty('DoubleBuffered', [Reflection.BindingFlags]'NonPublic,Instance').SetValue($form, $true, $null)
+
+function Get-Items {
+    $items = @()
+    foreach ($w in $waits) {
+        $ready = Test-Ready $w
+        $st = if ($ready) { 'ok' } elseif (Test-Running ([string]$w.proc)) { 'now' } else { 'wait' }
+        $items += @{ Name = [string]$w.name; St = $st }
+    }
+    $dst = if (Get-Win $proc) { 'ok' } elseif ($script:state -ne 'waiting') { 'now' } else { 'wait' }
+    $items += @{ Name = 'Dealer App'; St = $dst }
+    return $items
+}
+$script:items = Get-Items
+
+$form.add_Paint({
+    param($s, $e)
+    $g = $e.Graphics
+    $g.SmoothingMode = 'AntiAlias'
+    $g.TextRenderingHint = 'AntiAliasGridFit'
+    $W = $form.ClientSize.Width; $H = $form.ClientSize.Height
+    $k = $H / 540.0
+    $ready = ($script:state -eq 'ready' -or $script:state -eq 'done')
+    $fTitle = New-Object System.Drawing.Font($famTitle, [float](30 * $k), [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
+    $fSub   = New-Object System.Drawing.Font($famText, [float](16 * $k), [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
+    $fRow   = New-Object System.Drawing.Font($famText, [float](16 * $k), [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
+    $fSmall = New-Object System.Drawing.Font($famText, [float](13 * $k), [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
+    $center = New-Object System.Drawing.StringFormat; $center.Alignment = 'Center'
+    $title = if ($ready) { 'TABLE READY' } else { 'PREPARING THE TABLE' }
+    $sub   = if ($ready) { 'You can log in to the Dealer App now.' } else { "Please don't touch anything. This takes about a minute and a half." }
+    $logoH = 46 * $k
+    $rowH = 22 * $k; $rowGap = 12 * $k
+    $listH = if ($ready) { 0 } else { $script:items.Count * $rowH + ($script:items.Count - 1) * $rowGap + 36 * $k }
+    $total = $logoH + 44 * $k + 38 * $k + 10 * $k + 22 * $k + $listH
+    $y = ($H - $total) / 2
+    if ($logo) {
+        $lw = $logo.Width * ($logoH / $logo.Height)
+        $g.DrawImage($logo, [float](($W - $lw) / 2), [float]$y, [float]$lw, [float]$logoH)
+    }
+    $y += $logoH + 44 * $k
+    $tb = New-Object System.Drawing.SolidBrush ($(if ($ready) { $C.Acc } else { $C.Txt }))
+    $g.DrawString($title, $fTitle, $tb, [System.Drawing.RectangleF]::new(0, [float]$y, [float]$W, [float](40 * $k)), $center)
+    $y += 38 * $k + 10 * $k
+    $mb = New-Object System.Drawing.SolidBrush $C.Mut
+    $g.DrawString($sub, $fSub, $mb, [System.Drawing.RectangleF]::new(0, [float]$y, [float]$W, [float](24 * $k)), $center)
+    $y += 22 * $k + 36 * $k
+    if (-not $ready) {
+        $lw = 300 * $k; $x0 = ($W - $lw) / 2; $d = 10 * $k
+        foreach ($it in $script:items) {
+            $col = switch ($it.St) { 'ok' { $C.Mut } 'now' { $C.Txt } default { $C.Mut2 } }
+            $cy = $y + ($rowH - $d) / 2
+            if ($it.St -eq 'ok') { $g.FillEllipse((New-Object System.Drawing.SolidBrush $C.Mut), [float]$x0, [float]$cy, [float]$d, [float]$d) }
+            elseif ($it.St -eq 'now') { $a = if ($script:pulse) { 255 } else { 70 }; $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb($a, $C.Acc))), [float]$x0, [float]$cy, [float]$d, [float]$d) }
+            else { $g.DrawEllipse((New-Object System.Drawing.Pen($C.Mut2, [float](1.5 * $k))), [float]$x0, [float]$cy, [float]$d, [float]$d) }
+            $g.DrawString($it.Name, $fRow, (New-Object System.Drawing.SolidBrush $col), [float]($x0 + 22 * $k), [float]($y))
+            $right = switch ($it.St) { 'ok' { 'ready' } 'now' { 'starting...' } default { '' } }
+            if ($right) {
+                $sz = $g.MeasureString($right, $fSmall)
+                $g.DrawString($right, $fSmall, (New-Object System.Drawing.SolidBrush $C.Mut2), [float]($x0 + $lw - $sz.Width), [float]($y + 2 * $k))
+            }
+            $y += $rowH + $rowGap
+        }
+    }
+    $foot = (@([string]$cfg.label, [string]$cfg.host) | Where-Object { $_ }) -join ' - '
+    if ($foot) { $g.DrawString($foot, $fSmall, (New-Object System.Drawing.SolidBrush $C.Mut2), [System.Drawing.RectangleF]::new(0, [float]($H - 40 * $k), [float]$W, [float](20 * $k)), $center) }
+})
+
+$timer = New-Object System.Windows.Forms.Timer
+$timer.Interval = 500
+$timer.add_Tick({
+    try {
+        $el = ((Get-Date) - $start).TotalSeconds
+        $script:pulse = -not $script:pulse
+        if ($el -ge $maxSec) { $script:state = 'done'; $form.Close(); return }
+        switch ($script:state) {
+            'waiting' {
+                $script:items = Get-Items
+                $allOk = -not ($script:items | Select-Object -First ($script:items.Count - 1) | Where-Object { $_.St -ne 'ok' })
+                if ($allOk -or $el -ge $timeout) {
+                    $script:state = 'launching'; $script:launchedAt = Get-Date
+                    Start-Dealer
+                    $script:items = Get-Items
+                }
+            }
+            'launching' {
+                $script:items = Get-Items
+                $dw = Get-Win $proc
+                $since = ((Get-Date) - $script:launchedAt).TotalSeconds
+                if ($dw) { [void][KS.W]::ShowWindow($dw.MainWindowHandle, 3) }
+                if (($dw -and $since -ge 2) -or $since -ge 120) { $script:state = 'ready'; $script:readyAt = Get-Date }
+            }
+            'ready' {
+                if (((Get-Date) - $script:readyAt).TotalSeconds -ge $readySec) { $script:state = 'done'; $form.Close(); return }
+            }
+        }
+        $form.TopMost = $true
+        $form.Invalidate()
+    } catch { $script:state = 'done'; $form.Close() }
+})
+$form.add_DoubleClick({ $form.Close() })
+$form.add_Shown({
+    if (-not $cfg.allowCapture) { try { [void][KS.W]::SetWindowDisplayAffinity($form.Handle, 0x11) } catch { } }   # WDA_EXCLUDEFROMCAPTURE (allowCapture: solo pruebas)
+    $form.Activate()
+    $timer.Start()
+})
+
+try {
+    [System.Windows.Forms.Application]::Run($form)
+} finally {
+    $timer.Stop()
+    if ($logo) { $logo.Dispose() }
+    Complete-Dealer
+}
+$pfc.Dispose()

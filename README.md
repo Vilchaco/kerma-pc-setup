@@ -121,7 +121,7 @@ Lleva la carpeta extraída en el USB de mesa en mesa. Las rutas de las apps que 
 | Configuración de programas | Aplica la configuración guardada de HDMI Mirror, OBS y Stream Deck, y el tema Kerma de OBS. El perfil de Stream Deck se sustituye si cambia en el repositorio (con copia del anterior en `C:\KermaSetup\backup`). |
 | Kerma Remote | En las mesas: recibe en el puerto 10010 las órdenes del Companion central (servidor 192.168.3.254), al que van los Stream Deck de los supervisores, y las pega en la Dealer App. Solo acepta las órdenes de la lista de su juego, solo desde el servidor y con la clave común, que el setup toma del panel. |
 | Companion Satellite | En los PCs de supervisor: conecta su Stream Deck al Companion central (192.168.3.254, puerto 16622). En el Companion central, en *Surfaces*, a cada Stream Deck nuevo hay que ponerle la página 5 (SUPERVISOR) como página de inicio. |
-| Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. OBS arranca sin el aviso de modo seguro aunque se haya cerrado mal, y sin el aviso de actualizaciones. |
+| Autoarranque | Crea una tarea por app para que se abra al iniciar sesión, con su retardo y maximizada si se quiere. OBS arranca sin el aviso de modo seguro aunque se haya cerrado mal, y sin el aviso de actualizaciones. En las mesas, la Dealer App se abre la última, tras la pantalla «PREPARING THE TABLE», cuando las demás apps están listas. |
 | Audio | Quita los sonidos de Windows y pone la Scarlett como micrófono y salida predeterminados. |
 | Fondo de pantalla | El mismo fondo de Kerma en todos los PCs, con una tarjeta: tipo de PC en su color, nombre, IP y nombre de equipo. |
 | Panel de estado | Registra el PC en el panel web y envía su estado cada 5 minutos. |
@@ -190,7 +190,7 @@ El código está en `src/Kerma-PCSetup.ps1`, que organiza las fases, en `src/sec
 | `C:\KermaSetup\app\<versión>\` | El script descargado con la línea de instalación. |
 | `C:\KermaSetup\downloads\` | Los instaladores descargados. |
 | `C:\Kerma\HdmiMirror\` | HDMI Mirror y su configuración. |
-| `C:\KermaStartup\<equipo>\` | Un pequeño `.bat` por app con su retardo de arranque. |
+| `C:\KermaStartup\<equipo>\` | Un pequeño `.bat` por app con su retardo de arranque. En `startup\`, la pantalla de arranque de la mesa (script, logo, fuentes y `startup.json` con las apps a esperar). |
 | Tareas `<equipo> - <App> Startup` | Abren cada app al iniciar sesión. |
 | Tarea `Kerma - Time Sync` | Sincroniza la hora al encender y cada día. |
 | `C:\ProgramData\Kerma\` | El script de sincronización de hora y su registro. |
