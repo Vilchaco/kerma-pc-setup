@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.18.2] - 2026-11-23 - Pantalla de arranque en todos los monitores
+
+### Cambiado
+- «PREPARING THE TABLE» sale en **todos los monitores**, también en el prompter, desde el primer segundo. Antes solo tapaba la pantalla principal y el prompter enseñaba el escritorio hasta que arrancaba el HDMI Mirror.
+- **Sin parpadeo con el HDMI Mirror.** La pantalla se pone encima una sola vez y ya no se pelea con la ventana del espejo (las dos se reafirmaban arriba y se iban turnando). Tampoco se esconde de las capturas: si el espejo copia la pantalla, copia la pantalla de arranque, y por RustDesk se ve igual (doble clic la quita).
+
 ## [5.18.1] - 2026-11-23 - El perro de Kerma en la pantalla de arranque
 
 ### Cambiado

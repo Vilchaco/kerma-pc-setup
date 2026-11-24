@@ -1,8 +1,8 @@
 # =====================================================================
 #  Kerma - arranque de la mesa (pantalla "PREPARING THE TABLE")
 #  Lo lanza el .bat de arranque de la Dealer App (11-Autoarranque.ps1) al
-#  iniciar sesion. Tapa la pantalla principal (encima de todo, tambien de la
-#  barra de Windows) mientras arrancan las demas apps del PC; cuando estan
+#  iniciar sesion. Tapa TODOS los monitores (pantalla del dealer, prompter y
+#  el dummy; encima de todo, tambien de la barra de Windows) mientras arrancan las demas apps del PC; cuando estan
 #  listas (OBS: con su WebSocket escuchando) abre la Dealer App, la maximiza,
 #  ensena "TABLE READY" unos segundos, se quita y deja el foco en el login.
 #  - Si las apps no estan en TimeoutSec, abre la Dealer App igual.
@@ -10,7 +10,9 @@
 #    vigilante a mitad de turno (todo lo demas ya abierto): sin pantalla.
 #  - Doble clic en la pantalla = quitarla ya (para tecnicos). No se cierra con
 #    teclas: el lector de cartas escribe como un teclado.
-#  - Excluida de captura: el HDMI Mirror no la lleva al prompter.
+#  - Se pone encima UNA vez y no vuelve a reclamarlo: el HDMI Mirror reafirma
+#    su ventana cada poco y pelearse con el hacia parpadear. Tampoco se excluye
+#    de las capturas: si el espejo copia la pantalla, copia esta pantalla.
 #  - Si este script falla, el .bat abre la Dealer App a la antigua.
 #  Config: startup.json al lado (lo escribe el setup). Textos en ASCII.
 # =====================================================================
@@ -130,7 +132,6 @@ $dog = $null
 $dogPath = Join-Path $PSScriptRoot 'perro.png'
 if (Test-Path -LiteralPath $dogPath) { try { $dog = New-Object System.Drawing.Bitmap $dogPath } catch { $dog = $null } }
 $DogSheet = @{ W = 273; H = 221; Cols = 8; N = 59; Fps = 24 }   # OJO: no llamarlo $DOG (PowerShell no distingue mayusculas)
-$script:dogRect = [System.Drawing.Rectangle]::Empty
 
 $C = @{
     Bg = [System.Drawing.ColorTranslator]::FromHtml('#0A0712'); Txt = [System.Drawing.Color]::White
@@ -138,16 +139,22 @@ $C = @{
     Acc = [System.Drawing.ColorTranslator]::FromHtml('#EA7F2B')
 }
 
-$screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$form = New-Object System.Windows.Forms.Form
-$form.FormBorderStyle = 'None'
-$form.StartPosition = 'Manual'
-$form.Bounds = $screen
-$form.TopMost = $true
-$form.ShowInTaskbar = $false
-$form.BackColor = $C.Bg
-$form.Cursor = [System.Windows.Forms.Cursors]::Default
-[System.Windows.Forms.Form].GetProperty('DoubleBuffered', [Reflection.BindingFlags]'NonPublic,Instance').SetValue($form, $true, $null)
+# una ventana por monitor; la del principal manda (al cerrarla se cierran todas)
+function New-SplashForm($bounds) {
+    $f = New-Object System.Windows.Forms.Form
+    $f.FormBorderStyle = 'None'
+    $f.StartPosition = 'Manual'
+    $f.Bounds = $bounds
+    $f.TopMost = $true
+    $f.ShowInTaskbar = $false
+    $f.BackColor = $C.Bg
+    $f.Tag = [System.Drawing.Rectangle]::Empty   # recuadro del perro en esta ventana
+    [System.Windows.Forms.Form].GetProperty('DoubleBuffered', [Reflection.BindingFlags]'NonPublic,Instance').SetValue($f, $true, $null)
+    return $f
+}
+$form = New-SplashForm ([System.Windows.Forms.Screen]::PrimaryScreen.Bounds)
+$others = @([System.Windows.Forms.Screen]::AllScreens | Where-Object { -not $_.Primary } | ForEach-Object { New-SplashForm $_.Bounds })
+$forms = @($form) + $others
 
 function Get-Items {
     $items = @()
@@ -162,12 +169,12 @@ function Get-Items {
 }
 $script:items = Get-Items
 
-$form.add_Paint({
+$paint = {
     param($s, $e)
     $g = $e.Graphics
     $g.SmoothingMode = 'AntiAlias'
     $g.TextRenderingHint = 'AntiAliasGridFit'
-    $W = $form.ClientSize.Width; $H = $form.ClientSize.Height
+    $W = $s.ClientSize.Width; $H = $s.ClientSize.Height
     $k = $H / 540.0
     $ready = ($script:state -eq 'ready' -or $script:state -eq 'done')
     $fTitle = New-Object System.Drawing.Font($famTitle, [float](30 * $k), [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
@@ -188,9 +195,9 @@ $form.add_Paint({
         $i = [int][Math]::Floor(((Get-Date) - $start).TotalSeconds * $DogSheet.Fps) % $DogSheet.N
         $src = New-Object System.Drawing.Rectangle (($i % $DogSheet.Cols) * $DogSheet.W), ([Math]::Floor($i / $DogSheet.Cols) * $DogSheet.H), $DogSheet.W, $DogSheet.H
         $dw = [int]($DogSheet.W * ($logoH / $DogSheet.H))
-        $script:dogRect = New-Object System.Drawing.Rectangle ([int](($W - $dw) / 2)), ([int]$y), $dw, ([int]$logoH)
+        $s.Tag = New-Object System.Drawing.Rectangle ([int](($W - $dw) / 2)), ([int]$y), $dw, ([int]$logoH)
         $g.InterpolationMode = 'HighQualityBicubic'
-        $g.DrawImage($dog, $script:dogRect, $src, [System.Drawing.GraphicsUnit]::Pixel)
+        $g.DrawImage($dog, $s.Tag, $src, [System.Drawing.GraphicsUnit]::Pixel)
     } elseif ($logo) {
         $lw = $logo.Width * ($logoH / $logo.Height)
         $g.DrawImage($logo, [float](($W - $lw) / 2), [float]$y, [float]$lw, [float]$logoH)
@@ -221,7 +228,8 @@ $form.add_Paint({
     }
     $foot = (@([string]$cfg.label, [string]$cfg.host) | Where-Object { $_ }) -join ' - '
     if ($foot) { $g.DrawString($foot, $fSmall, (New-Object System.Drawing.SolidBrush $C.Mut2), [System.Drawing.RectangleF]::new(0, [float]($H - 40 * $k), [float]$W, [float](20 * $k)), $center) }
-})
+}
+foreach ($f in $forms) { $f.add_Paint($paint); $f.add_DoubleClick({ $form.Close() }) }
 
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 500
@@ -251,17 +259,15 @@ $timer.add_Tick({
                 if (((Get-Date) - $script:readyAt).TotalSeconds -ge $readySec) { $script:state = 'done'; $form.Close(); return }
             }
         }
-        $form.TopMost = $true
-        $form.Invalidate()
+        foreach ($f in $forms) { $f.Invalidate() }
     } catch { $script:state = 'done'; $form.Close() }
 })
 # animacion del perro: solo se repinta su recuadro
 $anim = New-Object System.Windows.Forms.Timer
 $anim.Interval = 42
-$anim.add_Tick({ if ($dog -and ($script:state -eq 'waiting' -or $script:state -eq 'launching')) { if (-not $script:dogRect.IsEmpty) { $form.Invalidate($script:dogRect) } } })
-$form.add_DoubleClick({ $form.Close() })
+$anim.add_Tick({ if ($dog -and ($script:state -eq 'waiting' -or $script:state -eq 'launching')) { foreach ($f in $forms) { if (-not $f.Tag.IsEmpty) { $f.Invalidate($f.Tag) } } } })
 $form.add_Shown({
-    if (-not $cfg.allowCapture) { try { [void][KS.W]::SetWindowDisplayAffinity($form.Handle, 0x11) } catch { } }   # WDA_EXCLUDEFROMCAPTURE (allowCapture: solo pruebas)
+    foreach ($f in $others) { try { $f.Show() } catch { } }
     $form.Activate()
     $timer.Start()
     $anim.Start()
@@ -270,9 +276,11 @@ $form.add_Shown({
 try {
     [System.Windows.Forms.Application]::Run($form)
 } finally {
-    try { $timer.Stop(); $anim.Stop(); $form.Hide() } catch { }
+    try { $timer.Stop(); $anim.Stop() } catch { }
+    foreach ($f in $forms) { try { $f.Hide() } catch { } }
     # lo primero: la Dealer App (nada de lo que hay detras puede impedirlo)
     try { Complete-Dealer } catch { }
+    foreach ($f in $others) { try { $f.Close(); $f.Dispose() } catch { } }
     try { if ($logo) { $logo.Dispose() }; if ($dog) { $dog.Dispose() } } catch { }
 }
 $pfc.Dispose()
