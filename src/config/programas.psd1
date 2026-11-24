@@ -119,7 +119,7 @@
         Scanner    = @{ Name = 'Card Scanner'; Id = '01_scanner';    Path = '';                                                 Expect = 'Start-Matrix120-Keyboard.bat'; Delay = 10; Maximize = $false }
         StreamDeck = @{ Name = 'StreamDeck';   Id = '02_streamdeck'; Path = 'C:\Program Files\Elgato\StreamDeck\StreamDeck.exe';  Delay = 15; Maximize = $false; ShowAfter = 20 }
         DealerApp  = @{ Name = 'Dealer App';   Id = '03_dealerapp';  Path = '%LOCALAPPDATA%\Dealer Control\dealer-control.exe'; Expect = 'dealer-control.exe'; Delay = 30; Maximize = $true; FocusLast = $true }
-        HdmiMirror = @{ Name = 'HDMI Mirror';  Id = '04_hdmimirror'; Path = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';               Delay = 45; Maximize = $false; Replaces = 'Mirror App' }
+        HdmiMirror = @{ Name = 'HDMI Mirror';  Id = '04_hdmimirror'; Path = 'C:\Kerma\HdmiMirror\HdmiMirror.exe';               Delay = 8;  Maximize = $false; Replaces = 'Mirror App' }
         # OBS: si se cerro mal (fallo, corte de luz, reinicio forzado) deja
         # %APPDATA%\obs-studio\.sentinel\run_* y el siguiente arranque se para en el
         # aviso "Iniciar normalmente / Modo seguro". El autoarranque borra esa marca

@@ -98,7 +98,7 @@ function Install-TableStartupScreen([string]$dir, $pc, [string]$tableName, $focu
             }
         }
         $waits = @()
-        foreach ($k in @($createdApps | Where-Object { $_ -ne $focusApp.Key })) {
+        foreach ($k in @($createdApps | Where-Object { $_ -ne $focusApp.Key } | Sort-Object { [int]$Apps[$_].Delay })) {   # en el orden en que arrancan
             $p = [string]$Apps[$k].Path
             if ($p -notmatch '\.exe$') { continue }
             $name = if ($Apps[$k].Name -eq 'StreamDeck') { 'Stream Deck' } else { [string]$Apps[$k].Name }

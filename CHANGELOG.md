@@ -2,6 +2,12 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.18.3] - 2026-11-23 - HDMI Mirror el primero
+
+### Cambiado
+- El **HDMI Mirror arranca el primero** (a los 8 s de iniciar sesión; antes a los 45 s), antes que el lector de cartas y el Stream Deck, para que el prompter se vea bien desde el principio. Sigue esperando a la Dealer App para espejarla, como siempre.
+- La lista de la pantalla de arranque va en el orden en que arrancan las apps.
+
 ## [5.18.2] - 2026-11-23 - Pantalla de arranque en todos los monitores
 
 ### Cambiado
