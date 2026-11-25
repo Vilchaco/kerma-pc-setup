@@ -2,6 +2,16 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.20.0] - 2026-11-25 - Scarlett registrada en Kerma MCR y OBS antes
+
+### Añadido (PR de David)
+- **Agente Scarlett instalado por el setup en las mesas.** Arranca con Windows como SYSTEM, antes de iniciar sesión, en el puerto 8765, y solo acepta a `192.168.3.254`. Sustituye al agente anterior con la misma tarea, carpeta y regla de firewall, y conserva su clave y su configuración. Reinicia la Scarlett con la misma rutina que el panel y Companion, así que el botón de Kerma MCR, Companion y el panel de Setup hacen lo mismo.
+- **Registro de la mesa en Kerma MCR con una invitación de un solo uso.** Se crea en MCR: Scarlett, Invitar PC de mesa. El setup la pide al principio (Enter para hacerlo más tarde) o la toma de la variable `KERMA_MCR_SCARLETT_INVITATION`. Al repasar el setup se conservan la clave y el registro. Mientras no esté registrada, el setup avisa de que el registro en MCR está pendiente.
+- **Un cerrojo de verdad** entre los reinicios de MCR, Companion y el panel: si dos llegan a la vez, el segundo responde que ya se está reiniciando. Si hubo un reinicio bueno hace menos de 10 s, no se repite.
+
+### Cambiado
+- **OBS arranca a los 12 s de iniciar sesión** (antes a los 60 s). La Dealer App ya espera a que OBS esté listo, así que no hacía falta dejarlo para el final.
+
 ## [5.19.0] - 2026-11-25 - Reiniciar la Scarlett desde el panel y desde Companion
 
 ### Añadido

@@ -126,7 +126,7 @@
         # antes, como hace OBS al cerrarse bien. Abierto a mano, OBS sigue ofreciendo
         # el modo seguro. (--disable-shutdown-check existia hasta OBS 31.) No usar
         # --multi en su lugar: tambien quita el aviso de "OBS ya esta abierto".
-        OBS        = @{ Name = 'OBS';          Id = '05_obs';        Path = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Delay = 60; Maximize = $false
+        OBS        = @{ Name = 'OBS';          Id = '05_obs';        Path = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'; Delay = 12; Maximize = $false
                         Args = '--disable-updater'
                         PreLaunch = @('del /q "%APPDATA%\obs-studio\.sentinel\run_*" >nul 2>&1') }
         Cameras    = @{ Name = 'Cameras';      Id = '02_cameras';    Path = '';                                                 Delay = 25; Maximize = $true }

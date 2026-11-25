@@ -361,7 +361,7 @@ function scarlettRows(p) {
   const rows = [['Scarlett', `${st} &nbsp;${ctl}`, true]];
   const l = s.last;
   if (l && l.at) rows.push(['Último reinicio', `${SC_BY(l.by)}, ${dateTime(l.at)} · ${l.ok ? 'bien' : l.skipped ? 'no hizo falta' : 'NO se pudo'}${l.msg ? ' (' + l.msg + ')' : ''}`]);
-  if (s.david_agent) rows.push(['Agente de David', 'instalado (su panel en el puerto 8765)']);
+  if (s.david_agent) rows.push(['Agente Scarlett', 'instalado (Kerma MCR, puerto 8765)']);
   return rows;
 }
 
