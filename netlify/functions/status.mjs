@@ -31,7 +31,7 @@ import { AuthError, readSession, verifyGoogleToken, makeCookie, clearCookie, goo
 export const config = { path: ['/api/status', '/api/register', '/api/log', '/api/command', '/api/remote-key', '/api/alerts-test', '/api/inventory',
   '/api/config', '/api/login', '/api/logout', '/api/me'] };
 
-const ACTIONS = ['timesync', 'watch_pause', 'watch_resume'];
+const ACTIONS = ['timesync', 'watch_pause', 'watch_resume', 'scarlett_reset'];
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });

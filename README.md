@@ -193,7 +193,7 @@ El código está en `src/Kerma-PCSetup.ps1`, que organiza las fases, en `src/sec
 | `C:\KermaStartup\<equipo>\` | Un pequeño `.bat` por app con su retardo de arranque. En `startup\`, la pantalla de arranque de la mesa (script, logo, fuentes y `startup.json` con las apps a esperar). |
 | Tareas `<equipo> - <App> Startup` | Abren cada app al iniciar sesión. |
 | Tarea `Kerma - Time Sync` | Sincroniza la hora al encender y cada día. |
-| `C:\ProgramData\Kerma\` | El script de sincronización de hora y su registro. |
+| `C:\ProgramData\Kerma\` | El script de sincronización de hora y su registro. También `Kerma-ScarlettReset.ps1`, que reinicia la Scarlett desde el panel y desde Companion, con su registro `scarlett.log` y el último resultado en `scarlett-last.json`. |
 | `C:\KermaSetup\logs\` | Registro completo de cada ejecución del setup. |
 | `app-paths.json` junto al script | Rutas de las apps recordadas para las siguientes mesas. |
 

@@ -62,6 +62,8 @@ function Invoke-StatusPanel($pc) {
     $dir = Initialize-KermaDataDir
     $collector = Join-Path $dir 'Kerma-Status.ps1'
     Copy-Item -LiteralPath (Join-Path $Root 'Kerma-Status.ps1') -Destination $collector -Force
+    # reinicio de la Scarlett (boton del panel y de Companion); lo carga Kerma-Status
+    Copy-Item -LiteralPath (Join-Path $Root 'Kerma-ScarlettReset.ps1') -Destination (Join-Path $dir 'Kerma-ScarlettReset.ps1') -Force
     (Get-StatusConfig $pc) | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $dir 'pc.json') -Encoding UTF8
 
     # ---- clave de escritura: se pide una vez con el PIN; el PIN no se guarda

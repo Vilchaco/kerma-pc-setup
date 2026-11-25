@@ -230,6 +230,13 @@ foreach ($t in @(Get-Safe { Get-ScheduledTask | Where-Object { $_.TaskName -like
 }
 
 # ------------------------------------------------------------- audio
+# Scarlett: cual reiniciarian los botones, su estado y el ultimo reinicio (Kerma-ScarlettReset.ps1,
+# misma carpeta). Sin ese script (setup antiguo) no se manda nada y el panel no ensena el boton.
+$KsScript = Join-Path $Here 'Kerma-ScarlettReset.ps1'
+$scarlett = $null
+if (Test-Path -LiteralPath $KsScript) {
+    try { . $KsScript; $scarlett = Get-KsScarlettInfo } catch { $scarlett = $null }
+}
 $focusrite = @(Get-Safe { Get-PnpDevice -PresentOnly -ErrorAction Stop | Where-Object { $_.InstanceId -like 'USB\VID_1235*' } | ForEach-Object { [string]$_.FriendlyName } } | Where-Object { $_ })
 $audio = @{ default_recording = $null; default_playback = $null }
 if (Get-Module -ListAvailable -Name AudioDeviceCmdlets) {
@@ -275,6 +282,7 @@ $status = [ordered]@{
     apps           = $apps
     tasks          = $tasks
     focusrite      = $focusrite
+    scarlett       = $scarlett
     audio          = $audio
     remote         = $remote
     last_command   = $lastCmd
@@ -354,6 +362,15 @@ try {
                 if ($w) { $w.pausedUntil = $null; Get-Safe { $w | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $WatchFile -Encoding UTF8 } | Out-Null }
                 $status.watchdog_paused_until = $null
                 $done += [ordered]@{ action = 'watch_resume'; id = [string]$c.id; at = (Get-Date).ToUniversalTime().ToString('o'); ok = $true }
+            }
+            'scarlett_reset' {
+                $r = [ordered]@{ action = 'scarlett_reset'; id = [string]$c.id; at = (Get-Date).ToUniversalTime().ToString('o'); ok = $false; msg = 'este PC no tiene el reinicio de la Scarlett (pasa el setup)' }
+                if (Get-Command Invoke-KsScarlettReset -ErrorAction SilentlyContinue) {
+                    $x = Invoke-KsScarlettReset 'panel' ([string]$c.at)
+                    $r.ok = [bool]($x.ok -or $x.skipped); $r.msg = [string]$x.msg
+                }
+                $done += $r
+                try { $status.scarlett = Get-KsScarlettInfo } catch { }
             }
             'timesync' {
                 $r = Invoke-TimeFix 'panel'

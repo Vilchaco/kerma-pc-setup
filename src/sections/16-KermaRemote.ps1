@@ -43,6 +43,19 @@ function Get-PanelRemoteKey {
     try { return [string](Invoke-RestMethod -Uri "$PanelBase/api/remote-key" -Headers $h -UseBasicParsing -TimeoutSec 15).remoteKey } catch { return '' }
 }
 
+# Que Scarlett reiniciarian los botones (sin reiniciar nada) y si es la del agente de David
+function Show-ScarlettCheck([string]$ksScript) {
+    try {
+        $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ksScript -Check 2>&1 | Out-String
+        $j = (@($out -split "`r?`n" | Where-Object { $_ -match '^\s*\{' }) | Select-Object -Last 1) | ConvertFrom-Json
+        if ($j.device) {
+            $src = switch ([string]$j.source) { 'david' { L 'the one configured in David''s agent' 'la configurada en el agente de David' } 'david-name' { L 'same name as in David''s agent' 'mismo nombre que en el agente de David' } default { L 'the only one connected' 'la única conectada' } }
+            Write-Ok ((L 'Scarlett for RESET SCARLETT: {0} ({1}), status {2}.' 'Scarlett para RESET SCARLETT: {0} ({1}), estado {2}.') -f $j.device, $src, $j.status)
+        } else { Write-Note ((L '  Scarlett: {0}' '  Scarlett: {0}') -f $j.error) }
+        if ($j.david_agent) { Write-Note (L '  David''s Scarlett agent (port 8765) is installed and is left as it is.' '  El agente de la Scarlett de David (puerto 8765) está instalado y se deja como está.') }
+    } catch { Write-Warn ((L 'Scarlett check: {0}' 'Comprobación de la Scarlett: {0}') -f $_.Exception.Message) }
+}
+
 function Stop-KermaRemote {
     Stop-ScheduledTask -TaskName 'Kerma - Remote' -ErrorAction SilentlyContinue
     Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
@@ -72,6 +85,10 @@ function Invoke-KermaRemote($pc) {
     if ($key.Length -lt 12) { Write-Fail (L 'The key must have at least 12 characters - Kerma Remote not installed.' 'La clave tiene que tener al menos 12 caracteres: Kerma Remote no se instaló.'); return }
 
     # 1. programa (parando antes el que corre: el archivo estaria bloqueado)
+    #    y el script del reinicio de la Scarlett, en la carpeta que solo cambian los administradores
+    $ksDir = Initialize-KermaDataDir
+    Copy-Item -LiteralPath (Join-Path $Root 'Kerma-ScarlettReset.ps1') -Destination (Join-Path $ksDir 'Kerma-ScarlettReset.ps1') -Force
+    Show-ScarlettCheck (Join-Path $ksDir 'Kerma-ScarlettReset.ps1')
     Stop-KermaRemote
     New-Item -ItemType Directory -Path $RemoteDir -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $Root 'remote\KermaRemote.ps1') -Destination (Join-Path $RemoteDir 'KermaRemote.ps1') -Force
@@ -85,6 +102,7 @@ function Invoke-KermaRemote($pc) {
         targetProcess = [string]$RemoteCfg.TargetProcess
         mode          = 'paste'
         restoreFocus  = $true
+        scarlettReset = $true      # /cmd/scarlett_reset (boton RESET SCARLETT de Companion)
         commands      = [ordered]@{}
     }
     foreach ($k in ($cmds.Keys | Sort-Object)) { $cfg.commands[$k] = [string]$cmds[$k] }
@@ -117,6 +135,8 @@ function Invoke-KermaRemote($pc) {
             $h = Invoke-RestMethod -Uri "http://127.0.0.1:$port/health" -Headers @{ 'X-Kerma-Key' = $key; 'X-Kerma-Station' = 'setup' } -UseBasicParsing -TimeoutSec 5
             $appState = if ($h.appOpen) { L 'Dealer App open' 'Dealer App abierta' } else { L 'Dealer App not open now' 'Dealer App cerrada ahora' }
             Write-Ok ((L 'Kerma Remote {0} listening on port {1} ({2}).' 'Kerma Remote {0} escuchando en el puerto {1} ({2}).') -f $h.version, $port, $appState)
+            if ($h.elevated) { Write-Ok (L 'Kerma Remote runs as administrator: it can restart the Scarlett.' 'Kerma Remote corre como administrador: puede reiniciar la Scarlett.') }
+            else { Write-Warn (L 'Kerma Remote does NOT run as administrator: RESET SCARLETT from Companion will fail on this PC (the panel button still works).' 'Kerma Remote NO corre como administrador: RESET SCARLETT desde Companion fallará en este PC (el botón del panel sí funciona).') }
         } catch { Write-Warn ((L 'Kerma Remote does not answer yet ({0}). It starts at the next logon; see {1}\remote.log' 'Kerma Remote aún no responde ({0}). Arranca al iniciar sesión; mira {1}\remote.log') -f $_.Exception.Message, $RemoteDir) }
     } else {
         Write-Note (L '  It starts when the table user logs on.' '  Arranca cuando inicie sesión el usuario de la mesa.')

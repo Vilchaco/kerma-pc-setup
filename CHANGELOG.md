@@ -2,6 +2,17 @@
 
 Todas las versiones de Kerma PC Setup, de la más reciente a la más antigua. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y la numeración sigue el [versionado semántico](https://semver.org/lang/es/).
 
+## [5.19.0] - 2026-11-25 - Reiniciar la Scarlett desde el panel y desde Companion
+
+### Añadido
+- **Reiniciar la Scarlett de una mesa** sin ir a la mesa, con la misma lógica que el agente de David (`restidavid/Kerma-Scarlett-Remote-Reset`). Primero reinicia el aparato por USB y, si no vuelve bien, lo desactiva y lo activa. Después comprueba que Windows la ve bien.
+  - **Desde el panel:** en el cajón del PC, «Reiniciar Scarlett» (pide confirmación, porque el audio se corta unos segundos). El PC lo hace en su siguiente reporte, como mucho en 5 minutos. Si mientras tanto alguien la ha reiniciado por otra vía, no repite. El panel enseña la Scarlett, su estado y el último reinicio (quién, cuándo y cómo acabó), y avisa en la tarjeta si la Scarlett no está bien.
+  - **Desde Companion:** orden `scarlett_reset` de Kerma Remote 0.2.0 (`POST http://<mesa>:10010/cmd/scarlett_reset` con la clave de siempre). Es al momento y responde cuando termina.
+- Usa la Scarlett que tiene configurada el agente de David. De su configuración solo lee el dispositivo, nunca su clave. Si no la hay, usa la única Focusrite conectada; con más de una no toca nada.
+- No se pisa con otro reinicio, ni con uno del panel o de Companion ni con uno del panel de David (mira su registro sin escribir en él).
+- **El agente de David no se toca:** su puerto 8765, su panel, su clave, su tarea y su firewall siguen igual. El setup solo dice en el log que está instalado.
+- Al pasar el setup, el log dice qué Scarlett reiniciarían los botones y si Kerma Remote corre como administrador, que hace falta para hacerlo desde Companion.
+
 ## [5.18.3] - 2026-11-23 - HDMI Mirror el primero
 
 ### Cambiado

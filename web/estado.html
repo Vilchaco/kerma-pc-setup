@@ -309,6 +309,7 @@ function analyse(p, now) {
   const reopened = (p.watchdog || []).filter((e) => now - new Date(e.at) < 15 * 60000);   // 15 min en amarillo (Fran)
   for (const e of reopened) issues.push(['warn', `${e.app} se cerró y el vigilante la reabrió (${new Date(e.at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })})`]);
   for (const w of p.warnings || []) issues.push(['warn', w]);
+  if (p.scarlett && p.scarlett.device && p.scarlett.status && p.scarlett.status !== 'OK') issues.push(['warn', `Scarlett con estado ${p.scarlett.status}`]);
   const h = issues.some((i) => i[0] === 'bad') ? 'bad' : issues.some((i) => i[0] === 'warn') ? 'warn' : 'ok';
   return { h, issues };
 }
@@ -346,6 +347,22 @@ function syncControl(p) {
   if (p.pending && p.pending.action === 'timesync') return `<span class="pend" title="Pedido a las ${esc(new Date(p.pending.at).toLocaleTimeString('es-MX'))}. El PC lo recoge en su próximo reporte (como mucho 5 min).">⏳ pendiente</span> <button class="btn ghost peq icono" data-cancel="${esc(p.id)}" title="Cancelar">✕</button>`;
   if (canSync(p)) return `<button class="btn ghost peq" data-sync="${esc(p.id)}" title="Sincronizar el reloj con la hora de internet">Sincronizar</button>`;
   return `<span class="tag" title="Este PC tiene el setup ${esc(p.script_version || '?')}: pásale el setup otra vez para poder sincronizarlo desde aquí.">setup antiguo</span>`;
+}
+
+// Scarlett: estado, ultimo reinicio y boton (solo si el PC manda el dato: setup 5.19 o posterior)
+const SC_BY = (b) => (!b ? '?' : b === 'panel' ? 'desde el panel' : b.startsWith('remote') ? 'desde Companion' : b);
+function scarlettRows(p) {
+  const s = p.scarlett;
+  if (!s) return [['Scarlett', '<span class="tag" title="Pásale el setup 5.19 o posterior para poder reiniciarla desde aquí.">setup antiguo</span>', true]];
+  const st = s.device ? `${esc(s.device)} · ${s.status === 'OK' ? '<span class="ok">bien</span>' : `<span class="warn">${esc(s.status || '?')}</span>`}` : `<span class="mut">${esc(s.error || 'no conectada')}</span>`;
+  const pend = p.pending && p.pending.action === 'scarlett_reset';
+  const ctl = pend ? `<span class="pend" title="El PC lo recoge en su próximo reporte (como mucho 5 min).">⏳ pendiente</span> <button class="btn ghost peq icono" data-cancel="${esc(p.id)}" title="Cancelar">✕</button>`
+    : s.device ? `<button class="btn ghost peq" data-scarlett="${esc(p.id)}" title="Reinicia la Scarlett por USB: el audio se corta unos segundos">Reiniciar Scarlett</button>` : '';
+  const rows = [['Scarlett', `${st} &nbsp;${ctl}`, true]];
+  const l = s.last;
+  if (l && l.at) rows.push(['Último reinicio', `${SC_BY(l.by)}, ${dateTime(l.at)} · ${l.ok ? 'bien' : l.skipped ? 'no hizo falta' : 'NO se pudo'}${l.msg ? ' (' + l.msg + ')' : ''}`]);
+  if (s.david_agent) rows.push(['Agente de David', 'instalado (su panel en el puerto 8765)']);
+  return rows;
 }
 
 function card(p, now) {
@@ -422,7 +439,7 @@ function tabResumen(p, now, a) {
     ['Modelo', [hw.manufacturer, hw.model].filter(Boolean).join(' ')], ['Nº de serie', hw.serial], ['CPU', hw.cpu], ['RAM', hw.ram_gb ? hw.ram_gb + ' GB' : null],
     ['Disco C:', p.disk ? `${p.disk.free_gb} GB libres de ${p.disk.total_gb} GB` : null]])}</div>
   <div class="sect"><h4>Windows</h4>${kv([['Edición', w.caption], ['Versión', `${w.display_version || ''} (build ${w.build || '?'})`], ['Setup Kerma', 'v' + (p.script_version || '?')]])}</div>
-  <div class="sect"><h4>Audio y acceso remoto</h4>${kv([['Focusrite', (p.focusrite || []).join(', ') || 'no conectada'],
+  <div class="sect"><h4>Audio y acceso remoto</h4>${kv([...((p.focusrite || []).length || p.scarlett ? scarlettRows(p) : [['Focusrite', 'no conectada']]),
     ['Micrófono', p.audio && p.audio.default_recording], ['Salida', p.audio && p.audio.default_playback],
     ['RustDesk', p.remote ? `servicio ${p.remote.rustdesk_service} (${p.remote.rustdesk_start}) · puerto ${p.remote.port} ${p.remote.listening ? '<span class="ok">abierto</span>' : '<span class="bad">CERRADO</span>'}` : 'no instalado', true]])}</div>
   ${tabVigilante(p, now)}
@@ -561,6 +578,12 @@ document.addEventListener('click', async (e) => {
   if ((el = t('[data-watch]'))) {
     el.disabled = true;
     try { await api('POST', '/api/command?id=' + encodeURIComponent(el.dataset.id), { action: el.dataset.watch }); } catch (err) { alert('No se pudo: ' + err.message); }
+    load(); return;
+  }
+  if ((el = t('[data-scarlett]'))) {
+    if (!confirm('¿Reiniciar la Scarlett de ' + el.dataset.scarlett + '? El audio de la mesa se corta unos segundos. El PC lo hace en su próximo reporte (como mucho 5 min).')) return;
+    el.disabled = true;
+    try { await api('POST', '/api/command?id=' + encodeURIComponent(el.dataset.scarlett), { action: 'scarlett_reset' }); } catch (err) { alert('No se pudo: ' + err.message); }
     load(); return;
   }
   if ((el = t('[data-sync]')) || (el = t('[data-cancel]'))) {

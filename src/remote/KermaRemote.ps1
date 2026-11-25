@@ -23,6 +23,11 @@
     Peticiones:
       GET  /health            estado (pide clave)
       POST /cmd/<nombre>      ejecuta un comando de la lista (tambien vale GET)
+      POST /cmd/scarlett_reset  reinicia la Scarlett de la mesa (si el config
+                              tiene "scarlettReset": true). Lo hace el script de
+                              Kerma PC Setup C:\ProgramData\Kerma\Kerma-ScarlettReset.ps1
+                              (ruta fija: esta carpeta la pueden cambiar los usuarios,
+                              esa no). Responde cuando termina (unos 5-15 s).
     Cabeceras: X-Kerma-Key (obligatoria), X-Kerma-Station (opcional, se registra).
 
 .PARAMETER TestCommand
@@ -46,7 +51,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$KrVersion = '0.1.2'
+$KrVersion = '0.2.0'
+# Reinicio de la Scarlett: ruta FIJA (solo administradores pueden cambiar C:\ProgramData\Kerma)
+$KrScarlettScript = 'C:\ProgramData\Kerma\Kerma-ScarlettReset.ps1'
 
 if (-not $DryRun) { Add-Type -AssemblyName System.Windows.Forms }
 if (-not $DryRun -and -not ('KrWin' -as [type])) {
@@ -74,6 +81,7 @@ $DefaultConfig = [ordered]@{
     targetProcess = 'dealer-control'        # nombre del proceso, sin .exe
     mode          = 'paste'                 # paste = pegar (lo que piden los devs) | type = escribir
     restoreFocus  = $true                   # devolver el foco a la ventana que estaba delante
+    scarlettReset = $false                  # true: acepta /cmd/scarlett_reset
     commands      = [ordered]@{ atem_auto = '{ATEM_AUTO}' }
 }
 
@@ -110,7 +118,7 @@ function Read-KrConfig {
     $c = $DefaultConfig
     if (Test-Path -LiteralPath $ConfigFile) {
         $j = Get-Content -LiteralPath $ConfigFile -Raw | ConvertFrom-Json
-        foreach ($k in @('port', 'allow', 'targetProcess', 'mode', 'restoreFocus')) {
+        foreach ($k in @('port', 'allow', 'targetProcess', 'mode', 'restoreFocus', 'scarlettReset')) {
             if ($null -ne $j.$k) { $c[$k] = $j.$k }
         }
         if ($null -ne $j.commands) {
@@ -211,9 +219,32 @@ function Send-KrText([string]$text, [string]$mode) {
     return 'paste'
 }
 
+function Test-KrElevated {
+    try { return ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) } catch { return $false }
+}
+
+# Reinicio de la Scarlett con el script de Kerma PC Setup (necesita administrador)
+function Invoke-KrScarlett([string]$by) {
+    if (-not (Test-Path -LiteralPath $KrScarlettScript)) { return @{ ok = $false; status = 501; error = "falta $KrScarlettScript (lo instala Kerma PC Setup)"; command = 'scarlett_reset' } }
+    $args2 = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $KrScarlettScript, '-By', $by)
+    if ($DryRun) { $args2 += '-Check' }
+    $out = & powershell.exe @args2 2>&1 | Out-String
+    $line = @($out -split "`r?`n" | Where-Object { $_ -match '^\s*\{' } | Select-Object -Last 1)
+    try { $j = $line[0] | ConvertFrom-Json } catch { return @{ ok = $false; status = 500; error = 'respuesta rara del script: ' + $out.Trim(); command = 'scarlett_reset' } }
+    if ($DryRun) { return @{ ok = $true; status = 200; command = 'scarlett_reset'; window = 'ENSAYO: ' + [string]$j.device; device = [string]$j.device; elevated = [bool]$j.elevated } }
+    $st = if ($j.ok -or $j.skipped) { 200 } elseif ($j.busy) { 409 } else { 500 }
+    $r = @{ ok = [bool]($j.ok -or $j.skipped); status = $st; command = 'scarlett_reset'; device = [string]$j.device; window = [string]$j.device; result = [string]$j.msg }
+    if (-not $r.ok) { $r.error = [string]$j.msg }
+    return $r
+}
+
 # Ejecuta un comando de la lista. Devuelve un hashtable con el resultado.
-function Invoke-KrCommand([string]$id, $cfg) {
+function Invoke-KrCommand([string]$id, $cfg, [string]$by = '') {
     $id = $id.ToLowerInvariant()
+    if ($id -eq 'scarlett_reset') {
+        if (-not $cfg.scarlettReset) { return @{ ok = $false; status = 404; error = 'comando no permitido'; command = $id } }
+        return (Invoke-KrScarlett $by)
+    }
     if (-not $cfg.commands.Contains($id)) { return @{ ok = $false; status = 404; error = 'comando no permitido'; command = $id } }
     $text = $cfg.commands[$id]
     if ($DryRun) { return @{ ok = $true; status = 200; command = $id; window = 'ENSAYO, no se ha pegado nada'; text = $text } }
@@ -293,7 +324,8 @@ while ($listener.IsListening) {
 
         if ($path -eq '/health') {
             $p = Get-KrTarget $cfg.targetProcess
-            Send-KrReply $ctx 200 @{ ok = $true; version = $KrVersion; host = $env:COMPUTERNAME; app = $cfg.targetProcess; appOpen = [bool]$p; window = $(if ($p) { $p.MainWindowTitle } else { '' }); commands = @($cfg.commands.Keys) }
+            $cmdList = @($cfg.commands.Keys); if ($cfg.scarlettReset) { $cmdList += 'scarlett_reset' }
+            Send-KrReply $ctx 200 @{ ok = $true; version = $KrVersion; host = $env:COMPUTERNAME; app = $cfg.targetProcess; appOpen = [bool]$p; window = $(if ($p) { $p.MainWindowTitle } else { '' }); commands = $cmdList; elevated = (Test-KrElevated) }
             continue
         }
 
@@ -305,7 +337,7 @@ while ($listener.IsListening) {
                 Send-KrReply $ctx 429 @{ ok = $false; error = 'repetido, espera 2 s'; command = $id }; continue
             }
             $lastRun[$id] = $now
-            $r = Invoke-KrCommand $id $cfg
+            $r = Invoke-KrCommand $id $cfg ("remote $ip $station")
             Write-KrLog ("COMANDO  ip={0}  puesto={1}  cmd={2}  ok={3}  {4}" -f $ip, $station, $id, $r.ok, ($(if ($r.ok) { "ventana='$($r.window)' via=$($r.via)" } else { $r.error })))
             $status = $r.status; $r.Remove('status')
             Send-KrReply $ctx $status $r; continue
