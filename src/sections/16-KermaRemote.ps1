@@ -52,7 +52,7 @@ function Show-ScarlettCheck([string]$ksScript) {
             $src = switch ([string]$j.source) { 'david' { L 'the one configured in David''s agent' 'la configurada en el agente de David' } 'david-name' { L 'same name as in David''s agent' 'mismo nombre que en el agente de David' } default { L 'the only one connected' 'la única conectada' } }
             Write-Ok ((L 'Scarlett for RESET SCARLETT: {0} ({1}), status {2}.' 'Scarlett para RESET SCARLETT: {0} ({1}), estado {2}.') -f $j.device, $src, $j.status)
         } else { Write-Note ((L '  Scarlett: {0}' '  Scarlett: {0}') -f $j.error) }
-        if ($j.david_agent) { Write-Note (L '  David''s Scarlett agent (port 8765) is installed and is left as it is.' '  El agente de la Scarlett de David (puerto 8765) está instalado y se deja como está.') }
+        if ($j.david_agent) { Write-Note (L '  The Scarlett agent (port 8765) is installed.' '  El agente Scarlett (puerto 8765) está instalado.') }
     } catch { Write-Warn ((L 'Scarlett check: {0}' 'Comprobación de la Scarlett: {0}') -f $_.Exception.Message) }
 }
 

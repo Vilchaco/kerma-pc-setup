@@ -57,6 +57,14 @@ Para ver lo mismo en el propio PC, sin enviar nada y sin cambiar nada:
 Kerma-PCSetup.bat -Check
 ```
 
+## Registrar Scarlett en Kerma MCR
+
+El perfil de mesa instala el agente Scarlett al arrancar Windows, incluso antes de iniciar sesión. Para registrar una mesa por primera vez, abre **Scarlett → Invitar PC de mesa** en MCR como administrador. Selecciona la mesa del catálogo, escribe su clave en el inventario de Setup (por ejemplo, `BJ01`) y la IP reservada del PC. Pega el código en Kerma Setup. MCR comprueba que el agente responde y registra el dispositivo automáticamente. La invitación caduca a las 24 horas.
+
+En una instalación sin supervisión, proporciona la invitación mediante la variable de entorno `KERMA_MCR_SCARLETT_INVITATION` del proceso que ejecuta Setup. Si falla la conexión, vuelve a ejecutar Setup con el mismo código vigente. Para cambiar la IP de una mesa, genera una invitación con la nueva IP. El token local y el registro de MCR se conservan durante una actualización.
+
+El PC debe resolver `mcr.kermagames.local` y confiar en el certificado HTTPS del MCR interno. La regla del agente acepta conexiones al puerto TCP 8765 desde `192.168.3.254`. El botón de reinicio de MCR, Companion y el panel de Setup usan la misma rutina local.
+
 ## Pasos manuales en la BIOS
 
 El script no puede cambiar la BIOS. Hazlo una vez en cada PC:

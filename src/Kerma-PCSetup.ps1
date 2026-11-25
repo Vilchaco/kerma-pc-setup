@@ -53,6 +53,7 @@ $ScriptVersion = '5.19.0'
 $Root = $PSScriptRoot           # las secciones cargadas con dot-source tienen otro $PSScriptRoot
 $State = @{ UserRenamed = $false; HostRenamed = $false; RenameWanted = $false; NeedsRestart = $false; Changes = @() }
 $Secrets = @{ RustDesk = $RustDeskPassword; PanelPin = $PanelPin; RemoteKey = $RemoteKey }
+$Secrets.ScarlettInvitation = $env:KERMA_MCR_SCARLETT_INVITATION
 $Auto = [bool]$Unattended -or $Mode -eq 'Auto'
 $script:Lang = if ($Lang) { $Lang } else { 'es' }
 
@@ -100,6 +101,8 @@ if (-not $isAdmin) {
     catch { Write-Host (L 'Administrator rights were refused - nothing was changed.' 'Se rechazaron los permisos de administrador: no se cambió nada.'); Start-Sleep 3 }
     exit
 }
+
+Remove-Item Env:KERMA_MCR_SCARLETT_INVITATION -ErrorAction SilentlyContinue
 
 # descargas: GitHub necesita TLS 1.2; la barra de progreso hace lentisimas las descargas grandes
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
@@ -199,6 +202,7 @@ try {
             $ipNew = Read-Host (L '  Static IP for this PC (Enter = leave the network as it is)' '  IP fija para este PC (Enter = dejar la red como está)')
             if (Test-IPv4 $ipNew) { $selected.Net.IP = $ipNew.Trim(); $selected.IPSource = 'typed' }
         }
+        Read-ScarlettInvitation $selected
         Resolve-AutostartPathsUpfront $selected
         Write-Host ''
         Write-Ok (L 'All set - from here on it runs by itself.' 'Listo: a partir de aquí funciona solo.')
@@ -212,7 +216,7 @@ try {
     Write-Phase (L 'PHASE 3 - PROGRAMS' 'FASE 3 - PROGRAMAS')
     Invoke-Step 'Invoke-InstallPrograms' $selected
     Write-Phase (L 'PHASE 4 - CONFIGURATION' 'FASE 4 - CONFIGURACIÓN')
-    foreach ($s in @('Invoke-RemoteAccess', 'Invoke-AudioSetup', 'Invoke-ProgramSettings', 'Invoke-KermaRemote', 'Invoke-SatelliteSetup', 'Invoke-AppAutostart', 'Invoke-TaskbarPins', 'Invoke-Wallpaper')) { Invoke-Step $s $selected }
+    foreach ($s in @('Invoke-RemoteAccess', 'Invoke-AudioSetup', 'Invoke-ScarlettMcr', 'Invoke-ProgramSettings', 'Invoke-KermaRemote', 'Invoke-SatelliteSetup', 'Invoke-AppAutostart', 'Invoke-TaskbarPins', 'Invoke-Wallpaper')) { Invoke-Step $s $selected }
     Write-Phase (L 'PHASE 5 - MONITORING' 'FASE 5 - VIGILANCIA')
     Invoke-Step 'Invoke-StatusPanel' $selected
     Write-Phase (L 'PHASE 6 - CHECK AND SUMMARY' 'FASE 6 - COMPROBACIÓN Y RESUMEN')
@@ -220,7 +224,7 @@ try {
     # nombres e inicio de sesion, lo ultimo: renombrar la cuenta en uso deja a Windows sin reconocerla hasta reiniciar
     Write-Phase (L 'PHASE 7 - NAMES AND LOGIN' 'FASE 7 - NOMBRES E INICIO DE SESIÓN')
     foreach ($s in @('Invoke-RenameApply', 'Invoke-LoginSetup')) { Invoke-Step $s $selected }
-    $Secrets.RustDesk = $null; $Secrets.PanelPin = $null; $Secrets.RemoteKey = $null
+    $Secrets.RustDesk = $null; $Secrets.PanelPin = $null; $Secrets.RemoteKey = $null; $Secrets.ScarlettInvitation = $null
     $script:Auto = [bool]$Unattended    # la pregunta de reiniciar se hace siempre (salvo -Unattended)
     Invoke-Finish
 } catch {
