@@ -202,7 +202,6 @@ try {
             $ipNew = Read-Host (L '  Static IP for this PC (Enter = leave the network as it is)' '  IP fija para este PC (Enter = dejar la red como está)')
             if (Test-IPv4 $ipNew) { $selected.Net.IP = $ipNew.Trim(); $selected.IPSource = 'typed' }
         }
-        Read-ScarlettInvitation $selected
         Resolve-AutostartPathsUpfront $selected
         Write-Host ''
         Write-Ok (L 'All set - from here on it runs by itself.' 'Listo: a partir de aquí funciona solo.')

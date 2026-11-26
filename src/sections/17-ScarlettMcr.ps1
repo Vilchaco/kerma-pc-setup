@@ -1,17 +1,6 @@
-function Read-ScarlettInvitation($pc) {
-    if ($pc.Type -ne 'Table' -or $Unattended -or $script:Secrets.ScarlettInvitation) { return }
-    $configPath = Join-Path $env:ProgramData 'KermaGames\ScarlettReset\config.json'
-    try {
-        $current = Get-Content -LiteralPath $configPath -Raw -ErrorAction Stop | ConvertFrom-Json
-        if ($current.mcrDeviceId -and $current.mcrSetupKey -eq $pc.Key -and $current.mcrSetupAddress -eq $pc.Net.IP) { return }
-    } catch { }
-    $script:Secrets.ScarlettInvitation = Read-Secret (L '  MCR invitation for this table (Enter to register later)' '  Invitacion de MCR para esta mesa (Enter para registrar despues)')
-}
-
 function Invoke-ScarlettMcr($pc) {
     if ($pc.Type -ne 'Table') { return }
     Write-Section (L 'SCARLETT IN KERMA MCR' 'SCARLETT EN KERMA MCR')
-    if (-not $script:Auto) { Read-ScarlettInvitation $pc }
 
     $shared = Initialize-KermaDataDir
     Copy-Item -LiteralPath (Join-Path $Root 'Kerma-ScarlettReset.ps1') -Destination $shared -Force
@@ -88,30 +77,57 @@ function Invoke-ScarlettMcr($pc) {
     if (-not $health.ok) { throw 'Scarlett agent did not answer its local health check on port 8765.' }
     Add-Change (L 'Scarlett agent installed' 'Agente Scarlett instalado')
 
-    $invite = $script:Secrets.ScarlettInvitation
-    if (-not $invite) {
-        if ($config.mcrDeviceId -and $config.mcrSetupKey -eq $pc.Key -and $config.mcrSetupAddress -eq $pc.Net.IP) {
-            Write-Ok ((L 'Scarlett already enrolled: {0}' 'Scarlett ya registrada: {0}') -f $config.mcrDeviceId)
-        } else {
-            Write-Warn (L 'MCR enrollment pending: run Setup with a table invitation.' 'Registro en MCR pendiente: ejecuta Setup con una invitacion de mesa.')
-        }
-        return
-    }
-    if ($invite -cnotmatch '^[A-Za-z0-9_-]{43}$') { throw 'Invalid Scarlett MCR invitation format.' }
-    $headers['X-Scarlett-Invitation'] = $invite
+    $invite = ([string]$script:Secrets.ScarlettInvitation) -replace '\s', ''
     $headers['X-Scarlett-Setup-Key'] = [string]$pc.Key
-    for ($attempt = 1; $attempt -le 3; $attempt++) {
+    $endpoint = "https://$controller/api/scarlett/auto-enroll"
+    if ($invite) {
+        if ($invite -cnotmatch '^[A-Za-z0-9_-]{43}$') {
+            throw ((L 'Copy the full 43-character invitation from MCR (received {0} characters).' 'Copia la invitacion completa de 43 caracteres desde MCR (se recibieron {0}).') -f $invite.Length)
+        }
+        $headers['X-Scarlett-Invitation'] = $invite
+        $endpoint = "https://$controller/api/scarlett/enroll"
+    }
+    $deadline = [datetime]::UtcNow.AddSeconds(90)
+    $failures = 0
+    $approvalShown = $false
+    do {
         try {
-            $result = Invoke-RestMethod -Method Post -Uri 'https://mcr.kermagames.local/api/scarlett/enroll' `
-                -Headers $headers -UseBasicParsing -TimeoutSec 15 -MaximumRedirection 0
-            break
+            $result = Invoke-RestMethod -Method Post -Uri $endpoint -Headers $headers `
+                -UseBasicParsing -TimeoutSec 12 -MaximumRedirection 0
+            $failures = 0
         } catch {
             $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'network/TLS' }
-            if ($attempt -eq 3 -or $status -notin @(502, 503, 504, 'network/TLS')) {
-                throw "Scarlett MCR enrollment pending ($status). Retry Setup with the same invitation before it expires."
+            $failures++
+            if ($failures -ge 3 -or $status -notin @(502, 503, 504, 'network/TLS')) {
+                $message = switch ($status) {
+                    403 { L 'Confirm the Setup key and reserved IP in Scarlett automatic enrollment.' 'Confirma la clave de Setup y la IP reservada en Alta automatica de Scarlett.' }
+                    404 { L 'MCR automatic enrollment is unavailable.' 'El alta automatica de MCR no esta disponible.' }
+                    409 { L 'Check the pending request or table assignment in MCR.' 'Revisa la solicitud pendiente o la asignacion de la mesa en MCR.' }
+                    'network/TLS' { L 'Check port 443 and trust the Kerma MCR certificate in Windows.' 'Comprueba el puerto 443 y la confianza del certificado de Kerma MCR en Windows.' }
+                    default { L 'Check the connection to MCR and retry Setup.' 'Revisa la conexion con MCR y vuelve a ejecutar Setup.' }
+                }
+                throw "Scarlett MCR enrollment pending ($status). $message"
             }
             Start-Sleep -Seconds 2
+            continue
         }
+        if (-not $result.pending) { break }
+        if (-not $approvalShown) {
+            $sha = [Security.Cryptography.SHA256]::Create()
+            try {
+                $bytes = $sha.ComputeHash([Text.Encoding]::ASCII.GetBytes($config.token))
+                $fingerprint = [BitConverter]::ToString($bytes, 0, 8).Replace('-', '')
+            } finally { $sha.Dispose() }
+            if ($fingerprint -cne $result.fingerprint) { throw 'MCR returned a different Scarlett fingerprint.' }
+            Write-Note ((L 'Approve {0} in Scarlett automatic enrollment. Fingerprint: {1}' 'Aprueba {0} en Alta automatica de Scarlett. Huella: {1}') -f $pc.Key, $fingerprint)
+            $approvalShown = $true
+        }
+        Start-Sleep -Seconds 5
+    } while ([datetime]::UtcNow -lt $deadline)
+    if (-not $result.id -and $approvalShown) {
+        Write-Warn (L 'MCR enrollment pending approval. After approving, run Setup again.' 'Registro pendiente de aprobacion en MCR. Despues de aprobarlo, vuelve a ejecutar Setup.')
+        Add-Change (L 'Scarlett enrollment pending approval' 'Registro de Scarlett pendiente de aprobacion')
+        return
     }
     if (-not $result.ok -or -not $result.id) { throw 'MCR returned an invalid enrollment response.' }
     $config.mcrDeviceId = [string]$result.id

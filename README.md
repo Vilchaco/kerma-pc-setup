@@ -59,11 +59,11 @@ Kerma-PCSetup.bat -Check
 
 ## Registrar Scarlett en Kerma MCR
 
-El perfil de mesa instala el agente Scarlett al arrancar Windows, incluso antes de iniciar sesión. Para registrar una mesa por primera vez, abre **Scarlett → Invitar PC de mesa** en MCR como administrador. Selecciona la mesa del catálogo, escribe su clave en el inventario de Setup (por ejemplo, `BJ01`) y la IP reservada del PC. Pega el código en Kerma Setup. MCR comprueba que el agente responde y registra el dispositivo automáticamente. La invitación caduca a las 24 horas.
+El perfil de mesa instala el agente Scarlett para que arranque con Windows, incluso antes de iniciar sesión. En el MCR de la red interna, un administrador guarda una asignación en **Scarlett → Alta automática** con la mesa del catálogo, la clave de Setup y la IP reservada del PC. Al ejecutar Setup en esa PC, una instalación con el token Scarlett existente se confirma automáticamente.
 
-En una instalación sin supervisión, proporciona la invitación mediante la variable de entorno `KERMA_MCR_SCARLETT_INVITATION` del proceso que ejecuta Setup. Si falla la conexión, vuelve a ejecutar Setup con el mismo código vigente. Para cambiar la IP de una mesa, genera una invitación con la nueva IP. El token local y el registro de MCR se conservan durante una actualización.
+En una PC nueva o de reemplazo, Setup muestra una huella. El administrador actualiza las solicitudes en el mismo diálogo, compara la huella y aprueba. Setup espera la aprobación hasta 90 segundos desde que contacta a MCR. Si el instalador ya terminó, ejecútalo de nuevo después de aprobar. Para usar una invitación explícita como alternativa, proporciona el código mediante la variable de entorno `KERMA_MCR_SCARLETT_INVITATION` del proceso que ejecuta Setup.
 
-El PC debe resolver `mcr.kermagames.local` y confiar en el certificado HTTPS del MCR interno. La regla del agente acepta conexiones al puerto TCP 8765 desde `192.168.3.254`. El botón de reinicio de MCR, Companion y el panel de Setup usan la misma rutina local.
+El PC debe poder acceder por HTTPS a `192.168.3.254` y confiar en el certificado HTTPS del MCR interno. La regla del agente acepta conexiones al puerto TCP 8765 desde `192.168.3.254`. El botón de reinicio de MCR, Companion y el panel de Setup usan la misma rutina local.
 
 ## Pasos manuales en la BIOS
 
