@@ -134,7 +134,7 @@ try {
     # ------------------------------------------- modo
     if (-not $Unattended -and -not $Mode) {
         Write-Host ''
-        Write-Host (L '  1. Automatic - applies this PC''s profile. Only asks at the start what it cannot know.' '  1. Automático: aplica el perfil del PC. Solo pregunta al principio lo que no puede saber.')
+        Write-Host (L '  1. Automatic - applies this PC''s profile. Asks for missing details up front and offers the Scarlett choice during setup.' '  1. Automático: aplica el perfil del PC. Pide los datos faltantes al principio y ofrece la opción de Scarlett durante la instalación.')
         Write-Host (L '  2. Manual    - asks in every section, step by step.' '  2. Manual: pregunta en cada sección, paso a paso.')
         Write-Host (L '  3. Review    - shows the state of this PC and changes nothing.' '  3. Revisión: muestra el estado del PC y no cambia nada.')
         $m = Read-MenuChoice (L '  Mode' '  Modo') 3
@@ -204,7 +204,7 @@ try {
         }
         Resolve-AutostartPathsUpfront $selected
         Write-Host ''
-        Write-Ok (L 'All set - from here on it runs by itself.' 'Listo: a partir de aquí funciona solo.')
+        Write-Ok (L 'Initial setup choices saved.' 'Se guardaron las opciones iniciales.')
     }
 
     # ------------------------------------------- fases
@@ -215,7 +215,21 @@ try {
     Write-Phase (L 'PHASE 3 - PROGRAMS' 'FASE 3 - PROGRAMAS')
     Invoke-Step 'Invoke-InstallPrograms' $selected
     Write-Phase (L 'PHASE 4 - CONFIGURATION' 'FASE 4 - CONFIGURACIÓN')
-    foreach ($s in @('Invoke-RemoteAccess', 'Invoke-AudioSetup', 'Invoke-ScarlettMcr', 'Invoke-ProgramSettings', 'Invoke-KermaRemote', 'Invoke-SatelliteSetup', 'Invoke-AppAutostart', 'Invoke-TaskbarPins', 'Invoke-Wallpaper')) { Invoke-Step $s $selected }
+    foreach ($s in @('Invoke-RemoteAccess', 'Invoke-AudioSetup')) { Invoke-Step $s $selected }
+    if ($selected.Type -eq 'Table') {
+        $installScarlett = $true
+        if (-not $Unattended) {
+            Write-Host (L '  1. Install / update the Scarlett agent' '  1. Instalar / actualizar el agente Scarlett')
+            Write-Host (L '  2. Skip the Scarlett agent' '  2. Omitir el agente Scarlett')
+            $installScarlett = (Read-MenuChoice (L '  Scarlett agent' '  Agente Scarlett') 2) -eq 0
+        }
+        if ($installScarlett) {
+            Invoke-Step 'Invoke-ScarlettMcr' $selected
+        } else {
+            Write-Skip (L 'Scarlett agent skipped.' 'Se omitió el agente Scarlett.')
+        }
+    }
+    foreach ($s in @('Invoke-ProgramSettings', 'Invoke-KermaRemote', 'Invoke-SatelliteSetup', 'Invoke-AppAutostart', 'Invoke-TaskbarPins', 'Invoke-Wallpaper')) { Invoke-Step $s $selected }
     Write-Phase (L 'PHASE 5 - MONITORING' 'FASE 5 - VIGILANCIA')
     Invoke-Step 'Invoke-StatusPanel' $selected
     Write-Phase (L 'PHASE 6 - CHECK AND SUMMARY' 'FASE 6 - COMPROBACIÓN Y RESUMEN')
