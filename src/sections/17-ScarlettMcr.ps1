@@ -95,6 +95,7 @@
     $deadline = [datetime]::UtcNow.AddSeconds(90)
     $failures = 0
     $approvalShown = $false
+    $certificateOffered = $false
     do {
         try {
             $result = Invoke-RestMethod -Method Post -Uri $endpoint -Headers $headers `
@@ -103,6 +104,17 @@
         } catch {
             $failure = $_.Exception
             $status = if ($failure.Response) { [int]$failure.Response.StatusCode } else { [string]$failure.Status }
+            if ($status -eq 'TrustFailure' -and -not $Unattended -and -not $certificateOffered) {
+                $certificateOffered = $true
+                Write-Warn (L 'Windows could not validate the MCR certificate.' 'Windows no pudo validar el certificado de MCR.')
+                . (Join-Path $Root 'lib\ScarlettMcrCertificate.ps1')
+                if (Install-ScarlettMcrCertificate (Join-Path $Root 'Kerma-MCR-HTTPS.cer')) {
+                    $failures = 0
+                    $deadline = [datetime]::UtcNow.AddSeconds(90)
+                    continue
+                }
+                throw (L 'The Scarlett agent is installed. Enrollment was skipped because certificate installation was declined.' 'El agente Scarlett está instalado. Se omitió el alta porque rechazaste la instalación del certificado.')
+            }
             $failures++
             if ($failures -ge 3 -or $status -notin @(502, 503, 504, 'ConnectFailure', 'Timeout', 'ReceiveFailure', 'ConnectionClosed')) {
                 $message = switch ($status) {
