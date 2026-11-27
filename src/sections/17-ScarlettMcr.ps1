@@ -1,4 +1,4 @@
-function Invoke-ScarlettMcr($pc) {
+﻿function Invoke-ScarlettMcr($pc) {
     if ($pc.Type -ne 'Table') { return }
     Write-Section (L 'SCARLETT IN KERMA MCR' 'SCARLETT EN KERMA MCR')
 
@@ -78,6 +78,11 @@ function Invoke-ScarlettMcr($pc) {
     Add-Change (L 'Scarlett agent installed' 'Agente Scarlett instalado')
 
     $invite = ([string]$script:Secrets.ScarlettInvitation) -replace '\s', ''
+    if (-not $invite -and $config.mcrDeviceId -and $pc.Net.IP -and
+        $config.mcrSetupKey -eq $pc.Key -and $config.mcrSetupAddress -eq $pc.Net.IP) {
+        Write-Ok (L 'Scarlett agent updated. Existing MCR registration retained.' 'Agente Scarlett actualizado. Se conservó el registro existente en MCR.')
+        return
+    }
     $headers['X-Scarlett-Setup-Key'] = [string]$pc.Key
     $endpoint = "https://$controller/api/scarlett/auto-enroll"
     if ($invite) {
@@ -96,17 +101,36 @@ function Invoke-ScarlettMcr($pc) {
                 -UseBasicParsing -TimeoutSec 12 -MaximumRedirection 0
             $failures = 0
         } catch {
-            $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'network/TLS' }
+            $failure = $_.Exception
+            $status = if ($failure.Response) { [int]$failure.Response.StatusCode } else { [string]$failure.Status }
             $failures++
-            if ($failures -ge 3 -or $status -notin @(502, 503, 504, 'network/TLS')) {
+            if ($failures -ge 3 -or $status -notin @(502, 503, 504, 'ConnectFailure', 'Timeout', 'ReceiveFailure', 'ConnectionClosed')) {
                 $message = switch ($status) {
-                    403 { L 'Confirm the Setup key and reserved IP in Scarlett automatic enrollment.' 'Confirma la clave de Setup y la IP reservada en Alta automatica de Scarlett.' }
-                    404 { L 'MCR automatic enrollment is unavailable.' 'El alta automatica de MCR no esta disponible.' }
-                    409 { L 'Check the pending request or table assignment in MCR.' 'Revisa la solicitud pendiente o la asignacion de la mesa en MCR.' }
-                    'network/TLS' { L 'Check port 443 and trust the Kerma MCR certificate in Windows.' 'Comprueba el puerto 443 y la confianza del certificado de Kerma MCR en Windows.' }
-                    default { L 'Check the connection to MCR and retry Setup.' 'Revisa la conexion con MCR y vuelve a ejecutar Setup.' }
+                    'TrustFailure' { L 'Windows could not validate the MCR certificate. Run Diagnosticar-MCR.bat and check the certificate and date.' 'Windows no pudo validar el certificado de MCR. Ejecuta Diagnosticar-MCR.bat y revisa el certificado y la fecha.' }
+                    'SecureChannelFailure' { L 'The TLS handshake with MCR failed. Run Diagnosticar-MCR.bat.' 'Falló la negociación TLS con MCR. Ejecuta Diagnosticar-MCR.bat.' }
+                    { $_ -in @('ConnectFailure', 'Timeout', 'ReceiveFailure', 'ConnectionClosed', 'NameResolutionFailure', 'ProxyNameResolutionFailure') } {
+                        L 'Check access to 192.168.3.254 on TCP 443 with Diagnosticar-MCR.bat.' 'Comprueba el acceso a 192.168.3.254 por TCP 443 con Diagnosticar-MCR.bat.'
+                    }
+                    401 {
+                        if ($invite) { L 'Verify the table key or generate a new invitation in MCR.' 'Verifica la clave de mesa o genera una nueva invitación en MCR.' }
+                        else { L 'MCR rejected the enrollment credentials.' 'MCR rechazó las credenciales de alta.' }
+                    }
+                    403 {
+                        if ($invite) { L 'Verify that MCR allows enrollment by invitation from this PC.' 'Verifica que MCR permita el alta por invitación desde esta PC.' }
+                        else { L 'Confirm the Setup key and reserved IP in Scarlett automatic enrollment.' 'Confirma la clave de Setup y la IP reservada en Alta automática de Scarlett.' }
+                    }
+                    404 {
+                        if ($invite) { L 'Enrollment by invitation is unavailable on this MCR.' 'Este MCR no tiene disponible el alta por invitación.' }
+                        else { L 'Automatic enrollment is unavailable on this MCR.' 'Este MCR no tiene disponible el alta automática.' }
+                    }
+                    409 {
+                        if ($invite) { L 'Check the existing registration in MCR. If the invitation was already used, generate another one.' 'Revisa el registro existente en MCR. Si la invitación ya se usó, genera otra.' }
+                        else { L 'Check the pending request or table assignment in MCR.' 'Revisa la solicitud pendiente o la asignación de la mesa en MCR.' }
+                    }
+                    default { L 'Check the MCR connection with Diagnosticar-MCR.bat and retry Setup.' 'Comprueba la conexión con Diagnosticar-MCR.bat y vuelve a ejecutar Setup.' }
                 }
-                throw "Scarlett MCR enrollment pending ($status). $message"
+                $label = L 'Scarlett enrollment failed' 'Falló el alta de Scarlett'
+                throw "${label} ($status). $message"
             }
             Start-Sleep -Seconds 2
             continue

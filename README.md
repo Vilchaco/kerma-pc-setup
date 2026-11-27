@@ -63,7 +63,11 @@ El perfil de mesa instala el agente Scarlett para que arranque con Windows, incl
 
 En una PC nueva o de reemplazo, Setup muestra una huella. El administrador actualiza las solicitudes en el mismo diálogo, compara la huella y aprueba. Setup espera la aprobación hasta 90 segundos desde que contacta a MCR. Si el instalador ya terminó, ejecútalo de nuevo después de aprobar. Para usar una invitación explícita como alternativa, proporciona el código mediante la variable de entorno `KERMA_MCR_SCARLETT_INVITATION` del proceso que ejecuta Setup.
 
-El PC debe poder acceder por HTTPS a `192.168.3.254` y confiar en el certificado HTTPS del MCR interno. La regla del agente acepta conexiones al puerto TCP 8765 desde `192.168.3.254`. El botón de reinicio de MCR, Companion y el panel de Setup usan la misma rutina local.
+En cada ejecución interactiva de Setup para una mesa, elige **Instalar / actualizar** u **Omitir** en la fase de configuración. Si el agente ya tiene una ficha local y conserva la misma clave e IP del perfil, Setup actualiza el agente, comprueba su respuesta local y conserva el registro sin contactar a MCR. Si cambia la clave o la IP, actualiza primero la asignación en MCR. Con una invitación explícita, Setup vuelve a solicitar el alta.
+
+Antes de la primera solicitud de alta, ejecuta `Diagnosticar-MCR.bat` desde el paquete extraído en la PC de mesa. Si falta el certificado en **Equipo local**, ejecuta `Instalar-Certificado-MCR.bat` **como administrador**. Este valida el SHA-256 y pide permiso antes de agregar `Kerma-MCR-HTTPS.cer` a las entidades raíz de confianza del equipo. Después, repite el diagnóstico. La prueba sin credenciales debe llegar por HTTPS a `192.168.3.254` y recibir HTTP `400`. Para revertir la importación, elimina únicamente ese certificado del almacén raíz de Equipo local con `certlm.msc`.
+
+La regla del agente acepta conexiones al puerto TCP 8765 desde `192.168.3.254`. El botón de reinicio de MCR, Companion y el panel de Setup usan la misma rutina local.
 
 ## Pasos manuales en la BIOS
 

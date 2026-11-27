@@ -181,7 +181,10 @@ try {
 
     # ------------------------------------------- en Automatico: todo lo que hay que preguntar, ahora
     if ($Auto -and -not $Unattended) {
-        Write-Section (L 'BEFORE STARTING  (then you can leave the PC working)' 'ANTES DE EMPEZAR  (luego puedes dejar el PC trabajando)')
+        Write-Section (L 'BEFORE STARTING' 'ANTES DE EMPEZAR')
+        if ($selected.Type -eq 'Table') {
+            Write-Note (L 'Setup will pause during configuration so you can install / update or skip the Scarlett agent.' 'Setup se detendrá durante la configuración para que elijas instalar / actualizar u omitir el agente Scarlett.')
+        }
         if ($Prof.RustDesk -ne 'None' -and $selected.RustDesk -and -not $Secrets.RustDesk) {
             $Secrets.RustDesk = Read-NewSecret (L 'RustDesk common password' 'Contraseña común de RustDesk')
         }
